@@ -1,0 +1,22 @@
+{
+  "name": "trustvault",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Verifiable Credential ecosystem prototype — issuer, wallet, verifier, trust registry",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "test": "turbo test",
+    "test:e2e": "turbo test:e2e",
+    "lint": "turbo lint",
+    "clean": "turbo clean"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0",
+    "typescript": "^5.4.0"
+  },
+  "packageManager": "pnpm@10.18.2",
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

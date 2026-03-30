@@ -4,9 +4,13 @@ This file provides guidance to Claude Code when working with code in this reposi
 
 ## Project Overview
 
-TrustVault is a Verifiable Credential ecosystem prototype — issuer, wallet, verifier, trust registry — built as a modular NestJS monolith with Prisma + MongoDB. Zero budget, milestone-based execution.
+TrustVault is a Verifiable Credential ecosystem prototype — issuer, wallet, verifier, trust registry. Zero budget, milestone-based execution.
 
-**Key docs:** `TRUSTVAULT_ROADMAP.md`, `TRUSTVAULT_EXECUTION_PLAN.md`, `TRUSTVAULT_ONBOARDING.md`
+- **Backend:** Modular NestJS monolith with Prisma + MongoDB Atlas
+- **Mobile Wallet:** React Native + Expo (phone app — QR scanning, credential storage)
+- **Web Portals:** Next.js + shadcn/ui (Issuer, Verifier, Trust Admin dashboards)
+
+**Key docs:** `TRUSTVAULT_ROADMAP.md`, `TRUSTVAULT_EXECUTION_PLAN.md`, `TRUSTVAULT_FRONTEND_PLAN.md`, `TRUSTVAULT_ONBOARDING.md`
 
 ## Common Commands
 
@@ -147,6 +151,7 @@ These rules override defaults. Apply to every response, every file, every change
 
 ## Milestone Reference
 
+### Backend (see `TRUSTVAULT_EXECUTION_PLAN.md`)
 ```
 M1: Foundation     → Monorepo, Prisma+MongoDB, DID module, Crypto module
 M2: Issuer         → OID4VCI endpoints, SD-JWT-VC issuance
@@ -156,4 +161,11 @@ M5: E2E            → Wire all modules, 5 test scenarios, seed data
 M6: Demo Ready     → Swagger, Postman, Docker Compose, README
 ```
 
-See `TRUSTVAULT_EXECUTION_PLAN.md` for full details on each milestone.
+### Frontend (see `TRUSTVAULT_FRONTEND_PLAN.md`)
+```
+FM1: Foundation    → Expo + Next.js setup, design system, shared types
+FM2: Mobile Wallet → Dashboard, receive, present, consent, QR scanning
+FM3: Web Portals   → Issuer, Verifier, Trust Admin dashboards and flows
+FM4: E2E Flows     → Cross-platform: web QR → phone scan → web result
+FM5: Polish        → Accessibility, animations, responsive, compliance
+```

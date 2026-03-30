@@ -52,7 +52,9 @@
       "mcp__filesystem__*",
       "mcp__github__*",
       "mcp__playwright__*",
-      "Bash(gh api:*)"
+      "Bash(gh api:*)",
+      "Bash(cd:*)",
+      "Bash(grep -E \"\\\\.\\(d\\\\.ts|ts\\)$\")"
     ]
   },
   "hooks": {

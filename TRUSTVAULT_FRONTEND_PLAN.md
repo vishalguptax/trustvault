@@ -1,8 +1,8 @@
 # TrustVault — Frontend & UI/UX Plan
 
-## Milestone-Based | Next.js + shadcn/ui + Tailwind | Zero Budget
+## Milestone-Based | Mobile Wallet (Expo) + Web Portals (Next.js) | Zero Budget
 
-> **Scope:** All frontend surfaces — Wallet, Issuer Portal, Verifier Portal, Trust Admin.
+> **Scope:** Mobile wallet app + Web portals (Issuer, Verifier, Trust Admin).
 > **Backend:** Consumed via REST APIs (see `TRUSTVAULT_EXECUTION_PLAN.md` Section 3).
 > **Skills Used:** All 8 available skills mapped to specific milestones with exact prompts.
 
@@ -10,359 +10,315 @@
 
 ## 1. Frontend Surfaces
 
-| Surface | Primary User | Purpose | Priority |
+| Surface | Platform | Primary User | Purpose |
 |---|---|---|---|
-| **Wallet** | Individual holder | Receive, store, manage, present credentials | Highest |
-| **Issuer Portal** | Organization (bank, university) | Create offers, issue credentials, manage schemas, revoke | High |
-| **Verifier Portal** | Organization (loan company) | Create verification requests, view results, manage policies | High |
-| **Trust Admin** | Platform admin | Manage trusted issuers, schemas, trust policies | Medium |
-| **Landing Page** | Everyone | Role selection, platform overview | Medium |
+| **Wallet App** | **React Native (Expo)** | Individual holder | Receive, store, manage, present credentials |
+| **Issuer Portal** | **Next.js (Web)** | Organization (bank, university) | Create offers, issue credentials, revoke |
+| **Verifier Portal** | **Next.js (Web)** | Organization (loan company) | Create verification requests, view results |
+| **Trust Admin** | **Next.js (Web)** | Platform admin | Manage trusted issuers, schemas, policies |
+| **Landing Page** | **Next.js (Web)** | Everyone | Platform overview, links to portals |
 
-**Architecture:** Single Next.js app with role-based routing (`/wallet/*`, `/issuer/*`, `/verifier/*`, `/admin/*`).
+**Why this split:**
+- Wallets live on phones — QR scanning from phone camera is the natural UX
+- Issuer/Verifier/Admin are org dashboards — desktop web is the right platform
+- Backend APIs are identical — zero backend changes
+- Demo: scan QR from real phone → credential appears live
 
 ---
 
 ## 2. Tech Stack
 
+### Mobile Wallet (React Native + Expo)
+
 | Layer | Technology | Why |
 |---|---|---|
-| **Framework** | Next.js 14+ (App Router) | SSR, file-based routing, React Server Components |
+| **Framework** | Expo SDK 51+ (managed workflow) | Zero native config, Expo Go for instant testing |
+| **Navigation** | Expo Router (file-based) | Same mental model as Next.js App Router |
+| **Styling** | NativeWind (Tailwind for RN) | Consistent with web, utility-first |
+| **Components** | Custom + React Native Paper or Tamagui | Native feel |
+| **Icons** | Phosphor Icons (`phosphor-react-native`) | Consistent with web |
+| **Animation** | React Native Reanimated 3 | GPU-accelerated, 60fps |
+| **QR Code** | `expo-camera` (scan) + `react-native-qrcode-svg` (display) | Native camera access |
+| **State** | Zustand | Lightweight, works in RN |
+| **Storage** | `expo-secure-store` | Encrypted credential storage |
+| **HTTP** | Native `fetch` | Works in Expo |
+| **Haptics** | `expo-haptics` | Feedback on consent, receive, verify |
+
+### Web Portals (Next.js)
+
+| Layer | Technology | Why |
+|---|---|---|
+| **Framework** | Next.js 14+ (App Router) | SSR, file-based routing |
 | **Styling** | Tailwind CSS 3.4+ | Utility-first, design system via CSS variables |
-| **Components** | shadcn/ui | Accessible, customizable, Radix primitives |
-| **Icons** | Phosphor Icons (`@phosphor-icons/react`) | Consistent, flexible weight system |
-| **Toasts** | Sonner | Minimal, beautiful toast notifications |
+| **Components** | shadcn/ui | Accessible, Radix primitives |
+| **Icons** | Phosphor Icons (`@phosphor-icons/react`) | Consistent with mobile |
+| **Toasts** | Sonner | Toast notifications |
 | **Animation** | Framer Motion | Page transitions, micro-interactions |
-| **QR Code** | `qrcode.react` (display) + `html5-qrcode` (scan) | Generate and scan QR codes |
-| **Forms** | React Hook Form + Zod | Type-safe validation, performance |
-| **HTTP Client** | Native `fetch` | Zero dependency, works with Next.js |
+| **QR Code** | `qrcode.react` (display only — issuers/verifiers show QR, wallet scans) |  |
+| **Forms** | React Hook Form + Zod | Type-safe validation |
 | **Charts** | Recharts | Dashboard statistics |
-| **State** | React Context + Zustand (if needed) | Simple prototype state management |
-| **Package Manager** | pnpm | Consistent with backend |
+
+### Shared
+
+| Layer | Technology | Why |
+|---|---|---|
+| **Package Manager** | pnpm | Monorepo consistency |
+| **API Types** | `packages/shared` | Shared TypeScript types between web, mobile, backend |
+| **Monorepo** | Turborepo | Orchestrate all apps |
 
 ---
 
 ## 3. Folder Structure
 
 ```
-apps/web/
-├── src/
-│   ├── app/                          # Next.js App Router
-│   │   ├── layout.tsx                # Root layout (theme, fonts, providers)
-│   │   ├── page.tsx                  # Landing page + role selector
-│   │   │
-│   │   ├── wallet/
-│   │   │   ├── layout.tsx            # Wallet shell (sidebar, header)
-│   │   │   ├── page.tsx              # Dashboard — credential cards grid
-│   │   │   ├── [id]/
-│   │   │   │   └── page.tsx          # Credential detail (claims, status, issuer)
-│   │   │   ├── receive/
-│   │   │   │   └── page.tsx          # Receive credential (scan QR → preview → confirm)
-│   │   │   ├── present/
-│   │   │   │   └── page.tsx          # Present credential (request → select → disclose → consent → result)
-│   │   │   └── history/
-│   │   │       └── page.tsx          # Consent history
-│   │   │
-│   │   ├── issuer/
-│   │   │   ├── layout.tsx            # Issuer shell
-│   │   │   ├── page.tsx              # Dashboard — stats + recent issuances
-│   │   │   ├── offers/
-│   │   │   │   └── new/
-│   │   │   │       └── page.tsx      # Create credential offer (schema → claims → QR)
-│   │   │   ├── credentials/
-│   │   │   │   └── page.tsx          # Issued credentials table + revoke
-│   │   │   └── schemas/
-│   │   │       └── page.tsx          # Credential schemas list
-│   │   │
-│   │   ├── verifier/
-│   │   │   ├── layout.tsx            # Verifier shell
-│   │   │   ├── page.tsx              # Dashboard — verification stats + recent results
-│   │   │   ├── requests/
-│   │   │   │   └── new/
-│   │   │   │       └── page.tsx      # Create verification request (types → claims → policies → QR)
-│   │   │   ├── results/
-│   │   │   │   ├── page.tsx          # Results list
-│   │   │   │   └── [id]/
-│   │   │   │       └── page.tsx      # Result detail (verification checks pipeline)
-│   │   │   └── policies/
-│   │   │       └── page.tsx          # Verification policies CRUD
-│   │   │
-│   │   └── admin/
-│   │       ├── layout.tsx            # Admin shell
-│   │       ├── issuers/
-│   │       │   └── page.tsx          # Trusted issuers management
-│   │       └── schemas/
-│   │           └── page.tsx          # Schema registry
+trustvault/
+├── apps/
+│   ├── api/                          # Backend (NestJS) — already built
 │   │
-│   ├── components/
-│   │   ├── ui/                       # shadcn/ui base components
-│   │   │   ├── button.tsx
-│   │   │   ├── card.tsx
-│   │   │   ├── dialog.tsx
-│   │   │   ├── input.tsx
-│   │   │   ├── select.tsx
-│   │   │   ├── table.tsx
-│   │   │   ├── tabs.tsx
-│   │   │   ├── badge.tsx
-│   │   │   ├── skeleton.tsx
-│   │   │   ├── switch.tsx
-│   │   │   ├── tooltip.tsx
-│   │   │   └── ... (added via npx shadcn@latest add)
-│   │   │
-│   │   ├── credential/               # Credential-specific components
-│   │   │   ├── credential-card.tsx    # Card with issuer badge, type, claims preview, status
-│   │   │   ├── credential-detail.tsx  # Full credential view with all claims
-│   │   │   ├── claims-list.tsx        # Disclosed/undisclosed claims with SD toggles
-│   │   │   ├── status-badge.tsx       # Active/Revoked/Suspended/Expired badge
-│   │   │   ├── issuer-badge.tsx       # Issuer name + trust indicator
-│   │   │   └── credential-type-icon.tsx # Icon per credential type
-│   │   │
-│   │   ├── verification/             # Verification-specific components
-│   │   │   ├── verification-result.tsx    # Full result with all checks
-│   │   │   ├── check-item.tsx             # Single check (signature ✓, trust ✗, etc.)
-│   │   │   ├── verification-pipeline.tsx  # Animated pipeline visualization
-│   │   │   └── policy-badge.tsx           # Policy name + pass/fail
-│   │   │
-│   │   ├── qr/                       # QR code components
-│   │   │   ├── qr-display.tsx         # QR code with offer/request URI
-│   │   │   └── qr-scanner.tsx         # Camera-based QR scanner
-│   │   │
-│   │   ├── consent/                  # Consent components
-│   │   │   ├── consent-dialog.tsx     # "Allow/Deny" with disclosure breakdown
-│   │   │   └── consent-history.tsx    # Table of past consent records
-│   │   │
-│   │   ├── flow/                     # Multi-step flow components
-│   │   │   ├── step-wizard.tsx        # Step indicator + navigation
-│   │   │   └── flow-step.tsx          # Individual step wrapper
-│   │   │
-│   │   ├── dashboard/                # Dashboard components
-│   │   │   ├── stat-card.tsx          # Metric card (total, active, revoked)
-│   │   │   ├── recent-activity.tsx    # Recent issuances/verifications table
-│   │   │   └── mini-chart.tsx         # Small chart for trends
-│   │   │
-│   │   └── layout/                   # Layout components
-│   │       ├── app-shell.tsx          # Sidebar + header + main content
-│   │       ├── sidebar.tsx            # Navigation sidebar per role
-│   │       ├── header.tsx             # Top bar with role indicator
-│   │       ├── role-selector.tsx      # Landing page role cards
-│   │       └── empty-state.tsx        # "No credentials yet" placeholder
+│   ├── mobile/                       # Mobile Wallet (Expo + React Native)
+│   │   ├── app/                      # Expo Router (file-based)
+│   │   │   ├── _layout.tsx           # Root layout (theme, fonts, providers)
+│   │   │   ├── index.tsx             # Home — credential cards list
+│   │   │   ├── credential/
+│   │   │   │   └── [id].tsx          # Credential detail (claims, status, issuer)
+│   │   │   ├── receive.tsx           # Receive credential (scan QR → preview → confirm)
+│   │   │   ├── present.tsx           # Present credential (request → select → disclose → consent)
+│   │   │   ├── scanner.tsx           # QR scanner (camera view)
+│   │   │   └── history.tsx           # Consent history
+│   │   ├── components/
+│   │   │   ├── credential-card.tsx   # Card with gradient border, issuer, claims preview
+│   │   │   ├── claims-list.tsx       # Disclosed/undisclosed claims with toggles
+│   │   │   ├── status-badge.tsx      # Active/Revoked/Suspended/Expired
+│   │   │   ├── issuer-badge.tsx      # Issuer name + trust indicator
+│   │   │   ├── consent-sheet.tsx     # Bottom sheet consent dialog
+│   │   │   ├── step-indicator.tsx    # Multi-step flow progress
+│   │   │   ├── qr-scanner.tsx        # Camera QR scanner wrapper
+│   │   │   ├── qr-display.tsx        # QR code display
+│   │   │   ├── empty-state.tsx       # No credentials illustration
+│   │   │   └── animated-check.tsx    # Success checkmark animation
+│   │   ├── lib/
+│   │   │   ├── api.ts                # API client (fetch wrapper)
+│   │   │   ├── store.ts              # Zustand store
+│   │   │   ├── secure-storage.ts     # expo-secure-store wrapper
+│   │   │   └── constants.ts          # API URL, credential types
+│   │   ├── hooks/
+│   │   │   ├── use-credentials.ts    # Credential CRUD
+│   │   │   └── use-scanner.ts        # QR scanning
+│   │   ├── app.json                  # Expo config
+│   │   ├── package.json
+│   │   └── tsconfig.json
 │   │
-│   ├── lib/
-│   │   ├── api/
-│   │   │   ├── client.ts             # Base fetch wrapper (baseUrl, error handling)
-│   │   │   ├── issuer.ts             # Issuer API calls
-│   │   │   ├── wallet.ts             # Wallet API calls
-│   │   │   ├── verifier.ts           # Verifier API calls
-│   │   │   ├── trust.ts              # Trust registry API calls
-│   │   │   └── status.ts             # Status API calls
-│   │   ├── constants.ts              # Routes, credential types, role configs
-│   │   ├── utils.ts                  # cn(), formatDate, truncateDid
-│   │   └── types.ts                  # Frontend-specific types
-│   │
-│   ├── hooks/
-│   │   ├── use-credentials.ts        # Fetch/manage wallet credentials
-│   │   ├── use-verification.ts       # Verification request/result polling
-│   │   ├── use-qr-scanner.ts         # QR scanning hook
-│   │   └── use-role.ts               # Current role context
-│   │
-│   └── styles/
-│       └── globals.css               # Tailwind base + custom CSS variables
+│   └── web/                          # Web Portals (Next.js)
+│       ├── src/
+│       │   ├── app/                   # Next.js App Router
+│       │   │   ├── layout.tsx         # Root layout
+│       │   │   ├── page.tsx           # Landing page
+│       │   │   ├── issuer/
+│       │   │   │   ├── layout.tsx     # Issuer shell (sidebar + header)
+│       │   │   │   ├── page.tsx       # Dashboard — stats + recent issuances
+│       │   │   │   ├── offers/
+│       │   │   │   │   └── new/
+│       │   │   │   │       └── page.tsx  # Create offer (schema → claims → QR)
+│       │   │   │   ├── credentials/
+│       │   │   │   │   └── page.tsx   # Issued credentials + revoke
+│       │   │   │   └── schemas/
+│       │   │   │       └── page.tsx   # Schemas list
+│       │   │   ├── verifier/
+│       │   │   │   ├── layout.tsx     # Verifier shell
+│       │   │   │   ├── page.tsx       # Dashboard — stats + recent results
+│       │   │   │   ├── requests/
+│       │   │   │   │   └── new/
+│       │   │   │   │       └── page.tsx  # Create request (types → claims → policies → QR)
+│       │   │   │   ├── results/
+│       │   │   │   │   ├── page.tsx   # Results list
+│       │   │   │   │   └── [id]/
+│       │   │   │   │       └── page.tsx  # Result detail (pipeline viz)
+│       │   │   │   └── policies/
+│       │   │   │       └── page.tsx   # Policies CRUD
+│       │   │   └── admin/
+│       │   │       ├── layout.tsx     # Admin shell
+│       │   │       ├── issuers/
+│       │   │       │   └── page.tsx   # Trusted issuers management
+│       │   │       └── schemas/
+│       │   │           └── page.tsx   # Schema registry
+│       │   ├── components/
+│       │   │   ├── ui/                # shadcn/ui components
+│       │   │   ├── credential/        # CredentialCard, ClaimsList, StatusBadge
+│       │   │   ├── verification/      # VerificationResult, Pipeline, CheckItem
+│       │   │   ├── qr/                # QRDisplay (issuers/verifiers show QR for wallets to scan)
+│       │   │   ├── dashboard/         # StatCard, RecentActivity, MiniChart
+│       │   │   └── layout/            # AppShell, Sidebar, Header
+│       │   ├── lib/
+│       │   │   ├── api/               # API client per domain
+│       │   │   ├── constants.ts
+│       │   │   ├── utils.ts
+│       │   │   └── types.ts
+│       │   └── styles/
+│       │       └── globals.css
+│       ├── next.config.js
+│       ├── tailwind.config.ts
+│       ├── components.json            # shadcn/ui config
+│       └── package.json
 │
-├── public/
-│   ├── fonts/                        # Custom fonts
-│   └── images/                       # Logos, illustrations
-│
-├── next.config.js
-├── tailwind.config.ts
-├── tsconfig.json
-├── components.json                   # shadcn/ui config
-└── package.json
+├── packages/
+│   └── shared/                        # Shared types between all apps
+│       ├── src/
+│       │   ├── types/                 # VC, DID, API response types
+│       │   └── constants.ts           # Credential types, status enums
+│       └── package.json
 ```
 
 ---
 
-## 4. Design System
+## 4. Design System (Shared Across Mobile + Web)
 
 ### 4.1 Design Direction
 
 **Aesthetic:** "Digital Vault" — secure, structured, premium, trustworthy.
 
-- Dark mode primary (feels secure, premium)
-- Clean, structured layouts with generous whitespace
-- Credential cards as first-class visual objects
+- Dark mode primary (both mobile and web)
+- Credential cards as first-class visual objects with type-specific gradient borders
 - Verification results as visual pipeline (animated checkmarks)
-- Subtle animations that convey security and trust
+- Mobile: native feel with haptic feedback on key actions
+- Web: dashboard feel with data density
 
-### 4.2 Color Tokens (CSS Variables)
+### 4.2 Color Tokens
 
-> **Skill:** Invoke `/ui-ux-pro-max` with this prompt to finalize:
+> **Skill:** Invoke `/ui-ux-pro-max` with this prompt:
 >
-> *"Define a color palette for TrustVault — a verifiable credential platform. Needs to feel secure, trustworthy, modern, premium. Dark mode primary. Suggest: base neutrals (5 shades), primary accent, success, warning, danger, info. Avoid generic SaaS blue. Consider deep navy/slate base with teal or emerald accent."*
+> *"Define a color palette for TrustVault — a verifiable credential platform. Dark mode primary. Deep navy/slate base with teal/emerald accent. Status colors: emerald (verified/active), amber (pending/suspended), red (revoked/error), info blue. Credential type accents: education=purple, income=teal, identity=amber. Must work on both mobile (React Native) and web (Tailwind CSS variables). Avoid generic SaaS blue."*
 
-**Preliminary tokens (to be refined by skill):**
+**Preliminary tokens:**
 
-```css
-:root {
-  /* Base */
-  --background: 222 47% 6%;        /* Deep navy-black */
-  --foreground: 210 20% 95%;       /* Near white */
-  --muted: 215 20% 15%;            /* Dark surface */
-  --muted-foreground: 215 15% 55%; /* Muted text */
-  --border: 215 20% 18%;           /* Subtle borders */
+```
+Base:       #0B1120 (deep navy), #111827 (surface), #1F2937 (muted), #6B7280 (muted text), #F9FAFB (foreground)
+Primary:    #14B8A6 (teal accent)
+Success:    #10B981 (emerald — verified/active)
+Warning:    #F59E0B (amber — pending/suspended)
+Danger:     #EF4444 (red — revoked/error)
+Info:       #3B82F6 (blue — informational)
 
-  /* Primary — Teal/Emerald accent */
-  --primary: 168 70% 45%;          /* Teal accent */
-  --primary-foreground: 0 0% 100%;
-
-  /* Status */
-  --success: 152 60% 45%;          /* Verified / Active */
-  --warning: 38 92% 50%;           /* Pending / Suspended */
-  --destructive: 0 72% 51%;        /* Revoked / Error */
-  --info: 210 70% 55%;             /* Informational */
-
-  /* Credential type accents */
-  --credential-education: 262 60% 55%;   /* Purple */
-  --credential-income: 168 70% 45%;      /* Teal */
-  --credential-identity: 38 92% 50%;     /* Amber */
-}
+Credential Accents:
+  Education: #7C3AED (purple)
+  Income:    #14B8A6 (teal)
+  Identity:  #F59E0B (amber)
 ```
 
 ### 4.3 Typography
 
-> **Skill:** Invoke `/ui-ux-pro-max` with this prompt to finalize:
->
-> *"Suggest a typography system for a credential/trust platform. Need: display font (distinctive, not generic), body font (highly legible), mono font (for DIDs, hashes). No Inter, Roboto, or Arial. Consider: Instrument Sans, Satoshi, General Sans, Space Grotesk, JetBrains Mono."*
+> **Skill:** Invoke `/ui-ux-pro-max` for finalization.
 
-**Preliminary:**
-
-```css
---font-display: 'Instrument Sans', sans-serif;   /* Headlines */
---font-body: 'Satoshi', sans-serif;               /* Body text */
---font-mono: 'JetBrains Mono', monospace;         /* DIDs, hashes, JWTs */
-```
-
-**Scale (1.25 ratio):**
-
-| Token | Size | Use |
+| Role | Mobile (System) | Web (Google Fonts) |
 |---|---|---|
-| `text-xs` | 12px | Badges, captions |
-| `text-sm` | 14px | Secondary text, table cells |
-| `text-base` | 16px | Body text |
-| `text-lg` | 20px | Section headers |
-| `text-xl` | 24px | Card titles |
-| `text-2xl` | 30px | Page titles |
-| `text-3xl` | 36px | Hero text |
-| `text-4xl` | 48px | Landing page headline |
+| Display/Heading | System bold (SF Pro / Roboto) | Instrument Sans |
+| Body | System regular | Satoshi |
+| Mono (DIDs, hashes) | System mono (SF Mono / Roboto Mono) | JetBrains Mono |
 
-### 4.4 Spacing
+Mobile uses system fonts for native feel + performance. Web uses custom fonts for brand identity.
 
-4px base grid. All spacing uses multiples of 4:
+### 4.4 Credential Card Design
 
-```
-4px (1), 8px (2), 12px (3), 16px (4), 20px (5), 24px (6), 32px (8), 40px (10), 48px (12), 64px (16)
-```
+Each credential type has a distinct visual identity (shared across mobile + web):
 
-### 4.5 Credential Card Styling
-
-Each credential type has a distinct visual identity:
-
-| Credential Type | Accent Color | Icon | Border Gradient |
+| Type | Accent | Icon | Gradient Border |
 |---|---|---|---|
-| Education | Purple (`#7C3AED`) | GraduationCap | Purple → Indigo |
-| Income | Teal (`#14B8A6`) | CurrencyDollar | Teal → Emerald |
-| Identity | Amber (`#F59E0B`) | IdentificationCard | Amber → Orange |
+| Education | Purple `#7C3AED` | GraduationCap | Purple → Indigo |
+| Income | Teal `#14B8A6` | CurrencyDollar | Teal → Emerald |
+| Identity | Amber `#F59E0B` | IdentificationCard | Amber → Orange |
 
 ---
 
 ## 5. Key UX Flows
 
-### 5.1 Credential Receive Flow (Wallet)
+### 5.1 Credential Receive (Mobile Wallet)
 
 ```
 ┌──────────────┐    ┌──────────────┐    ┌──────────────┐    ┌──────────────┐
 │   Step 1      │    │   Step 2      │    │   Step 3      │    │   Step 4      │
-│  Scan QR or   │───►│  Preview      │───►│  Confirm      │───►│  Success!     │
-│  Paste URI    │    │  Offer Details │    │  Receipt      │    │  Card Added   │
+│  Scan QR      │───►│  Preview      │───►│  Confirm      │───►│  Success!     │
+│  (Camera)     │    │  Offer        │    │  Receipt      │    │  ✓ Stored     │
 │               │    │               │    │               │    │               │
-│  [QR Scanner] │    │  Issuer: SBI  │    │  [Receive]    │    │  ✓ Stored in  │
-│  [Paste URI]  │    │  Type: Income │    │  [Cancel]     │    │    Wallet     │
-│               │    │  Claims: ...  │    │               │    │               │
+│  Point camera │    │  Issuer: SBI  │    │  [Receive]    │    │  Haptic buzz  │
+│  at QR code   │    │  Type: Income │    │  [Cancel]     │    │  Card flies   │
+│  on issuer's  │    │  Claims: ...  │    │               │    │  into wallet  │
+│  screen       │    │               │    │               │    │               │
 └──────────────┘    └──────────────┘    └──────────────┘    └──────────────┘
+
+Issuer shows QR on web portal → User scans with phone → Credential appears in wallet
 ```
 
-### 5.2 Credential Present Flow (Wallet)
+### 5.2 Credential Present (Mobile Wallet)
 
 ```
 ┌──────────────┐    ┌──────────────┐    ┌──────────────┐    ┌──────────────┐    ┌──────────────┐
 │   Step 1      │    │   Step 2      │    │   Step 3      │    │   Step 4      │    │   Step 5      │
 │  Scan Request │───►│  Select       │───►│  Choose       │───►│  Consent      │───►│  Result       │
-│  QR / URI     │    │  Credentials  │    │  Disclosures  │    │  Dialog       │    │               │
+│  QR (Camera)  │    │  Credentials  │    │  Disclosures  │    │  Bottom Sheet │    │               │
 │               │    │               │    │               │    │               │    │               │
-│  HomeFirst    │    │  ☑ Income     │    │  ☑ Income     │    │  HomeFirst    │    │  ✓ Verified   │
-│  Finance      │    │  ☑ Education  │    │  ☐ Employer   │    │  wants:       │    │  Presentation │
-│  requests:    │    │  ☐ Identity   │    │  ☑ Degree     │    │  - Income     │    │  Accepted     │
-│  Income +     │    │               │    │  ☐ GPA        │    │  - Degree     │    │               │
-│  Education    │    │               │    │               │    │  [Allow][Deny]│    │               │
+│  Verifier's   │    │  ☑ Income     │    │  ☑ Income     │    │  HomeFirst    │    │  ✓ Verified   │
+│  screen shows │    │  ☑ Education  │    │  ☐ Employer   │    │  wants:       │    │  Haptic buzz  │
+│  QR code      │    │  ☐ Identity   │    │  ☑ Degree     │    │  - Income     │    │  Confetti     │
+│               │    │               │    │  ☐ GPA        │    │  - Degree     │    │               │
+│               │    │               │    │               │    │  [Allow][Deny]│    │               │
 └──────────────┘    └──────────────┘    └──────────────┘    └──────────────┘    └──────────────┘
+
+Verifier shows QR on web portal → User scans with phone → Selects + consents → Verifier sees result on web
 ```
 
-### 5.3 Credential Issue Flow (Issuer)
+### 5.3 Credential Issue (Web — Issuer Portal)
 
 ```
 ┌──────────────┐    ┌──────────────┐    ┌──────────────┐    ┌──────────────┐
 │   Step 1      │    │   Step 2      │    │   Step 3      │    │   Step 4      │
-│  Select       │───►│  Fill Claims  │───►│  Generate     │───►│  Track        │
-│  Schema       │    │  (Dynamic)    │    │  Offer        │    │  Status       │
+│  Select       │───►│  Fill Claims  │───►│  Show QR      │───►│  Track        │
+│  Schema       │    │  (Dynamic)    │    │  (User scans) │    │  Status       │
 │               │    │               │    │               │    │               │
 │  ○ Education  │    │  Name: ___    │    │  ┌─────────┐  │    │  ● Pending    │
-│  ● Income     │    │  Income: ___  │    │  │ QR Code │  │    │  ○ Issued     │
-│  ○ Identity   │    │  Employer: __ │    │  └─────────┘  │    │  ○ Received   │
-│               │    │  Currency: __ │    │  [Copy URI]   │    │               │
+│  ● Income     │    │  Income: ___  │    │  │ QR Code │  │    │  ● Scanned    │
+│  ○ Identity   │    │  Employer: __ │    │  └─────────┘  │    │  ✓ Issued     │
+│               │    │               │    │  Waiting for  │    │               │
+│               │    │               │    │  wallet scan  │    │               │
 └──────────────┘    └──────────────┘    └──────────────┘    └──────────────┘
 ```
 
-### 5.4 Verification Flow (Verifier)
+### 5.4 Verification (Web — Verifier Portal)
 
 ```
 ┌──────────────┐    ┌──────────────┐    ┌──────────────┐    ┌──────────────┐
 │   Step 1      │    │   Step 2      │    │   Step 3      │    │   Step 4      │
-│  Configure    │───►│  Generate     │───►│  Wait for     │───►│  View         │
-│  Request      │    │  Request      │    │  Response     │    │  Result       │
+│  Configure    │───►│  Show QR      │───►│  Wait for     │───►│  View         │
+│  Request      │    │  (User scans) │    │  Response     │    │  Result       │
 │               │    │               │    │               │    │               │
 │  Types:       │    │  ┌─────────┐  │    │  ⏳ Waiting   │    │  ✓ Signature  │
 │  ☑ Income     │    │  │ QR Code │  │    │  for wallet   │    │  ✓ Status     │
-│  ☑ Education  │    │  └─────────┘  │    │  to respond   │    │  ✓ Trust      │
-│  Claims: ...  │    │  [Copy URI]   │    │  [Cancel]     │    │  ✓ Policy     │
-│  Policies: .. │    │               │    │               │    │  → VERIFIED   │
+│  ☑ Education  │    │  └─────────┘  │    │  to scan &    │    │  ✓ Trust      │
+│  Claims: ...  │    │  Waiting for  │    │  respond      │    │  ✓ Policy     │
+│  Policies: .. │    │  wallet scan  │    │               │    │  → VERIFIED   │
 └──────────────┘    └──────────────┘    └──────────────┘    └──────────────┘
 ```
 
-### 5.5 Verification Result Detail
+### 5.5 Demo Flow (Cross-Platform)
 
 ```
-┌─────────────────────────────────────────────────┐
-│  Verification Result: VERIFIED ✓                 │
-│─────────────────────────────────────────────────│
-│                                                   │
-│  Checks Pipeline:                                 │
-│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────┐│
-│  │Signature│─►│ Status  │─►│  Trust  │─►│Policy││
-│  │   ✓     │  │   ✓     │  │   ✓     │  │  ✓  ││
-│  └─────────┘  └─────────┘  └─────────┘  └─────┘│
-│                                                   │
-│  Credentials Received:                            │
-│  ┌───────────────────────────────────────────┐   │
-│  │ 📄 Income Credential (TrustBank India)    │   │
-│  │    Annual Income: ₹95,00,000              │   │
-│  │    Currency: INR                           │   │
-│  │    Status: Active ✓                        │   │
-│  └───────────────────────────────────────────┘   │
-│  ┌───────────────────────────────────────────┐   │
-│  │ 🎓 Education Credential (NTU)             │   │
-│  │    Degree: MSc Computer Science            │   │
-│  │    Institution: National Technical Univ.   │   │
-│  │    Status: Active ✓                        │   │
-│  └───────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────┘
+ISSUER (Web Browser)              WALLET (Phone)                VERIFIER (Web Browser)
+      │                                │                               │
+      │  1. Create offer               │                               │
+      │  → Shows QR on screen          │                               │
+      │                                │                               │
+      │         ─── scans QR ──►       │                               │
+      │                                │  2. Preview + Confirm         │
+      │                                │  → Credential stored          │
+      │                                │                               │
+      │                                │                               │  3. Create request
+      │                                │                               │  → Shows QR on screen
+      │                                │                               │
+      │                                │  ◄── scans QR ───            │
+      │                                │  4. Select + Disclose         │
+      │                                │  5. Consent → Allow           │
+      │                                │  → VP sent to verifier        │
+      │                                │                               │
+      │                                │                               │  6. Result: VERIFIED ✓
+      │                                │                               │  Pipeline: all checks pass
 ```
 
 ---
@@ -371,191 +327,209 @@ Each credential type has a distinct visual identity:
 
 ### FM1: Foundation + Design System
 
-**Objective:** Next.js app scaffold, design system, shared components, layout shells.
+**Objective:** Monorepo setup for mobile + web, shared types, design tokens, base components.
 
-| # | Task | Skill to Use |
-|---|---|---|
-| 1 | Next.js 14 App Router setup with Tailwind + shadcn/ui | — |
-| 2 | Define color palette and typography | `/ui-ux-pro-max` |
-| 3 | Configure shadcn/ui components (button, card, dialog, table, badge, input, select, switch, tabs, skeleton, tooltip) | — |
-| 4 | Build AppShell layout (sidebar + header + main) | `/frontend-design` |
-| 5 | Build role selector landing page | `/frontend-design` |
-| 6 | Build CredentialCard compound component | `/composition-patterns` |
-| 7 | Build StatusBadge, IssuerBadge, CredentialTypeIcon | — |
-| 8 | Build StepWizard flow component | `/composition-patterns` |
-| 9 | Build EmptyState component | — |
-| 10 | Setup API client (`lib/api/client.ts`) | — |
-| 11 | Configure fonts, globals.css, theme tokens | `/ui-ux-pro-max` |
+| # | Task | Platform | Skill |
+|---|---|---|---|
+| 1 | Turborepo config for `apps/mobile`, `apps/web`, `packages/shared` | Both | — |
+| 2 | Expo project setup with Expo Router | Mobile | `/react-native-skills` |
+| 3 | Next.js 14 setup with App Router + shadcn/ui | Web | — |
+| 4 | Shared types package (`packages/shared`) | Both | — |
+| 5 | Define color palette and typography | Both | `/ui-ux-pro-max` |
+| 6 | Configure NativeWind (Tailwind for RN) | Mobile | `/react-native-skills` |
+| 7 | Configure Tailwind + shadcn/ui components | Web | — |
+| 8 | API client for both platforms | Both | — |
+| 9 | Landing page (web) | Web | `/frontend-design` |
+| 10 | AppShell layout (web — sidebar + header) | Web | `/frontend-design` |
 
 **Skill Prompts:**
 
 ```
 /ui-ux-pro-max
-"Define a complete design system for TrustVault — a verifiable credential platform.
-I need: color palette (dark mode primary, deep navy/slate base, teal/emerald accent,
-status colors for verified/pending/revoked/expired), typography system (distinctive
-display font, legible body font, mono for DIDs — no Inter/Roboto/Arial), spacing
-scale (4px base), and credential type accent colors (education=purple, income=teal,
-identity=amber). The aesthetic should feel: secure, trustworthy, modern, premium.
-Not generic SaaS."
+"Define a complete design system for TrustVault — a verifiable credential platform
+with a mobile wallet (React Native) and web portals (Next.js). Dark mode primary.
+I need: color palette (deep navy/slate base, teal/emerald accent, status colors
+for verified/pending/revoked/expired, credential type accents for education=purple,
+income=teal, identity=amber), typography (system fonts for mobile, custom for web),
+spacing (4px base). Must work across both platforms. Aesthetic: secure, trustworthy,
+modern, premium. Not generic SaaS."
+```
+
+```
+/react-native-skills
+"Set up a new Expo project with Expo Router for TrustVault mobile wallet. Configure:
+file-based routing, NativeWind (Tailwind for RN), expo-secure-store for credential
+storage, expo-camera for QR scanning, expo-haptics for feedback, React Native
+Reanimated 3 for animations, Zustand for state. Use Expo SDK 51+ managed workflow.
+Follow all config and monorepo best practices."
 ```
 
 ```
 /frontend-design
-"Build the AppShell layout for TrustVault. It has a collapsible sidebar navigation
-(role-specific items), a top header with role badge and current page title, and a
-main content area. Dark mode. The sidebar shows: for Wallet — Dashboard, Receive,
-Present, History; for Issuer — Dashboard, New Offer, Credentials, Schemas; for
-Verifier — Dashboard, New Request, Results, Policies; for Admin — Issuers, Schemas.
-Use shadcn/ui components, Tailwind, Phosphor icons. Tone: secure vault aesthetic."
+"Build the TrustVault web landing page. Dark background, vault aesthetic. Shows:
+hero section with tagline ('Portable Proofs. Instant Trust.'), 3 portal cards —
+Issuer Portal (Stamp icon), Verifier Portal (MagnifyingGlass icon), Trust Admin
+(GearSix icon). Each card links to the respective portal. Also show 'Download Wallet'
+section pointing to Expo Go. Framer Motion entrance animations. Phosphor icons."
 ```
 
 ```
 /frontend-design
-"Build the TrustVault landing page with role selector. Four cards: Wallet (Shield icon),
-Issuer (Stamp icon), Verifier (MagnifyingGlass icon), Admin (GearSix icon). Each card
-has: role name, one-line description, 'Enter' button. Dark background, subtle gradient,
-clean layout. The page should feel like entering a secure vault. Use Framer Motion for
-card hover effects and entrance animation."
-```
-
-```
-/composition-patterns
-"Build a CredentialCard compound component for TrustVault. It needs:
-- CredentialCard (wrapper with gradient border based on credential type)
-- CredentialCard.Header (issuer badge + credential type icon + type name)
-- CredentialCard.Claims (preview of 2-3 key claims)
-- CredentialCard.Footer (status badge + issued date)
-Props: credential object with type, issuer, claims, status, issuedAt.
-Use React context for shared state within compound component."
+"Build the AppShell layout for TrustVault web portals. Collapsible sidebar (role-
+specific nav items), top header with role badge and page title, main content area.
+For Issuer: Dashboard, New Offer, Credentials, Schemas. For Verifier: Dashboard,
+New Request, Results, Policies. For Admin: Issuers, Schemas. shadcn/ui, Tailwind,
+Phosphor icons. Dark mode vault aesthetic."
 ```
 
 **Exit Criteria:**
-- [ ] `pnpm dev` starts Next.js app at localhost:3001
-- [ ] Landing page with 4 role cards renders
-- [ ] AppShell layout with sidebar works for all roles
-- [ ] CredentialCard component renders with sample data
-- [ ] Design tokens (colors, fonts, spacing) applied globally
-- [ ] All shadcn/ui base components installed
+- [ ] `pnpm dev --filter mobile` opens Expo dev server
+- [ ] `pnpm dev --filter web` opens Next.js at localhost:3001
+- [ ] Shared types package imported by both apps
+- [ ] Design tokens applied (colors, fonts) on both platforms
+- [ ] Web landing page + AppShell layout renders
+- [ ] Mobile app opens in Expo Go with basic navigation
 
 **Commit & Push:**
 ```bash
-git add -A && git commit -m "feat(fm1): frontend foundation — next.js, design system, shared components" && git push origin main
+git add -A && git commit -m "feat(fm1): frontend foundation — expo mobile, next.js web, design system" && git push origin main
 ```
 
 ---
 
-### FM2: Wallet UI
+### FM2: Mobile Wallet UI
 
-**Objective:** Complete wallet interface — dashboard, credential detail, receive, present flows.
+**Objective:** Complete wallet app — dashboard, credential detail, receive, present, consent.
 
-| # | Task | Skill to Use |
+| # | Task | Skill |
 |---|---|---|
-| 1 | Wallet dashboard — credential cards grid with filtering | `/frontend-design` |
-| 2 | Credential detail page — full claims, SD claims, issuer, status | `/frontend-design` |
-| 3 | ClaimsList component — disclosed/undisclosed with toggle switches | `/composition-patterns` |
-| 4 | Receive credential flow (3-step wizard) | `/frontend-design` |
-| 5 | QR scanner component | — |
-| 6 | Present credential flow (5-step wizard) | `/frontend-design` |
-| 7 | ConsentDialog component | `/bencium-controlled-ux-designer` |
-| 8 | Consent history page | — |
-| 9 | Connect wallet pages to backend APIs | `/react-best-practices` |
-| 10 | Accessibility audit of wallet UI | `/accesslint-refactor` |
+| 1 | Wallet home — credential cards list (FlatList/FlashList) | `/react-native-skills` |
+| 2 | CredentialCard component (gradient border, issuer, claims preview, status) | `/frontend-design` |
+| 3 | Credential detail screen (full claims, SD indicators, issuer, status) | `/frontend-design` |
+| 4 | ClaimsList component (disclosed/undisclosed toggles) | `/composition-patterns` |
+| 5 | QR scanner screen (expo-camera) | `/react-native-skills` |
+| 6 | Receive credential flow (scan → preview → confirm → success animation) | `/frontend-design` |
+| 7 | Present credential flow (scan → select → disclose → consent → result) | `/frontend-design` |
+| 8 | Consent bottom sheet (what is shared, with whom, purpose) | `/bencium-controlled-ux-designer` |
+| 9 | Consent history screen | — |
+| 10 | Haptic feedback on receive, consent, verify | `/react-native-skills` |
+| 11 | Connect wallet to backend APIs | `/react-native-skills` |
+| 12 | Accessibility audit | `/accesslint-refactor` |
 
 **Skill Prompts:**
 
 ```
-/frontend-design
-"Build the TrustVault wallet dashboard page. It shows a grid of CredentialCard
-components. Top section has: total credentials count, filter tabs (All, Education,
-Income, Identity), and a 'Receive New' button. Empty state when no credentials:
-illustration + 'No credentials yet. Receive your first credential.' + action button.
-Cards are clickable → navigate to detail page. Dark mode, vault aesthetic. Use shadcn/ui
-Card, Badge, Tabs. Animate cards entrance with Framer Motion stagger."
+/react-native-skills
+"Build the TrustVault wallet home screen. Shows a list of credential cards using
+FlashList (or FlatList with proper optimization). Top section: greeting + total
+credentials count + 'Scan QR' FAB button. Cards show: credential type icon with
+gradient accent, issuer name, 2-3 key claims preview, status badge, issued date.
+Empty state when no credentials. Pull-to-refresh. Dark mode. Use NativeWind.
+Follow all list-performance rules: memoize items, stable keys, useCallback."
 ```
 
 ```
 /frontend-design
-"Build the credential detail page for TrustVault wallet. Shows: credential type header
-with gradient accent, issuer badge with trust indicator, full claims list with
-disclosed/undisclosed sections (SD claims have lock/unlock icons), credential metadata
-(issued date, expiry, format, DID), status badge, raw credential toggle (shows
-SD-JWT-VC string in mono font). Actions: Delete, Present. Dark mode. Use a clean
-card-based layout with sections."
+"Build the CredentialCard component for TrustVault mobile wallet (React Native).
+It has a gradient border based on credential type (education=purple, income=teal,
+identity=amber). Inside: credential type icon + name, issuer badge, 2-3 key claim
+values, status badge (active/revoked), issued date. Tappable → navigates to detail.
+Pressable with scale feedback. Dark card surface on dark background."
 ```
 
 ```
 /frontend-design
-"Build the 'Receive Credential' flow for TrustVault wallet. 3-step wizard:
-Step 1: Scan QR code (camera view) OR paste credential offer URI (text input).
-Step 2: Preview — show issuer name, credential type, claims that will be issued,
-expiry. Ask 'Do you want to receive this credential?'
-Step 3: Success — animated checkmark, credential card preview, 'View in Wallet' button.
-Use StepWizard component. Dark mode. Framer Motion transitions between steps."
+"Build the 'Receive Credential' flow for TrustVault mobile wallet. Multi-step:
+Step 1: Camera QR scanner (full screen, overlay with scan frame guide).
+Step 2: Preview — issuer name, credential type, claims to be issued. Card-style
+preview of what you will receive. 'Accept' and 'Decline' buttons.
+Step 3: Success — animated checkmark (Reanimated), haptic buzz, credential card
+preview, 'View in Wallet' button. Card entrance animation (slide up + fade in).
+React Native, Expo Router, NativeWind, Reanimated 3."
 ```
 
 ```
 /frontend-design
-"Build the 'Present Credential' flow for TrustVault wallet. 5-step wizard:
-Step 1: Scan verification request QR or paste URI. Show verifier name + what they're
-requesting.
-Step 2: Select which credentials to present (checkboxes on credential cards). Show
-which ones match the request.
-Step 3: Choose selective disclosures — per credential, show toggleable switches for
-each claim. Required claims are locked on. Optional claims can be toggled off.
-Real-time preview of what will be shared.
-Step 4: Consent dialog — clear summary: 'HomeFirst Finance will receive: Annual Income
-from TrustBank India, Degree from NTU. Purpose: Loan eligibility.' [Allow] [Deny].
-Step 5: Result — Verified/Rejected with animation.
-Dark mode. This is the MOST IMPORTANT flow in the app."
+"Build the 'Present Credential' flow for TrustVault mobile wallet. This is the
+MOST IMPORTANT flow. Multi-step:
+Step 1: Camera QR scanner — scan verifier's request QR. Show verifier name and
+what they are requesting.
+Step 2: Select credentials — show matching wallet credentials as selectable cards
+with checkboxes. Highlight which credentials match the request.
+Step 3: Choose disclosures — per selected credential, show toggleable switches for
+each claim. Required claims locked on (can't toggle off). Optional claims toggleable.
+Real-time preview: 'You will share: Annual Income, Degree'.
+Step 4: Consent bottom sheet — slides up with backdrop blur. Shows: verifier name,
+purpose, exact list of what will be shared. Large 'Allow' (primary) + 'Deny'
+(outline) buttons. Haptic on both.
+Step 5: Result — Verified checkmark animation or Rejected X animation.
+React Native, Reanimated 3, expo-haptics."
 ```
 
 ```
 /bencium-controlled-ux-designer
-"Review the ConsentDialog design for TrustVault. It shows when a user is about to
-share credentials with a verifier. Needs: verifier name + logo, list of credentials
-being shared, per-credential list of claims being disclosed, purpose statement,
-two buttons (Allow in primary, Deny in outline). Must feel serious — this is a
-privacy decision. Should I use a full-screen modal, a bottom sheet, or a centered
-dialog? What visual hierarchy makes the shared data most clear? Present options."
+"Review the consent bottom sheet design for TrustVault mobile wallet. This is the
+privacy decision moment. The user is about to share credentials with a verifier.
+The sheet should show: verifier name, purpose statement, per-credential breakdown
+of what will be shared (with claim names), two buttons (Allow + Deny). Should this
+be a bottom sheet, full-screen modal, or action sheet? What visual hierarchy makes
+the privacy implications clearest? Present 2-3 options with trade-offs."
 ```
 
 ```
-/accesslint-refactor
-"Audit the TrustVault wallet UI (src/app/wallet/) for WCAG 2.1 AA compliance.
-Check: credential cards have proper aria-labels, form inputs have labels, consent
-dialog is keyboard-navigable with focus trap, QR scanner has text alternative,
-color is not the only status indicator, all interactive elements have focus states."
+/react-native-skills
+"Review the TrustVault mobile wallet for React Native performance:
+1. FlashList with estimatedItemSize for credential list
+2. Memoized credential card components
+3. Stable callbacks in list items (useCallback)
+4. Reanimated shared values for animations (not state)
+5. expo-image for any images/logos
+6. Keyboard avoiding for any text inputs
+7. Safe area handling for all screens
+8. Pressable with proper hitSlop for small touch targets"
+```
+
+```
+/accesslint-refactor apps/mobile/
+"Audit the TrustVault mobile wallet for accessibility:
+- All credential cards have accessibilityLabel
+- QR scanner has text alternative (manual URI entry)
+- Consent sheet is focusable and navigable
+- Status badges have accessibilityHint (not color-only)
+- All touchable elements have minimum 44x44 target
+- Screen reader reads credential claims in logical order
+- Dynamic type support (text scales with system settings)"
 ```
 
 **Exit Criteria:**
-- [ ] Wallet dashboard shows credential cards from API
-- [ ] Credential detail page shows all claims with SD indicators
-- [ ] Receive flow: scan/paste → preview → confirm → stored
-- [ ] Present flow: request → select → disclose → consent → result
-- [ ] Consent dialog clearly shows what is being shared
-- [ ] All wallet pages accessible (keyboard nav, screen reader)
+- [ ] Wallet home shows credential cards from API
+- [ ] Credential detail shows all claims with SD indicators
+- [ ] QR scanner opens camera and reads QR codes
+- [ ] Receive flow: scan → preview → confirm → stored with animation
+- [ ] Present flow: scan → select → disclose → consent → result
+- [ ] Haptic feedback on receive, consent, verify
+- [ ] Accessible (screen reader, dynamic type, touch targets)
 
 **Commit & Push:**
 ```bash
-git add -A && git commit -m "feat(fm2): wallet ui — dashboard, credential detail, receive, present flows" && git push origin main
+git add -A && git commit -m "feat(fm2): mobile wallet — dashboard, receive, present, consent, qr scanning" && git push origin main
 ```
 
 ---
 
-### FM3: Issuer + Verifier + Trust Admin UI
+### FM3: Web Portals (Issuer + Verifier + Trust Admin)
 
-**Objective:** Complete issuer portal, verifier portal, and trust admin interface.
+**Objective:** Complete web interfaces for issuers, verifiers, and trust admin.
 
-| # | Task | Skill to Use |
+| # | Task | Skill |
 |---|---|---|
 | 1 | Issuer dashboard — stats + recent issuances table | `/frontend-design` |
-| 2 | Create credential offer flow (3-step wizard) | `/frontend-design` |
+| 2 | Create credential offer flow (schema → claims → QR) | `/frontend-design` |
 | 3 | Dynamic claim form (generated from schema) | `/react-best-practices` |
 | 4 | Issued credentials table with revoke action | — |
 | 5 | Verifier dashboard — stats + recent results | `/frontend-design` |
-| 6 | Create verification request flow (3-step wizard) | `/frontend-design` |
-| 7 | Verification result detail page with pipeline viz | `/frontend-design` |
+| 6 | Create verification request flow (types → claims → policies → QR) | `/frontend-design` |
+| 7 | Verification result detail with animated pipeline | `/frontend-design` |
 | 8 | VerificationPipeline animated component | `/frontend-design` |
 | 9 | Verification policies CRUD page | — |
 | 10 | Trust admin — issuers table + register form | `/frontend-design` |
@@ -566,221 +540,224 @@ git add -A && git commit -m "feat(fm2): wallet ui — dashboard, credential deta
 
 ```
 /frontend-design
-"Build the issuer dashboard for TrustVault. Top row: 3 stat cards (Total Issued,
-Active, Revoked) with mini trend indicators. Below: recent issuances table with
-columns: Credential Type, Subject DID (truncated), Status, Issued Date, Actions
-(view, revoke). 'Create New Offer' button prominent in header. Dark mode."
+"Build the issuer dashboard for TrustVault web portal. Top row: 3 stat cards (Total
+Issued, Active, Revoked) with numbers and mini sparkline trends. Below: recent
+issuances table — Credential Type, Subject DID (truncated + copy), Status badge,
+Date, Actions (view, revoke). 'Create New Offer' button prominent in header.
+shadcn/ui Table + Card. Dark mode. Recharts for sparklines."
 ```
 
 ```
 /frontend-design
-"Build the 'Create Credential Offer' flow for TrustVault issuer portal. 3-step wizard:
-Step 1: Select credential schema (Education, Income, Identity) — radio cards with
-type icons and descriptions.
-Step 2: Fill claims — dynamic form generated from selected schema. Required fields
-marked. SD-eligible fields have a subtle indicator. Subject DID input.
-Step 3: Offer generated — QR code display + copy URI button + offer expiry countdown.
-Use React Hook Form + Zod for validation. Dark mode."
+"Build the 'Create Credential Offer' flow for TrustVault issuer portal. 3-step:
+Step 1: Select schema — radio cards (Education, Income, Identity) with type icon,
+name, and claim count.
+Step 2: Fill claims — dynamic form generated from schema definition. Each field has
+a label, type-appropriate input, and an SD indicator (🔒 = always disclosed,
+🔓 = selectively disclosable). React Hook Form + Zod validation.
+Step 3: QR code display — large QR code, copy URI button, offer expiry countdown
+timer. Message: 'Show this QR to the credential holder to scan with their wallet.'
+shadcn/ui, Tailwind, dark mode."
 ```
 
 ```
 /frontend-design
-"Build the verification result detail page for TrustVault verifier portal. This is a
-KEY page. Shows:
-1. Overall result: large VERIFIED/REJECTED badge with animation
-2. Verification pipeline: horizontal animated flow showing each check as a node:
-   Signature → Expiration → Status → Trust → Policy. Each node is green (pass) or
-   red (fail) with connecting arrows. Animate sequentially on page load.
-3. Credential data received: cards per credential showing disclosed claims.
-4. Metadata: verifier DID, timestamp, nonce, policies applied.
-Dark mode. This should be the most visually impressive page."
+"Build the verification result detail page for TrustVault verifier portal. This is
+the showcase page. Shows:
+1. Header: large VERIFIED (green) or REJECTED (red) badge with entrance animation.
+2. Verification Pipeline: horizontal flow of 5 nodes (Signature → Expiration →
+   Status → Trust → Policy). Each node animates sequentially on page load — starts
+   grey, fills green (pass) or red (fail) with connecting line animation. Use
+   Framer Motion.
+3. Credential Data: cards per credential with disclosed claims and issuer badge.
+4. Metadata: verifier DID, nonce, timestamp, policies applied.
+shadcn/ui Card + Badge. Dark mode. This should be visually impressive."
 ```
 
 ```
 /frontend-design
-"Build the trust admin page for TrustVault. Two sections:
-1. Trusted Issuers table: columns — Name, DID (truncated), Credential Types (badges),
-   Status, Registered Date, Actions (edit, remove). 'Register New Issuer' button.
-2. Register issuer dialog: form with fields — Name, DID, Description, Credential Types
-   (multi-select from available schemas), Website URL.
-Includes search and filter. Dark mode."
+"Build the trust admin page for TrustVault web portal. Two sections:
+1. Trusted Issuers table: Name, DID (truncated), Credential Types (colored badges),
+   Status, Registered Date, Actions (edit, remove). Search + filter. 'Register New
+   Issuer' button.
+2. Register issuer dialog (shadcn/ui Dialog): form with Name, DID input, Description,
+   Credential Types (multi-select from available schemas), Website URL.
+Dark mode. shadcn/ui Table + Dialog + Badge."
+```
+
+```
+/react-best-practices
+"Review TrustVault web portal API layer for performance:
+- Parallel fetches for dashboard (stats + recent activity in Promise.all)
+- Dynamic imports for heavy components (QR code, charts)
+- Proper Suspense boundaries around data-fetching components
+- SWR or unstable_cache for repeated reads (credential list, issuers list)
+- No waterfall fetches in dashboard pages"
 ```
 
 **Exit Criteria:**
-- [ ] Issuer dashboard renders with stats and table
-- [ ] Create offer flow generates QR code with valid offer URI
+- [ ] Issuer dashboard renders with stats and table from API
+- [ ] Create offer flow generates QR with valid offer URI
 - [ ] Issued credentials table with working revoke button
 - [ ] Verifier dashboard renders with stats and results
 - [ ] Verification request flow generates QR
-- [ ] Result detail page shows animated pipeline with all checks
+- [ ] Result detail page shows animated pipeline
 - [ ] Trust admin can list, register, remove issuers
+- [ ] All pages connected to backend APIs
 
 **Commit & Push:**
 ```bash
-git add -A && git commit -m "feat(fm3): issuer, verifier, trust admin ui — dashboards, flows, management" && git push origin main
+git add -A && git commit -m "feat(fm3): web portals — issuer, verifier, trust admin dashboards and flows" && git push origin main
 ```
 
 ---
 
-### FM4: E2E Flows + QR Integration
+### FM4: E2E Cross-Platform Flows
 
-**Objective:** Wire frontend to backend, complete user journeys, QR code flows.
+**Objective:** Wire mobile + web together, full demo flows, loading/error/empty states.
 
-| # | Task | Skill to Use |
+| # | Task | Skill |
 |---|---|---|
-| 1 | Wire wallet receive to backend OID4VCI | `/react-best-practices` |
-| 2 | Wire wallet present to backend OID4VP | `/react-best-practices` |
-| 3 | Wire issuer offer creation to backend | — |
-| 4 | Wire verifier request to backend | — |
-| 5 | QR code generation (issuer offer + verifier request) | — |
-| 6 | QR code scanning (wallet receive + present) | — |
-| 7 | Full loan processing demo flow | — |
-| 8 | Loading states, error states, empty states | `/ui-ux-pro-max` |
-| 9 | Toast notifications for all actions | — |
-| 10 | Responsive testing (mobile wallet, desktop portals) | `/ui-ux-pro-max` |
+| 1 | Full issuance flow: Web issuer → QR → Phone scans → Credential stored | — |
+| 2 | Full verification flow: Web verifier → QR → Phone scans → Consent → Result on web | — |
+| 3 | Loan processing E2E: 3 issuers → 3 credentials → verify all 3 | — |
+| 4 | Loading states (skeleton screens) for all pages | `/ui-ux-pro-max` |
+| 5 | Error states (API failures, network errors) | `/ui-ux-pro-max` |
+| 6 | Empty states (no credentials, no results) | — |
+| 7 | Toast notifications for all mutations (sonner web, Alert mobile) | — |
+| 8 | Responsive testing — web at 768px, 1024px, 1280px | `/ui-ux-pro-max` |
+| 9 | Mobile testing — phone sizes 375px, 390px, 414px | `/react-native-skills` |
 
 **Skill Prompts:**
 
 ```
-/react-best-practices
-"Review the TrustVault frontend API integration layer (src/lib/api/) for performance.
-Check: no waterfall fetches, parallel requests where possible, proper loading states
-with Suspense boundaries, error boundaries for API failures, SWR or fetch caching
-for repeated calls (like credential list), debounced inputs for search/filter."
-```
-
-```
 /ui-ux-pro-max
-"Review the TrustVault frontend for interaction quality:
-1. All buttons show loading spinner during async operations
-2. Error messages appear near the relevant field/action
-3. Empty states have helpful message + action CTA
-4. Skeleton screens shown during data loading (>300ms)
-5. Toast notifications for success/error on all mutations
-6. Touch targets minimum 44x44px for mobile wallet
-7. Mobile responsive: wallet pages work on 375px width"
+"Review the TrustVault frontend (mobile + web) for interaction quality:
+Mobile: touch targets min 44x44pt, press feedback on all Pressables, haptic on
+key actions, skeleton screens during loading (>300ms), safe area awareness.
+Web: loading spinners on async buttons, error messages near fields, empty states
+with CTA, skeleton screens, toast on mutations, responsive at 768px+.
+Both: consistent status colors, credential type accents, no color-only indicators."
 ```
 
 **Exit Criteria:**
-- [ ] Full flow works: Issuer creates offer → Wallet scans QR → Receives credential
-- [ ] Full flow works: Verifier creates request → Wallet scans QR → Presents → Verifier sees result
-- [ ] Loan processing E2E: 3 credentials issued → all stored → all verified
-- [ ] Loading/error/empty states on every page
-- [ ] Mobile responsive for wallet pages
+- [ ] Issuer (web) creates offer → Wallet (phone) scans QR → Credential stored
+- [ ] Verifier (web) creates request → Wallet (phone) scans → Consent → Verifier sees result
+- [ ] Full loan processing demo works cross-platform
+- [ ] Loading/error/empty states on every screen
+- [ ] Responsive web, multiple phone sizes tested
 
 **Commit & Push:**
 ```bash
-git add -A && git commit -m "feat(fm4): e2e flows — api integration, qr codes, full user journeys" && git push origin main
+git add -A && git commit -m "feat(fm4): e2e cross-platform flows — web+mobile integration, loading/error states" && git push origin main
 ```
 
 ---
 
 ### FM5: Polish — Accessibility, Animations, Compliance
 
-**Objective:** Final quality pass — accessibility audit, animations, design compliance, responsive.
+**Objective:** Final quality pass across both platforms.
 
-| # | Task | Skill to Use |
+| # | Task | Skill |
 |---|---|---|
-| 1 | Full accessibility audit | `/accesslint-refactor` |
-| 2 | Web Interface Guidelines compliance review | `/web-design-guidelines` |
-| 3 | Page entrance animations | `/frontend-design` |
-| 4 | Credential card hover/press animations | `/frontend-design` |
-| 5 | Verification pipeline sequential animation | `/frontend-design` |
-| 6 | Consent dialog enter/exit animation | — |
-| 7 | Dark/light mode toggle (if time) | `/ui-ux-pro-max` |
-| 8 | Pre-delivery UI checklist | `/ui-ux-pro-max` |
-| 9 | Playwright visual testing | `mcp__playwright__*` |
-| 10 | Final responsive pass (375px, 768px, 1024px, 1280px) | — |
+| 1 | Full mobile accessibility audit | `/accesslint-refactor` |
+| 2 | Full web accessibility audit | `/accesslint-refactor` |
+| 3 | Web Interface Guidelines compliance review | `/web-design-guidelines` |
+| 4 | Mobile animations polish (Reanimated) | `/frontend-design` |
+| 5 | Web page transitions + micro-interactions (Framer Motion) | `/frontend-design` |
+| 6 | Verification pipeline sequential animation | `/frontend-design` |
+| 7 | Pre-delivery UI checklist (both platforms) | `/ui-ux-pro-max` |
+| 8 | Playwright visual testing (web) | `mcp__playwright__*` |
+| 9 | Final responsive pass | — |
 
 **Skill Prompts:**
 
 ```
-/accesslint-refactor src/app/ src/components/
-"Full WCAG 2.1 AA compliance audit of the entire TrustVault frontend. Check all pages
-and components. Focus on: credential cards, consent dialog, QR scanner, form inputs,
-table navigation, modal focus traps, color contrast in dark mode, status indicators
-not relying on color alone, keyboard navigation through all flows."
+/accesslint-refactor apps/mobile/ apps/web/src/
+"Full WCAG 2.1 AA audit of TrustVault — both mobile wallet (React Native) and web
+portals (Next.js). Mobile focus: accessibilityLabel, accessibilityHint, touch targets,
+dynamic type, screen reader order. Web focus: focus rings, heading hierarchy, form
+labels, keyboard navigation, color contrast in dark mode, ARIA on dialogs."
 ```
 
 ```
-/web-design-guidelines src/app/ src/components/
-"Review the TrustVault frontend against Web Interface Guidelines. Check all pages
-for compliance with the latest standards. Report findings with file:line notation."
+/web-design-guidelines apps/web/src/
+"Review TrustVault web portals against Web Interface Guidelines. Check all pages
+for compliance. Report findings with file:line notation."
 ```
 
 ```
 /frontend-design
 "Add polish animations to TrustVault:
-1. Page transitions: slide + fade between routes using Framer Motion AnimatePresence
-2. Credential cards: staggered entrance on dashboard, subtle scale on hover
-3. Verification pipeline: sequential node animation (each check lights up in order)
-4. Success states: animated checkmark (draw path animation)
-5. QR code: subtle pulse animation while waiting for scan
-6. Consent dialog: slide up from bottom with backdrop blur
-All animations should respect prefers-reduced-motion."
+Mobile: credential card entrance animation (slide up + fade, staggered), receive
+success checkmark (path draw + scale), consent sheet slide up with spring physics,
+present result confetti/checkmark.
+Web: page transitions (slide + fade via AnimatePresence), credential cards stagger,
+verification pipeline sequential node animation, stat card counter animation,
+QR code subtle pulse while waiting.
+All animations must respect prefers-reduced-motion (web) and Reduce Motion (mobile)."
 ```
 
 ```
 /ui-ux-pro-max
-"Run the pre-delivery checklist on TrustVault frontend:
-Visual Quality: icons consistent? semantic tokens? brand assets?
-Interaction: touch targets 44px? pressed feedback? disabled states?
-Dark Mode: contrast >=4.5:1? borders visible? both themes tested?
-Layout: safe areas? scroll not hidden? verified on multiple sizes?
-Accessibility: labels? hints? color not only indicator? reduced motion?"
+"Run pre-delivery checklist on TrustVault (both platforms):
+Visual: icons consistent (Phosphor)? semantic tokens? credential type accents correct?
+Interaction: touch targets 44px? pressed feedback? loading states? disabled states?
+Dark Mode: contrast >=4.5:1? borders visible?
+Layout: safe areas (mobile)? responsive (web)? scroll not hidden behind bars?
+Accessibility: labels? hints? color not only? reduced motion? dynamic type (mobile)?
+Forms: visible labels? error near field? required indicators?"
 ```
 
-**Playwright MCP Testing:**
+**Playwright MCP Testing (Web):**
 ```
-Use mcp__playwright__browser_navigate to load each page.
-Use mcp__playwright__browser_snapshot to verify DOM structure.
-Use mcp__playwright__browser_take_screenshot at 375px, 768px, 1280px widths.
-Verify all interactive elements are clickable via mcp__playwright__browser_click.
+mcp__playwright__browser_navigate → load each web portal page
+mcp__playwright__browser_resize → test at 768px, 1024px, 1280px
+mcp__playwright__browser_snapshot → verify DOM structure and a11y
+mcp__playwright__browser_take_screenshot → capture all key pages
+mcp__playwright__browser_click → verify all interactive elements
 ```
 
 **Exit Criteria:**
-- [ ] Zero WCAG 2.1 AA violations (critical/high)
-- [ ] Web Interface Guidelines compliance review passed
-- [ ] Page transitions and micro-interactions smooth
-- [ ] All animations respect `prefers-reduced-motion`
-- [ ] Responsive at 375px, 768px, 1024px, 1280px
-- [ ] Pre-delivery UI checklist all green
-- [ ] Playwright screenshots captured for all key pages
+- [ ] Zero WCAG 2.1 AA violations (critical/high) on both platforms
+- [ ] Web Interface Guidelines compliance passed
+- [ ] Smooth animations on both platforms
+- [ ] All animations respect reduced motion
+- [ ] Mobile tested on 375px, 390px, 414px
+- [ ] Web tested on 768px, 1024px, 1280px
+- [ ] Pre-delivery checklist all green
+- [ ] Playwright screenshots captured
 
 **Commit & Push:**
 ```bash
-git add -A && git commit -m "feat(fm5): polish — accessibility, animations, responsive, compliance audit" && git push origin main
+git add -A && git commit -m "feat(fm5): polish — accessibility, animations, responsive, compliance" && git push origin main
 ```
 
 ---
 
 ## 7. API Integration Map
 
-Frontend pages mapped to backend endpoints:
-
-| Frontend Page | Backend Endpoint | Method |
-|---|---|---|
-| **Wallet Dashboard** | `/wallet/credentials?holderId=xxx` | GET |
-| **Credential Detail** | `/wallet/credentials/:id` | GET |
-| **Credential Claims** | `/wallet/credentials/:id/claims` | GET |
-| **Receive Credential** | `/wallet/credentials/receive` | POST |
-| **Present Credential** | `/wallet/presentations/create` | POST |
-| **Consent History** | `/wallet/consent/history?holderId=xxx` | GET |
-| **Delete Credential** | `/wallet/credentials/:id` | DELETE |
-| **Issuer Dashboard** | `/issuer/credentials` + `/issuer/schemas` | GET |
-| **Create Offer** | `/issuer/offers` | POST |
-| **Revoke Credential** | `/issuer/credentials/:id/revoke` | POST |
-| **List Schemas** | `/issuer/schemas` | GET |
-| **Verifier Dashboard** | `/verifier/presentations` (list) | GET |
-| **Create Request** | `/verifier/presentations/request` | POST |
-| **View Result** | `/verifier/presentations/:id` | GET |
-| **List Policies** | `/verifier/policies` | GET |
-| **Create Policy** | `/verifier/policies` | POST |
-| **List Issuers** | `/trust/issuers` | GET |
-| **Register Issuer** | `/trust/issuers` | POST |
-| **Remove Issuer** | `/trust/issuers/:did` | DELETE |
-| **Verify Trust** | `/trust/verify?issuerDid=x&credentialType=y` | GET |
-| **Status List** | `/status/lists/:id` | GET |
+| Screen | Platform | Backend Endpoint | Method |
+|---|---|---|---|
+| **Wallet Home** | Mobile | `/wallet/credentials?holderId=xxx` | GET |
+| **Credential Detail** | Mobile | `/wallet/credentials/:id` | GET |
+| **Credential Claims** | Mobile | `/wallet/credentials/:id/claims` | GET |
+| **Receive Credential** | Mobile | `/wallet/credentials/receive` | POST |
+| **Present Credential** | Mobile | `/wallet/presentations/create` | POST |
+| **Consent History** | Mobile | `/wallet/consent/history?holderId=xxx` | GET |
+| **Delete Credential** | Mobile | `/wallet/credentials/:id` | DELETE |
+| **Issuer Dashboard** | Web | `/issuer/credentials` + `/issuer/schemas` | GET |
+| **Create Offer** | Web | `/issuer/offers` | POST |
+| **Revoke Credential** | Web | `/issuer/credentials/:id/revoke` | POST |
+| **List Schemas** | Web | `/issuer/schemas` | GET |
+| **Verifier Dashboard** | Web | `/verifier/presentations` (list) | GET |
+| **Create Request** | Web | `/verifier/presentations/request` | POST |
+| **View Result** | Web | `/verifier/presentations/:id` | GET |
+| **List Policies** | Web | `/verifier/policies` | GET |
+| **Create Policy** | Web | `/verifier/policies` | POST |
+| **List Issuers** | Web | `/trust/issuers` | GET |
+| **Register Issuer** | Web | `/trust/issuers` | POST |
+| **Remove Issuer** | Web | `/trust/issuers/:did` | DELETE |
 
 ---
 
@@ -789,21 +766,23 @@ Frontend pages mapped to backend endpoints:
 ### Before Starting
 
 - [ ] Backend API running (milestones M1-M5 complete)
-- [ ] Confirm API base URL (default: `http://localhost:3000`)
-- [ ] Decide on Google Fonts or self-hosted fonts
+- [ ] Install Expo Go app on your phone (iOS App Store / Google Play — free)
+- [ ] Confirm backend API base URL (default: `http://localhost:3000`)
+- [ ] For phone to reach localhost: use `ngrok` (free) or same WiFi + local IP
 
 ### Design Decisions (Finalize with Skills)
 
 - [ ] Run `/ui-ux-pro-max` for color palette finalization
 - [ ] Run `/ui-ux-pro-max` for typography finalization
-- [ ] Run `/bencium-controlled-ux-designer` to review design choices before coding
+- [ ] Run `/bencium-controlled-ux-designer` to review consent sheet design
 
 ### After Development
 
-- [ ] Run `/accesslint-refactor` for full accessibility audit
-- [ ] Run `/web-design-guidelines` for compliance review
+- [ ] Run `/accesslint-refactor` for full accessibility audit (both platforms)
+- [ ] Run `/web-design-guidelines` for web compliance review
 - [ ] Capture Playwright screenshots at all breakpoints
-- [ ] Test full E2E flow: issue → receive → present → verify
+- [ ] Test full cross-platform E2E: web issuer → phone wallet → web verifier
+- [ ] Record screen capture of the demo flow for presentation
 
 ---
 
@@ -812,32 +791,44 @@ Frontend pages mapped to backend endpoints:
 ```
 Backend Milestones          Frontend Milestones
 
-M1: Foundation    ─────────► FM1: Can start (no API needed)
-M2: Issuer        ─────────► FM2+FM3: Can use mock data, wire later
-M3: Wallet+Status ─────────► FM4: Wire wallet to real APIs
-M4: Verifier+Trust─────────► FM4: Wire verifier/trust to real APIs
-M5: E2E           ─────────► FM4: Full E2E with real backend
+M1: Foundation    ─────────► FM1: Can start (no API needed, use mock data)
+M2: Issuer        ─────────► FM3: Wire issuer portal to real APIs
+M3: Wallet+Status ─────────► FM2: Wire mobile wallet to real APIs
+M4: Verifier+Trust─────────► FM3: Wire verifier/trust to real APIs
+M5: E2E           ─────────► FM4: Full cross-platform E2E
 M6: Demo Ready    ─────────► FM5: Polish + final testing
 ```
 
-**FM1 can start immediately** — no backend dependency. Use mock data for FM2-FM3, wire to real APIs in FM4.
+**FM1 can start immediately** — no backend dependency.
+**FM2 and FM3 can use mock data** until backend milestones complete.
 
 ---
 
 ## 10. Definition of Done (Frontend)
 
-- [ ] All 4 surfaces working: Wallet, Issuer, Verifier, Admin
-- [ ] All UX flows complete: receive, present, issue, verify
-- [ ] QR code generation and scanning working
-- [ ] Consent dialog with selective disclosure toggles
-- [ ] Verification result with animated pipeline
-- [ ] Mobile responsive (wallet pages at 375px)
+### Mobile Wallet
+- [ ] Credential cards list with type-specific styling
+- [ ] Credential detail with SD claim indicators
+- [ ] QR scanner (camera) working
+- [ ] Receive flow: scan → preview → confirm → stored + haptic
+- [ ] Present flow: scan → select → disclose → consent → result + haptic
+- [ ] Consent bottom sheet with clear disclosure breakdown
+- [ ] Consent history
+- [ ] Accessible (VoiceOver/TalkBack, dynamic type, 44px targets)
+
+### Web Portals
+- [ ] Issuer: dashboard, create offer (QR), credentials table, revoke
+- [ ] Verifier: dashboard, create request (QR), results, animated pipeline
+- [ ] Trust Admin: issuers table, register, remove
+- [ ] Landing page with portal links
+- [ ] Responsive (768px+)
 - [ ] WCAG 2.1 AA compliant
-- [ ] Web Interface Guidelines compliant
-- [ ] Page transitions and micro-interactions
-- [ ] Connected to backend APIs
+
+### Cross-Platform
+- [ ] QR flow works: web shows QR → phone scans → action completes
+- [ ] Full loan processing demo: 3 issuers → 3 credentials → verify all 3
 - [ ] Total cost: **$0**
 
 ---
 
-*Document Version: 1.0 | Created: 2026-03-30 | Stack: Next.js + shadcn/ui + Tailwind + Framer Motion*
+*Document Version: 2.0 | Updated: 2026-03-30 | Mobile: Expo + React Native | Web: Next.js + shadcn/ui*
