@@ -1,55 +1,128 @@
 import { View, Text, Pressable } from 'react-native';
-import { memo } from 'react';
+import { memo, useCallback } from 'react';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from 'react-native-reanimated';
 import type { StoredCredential } from '@/lib/store';
 import { CREDENTIAL_TYPE_CONFIG } from '@/lib/constants';
 import { StatusBadge } from './status-badge';
+import { LinearGradient } from './linear-gradient-border';
 
 interface CredentialCardProps {
   credential: StoredCredential;
   onPress: () => void;
 }
 
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
 export const CredentialCard = memo(function CredentialCard({
   credential,
   onPress,
 }: CredentialCardProps) {
-  const config = CREDENTIAL_TYPE_CONFIG[credential.type as keyof typeof CREDENTIAL_TYPE_CONFIG];
-  const accentColor = config?.accent ?? '#14B8A6';
+  const config =
+    CREDENTIAL_TYPE_CONFIG[
+      credential.type as keyof typeof CREDENTIAL_TYPE_CONFIG
+    ];
+  const gradientStart = config?.gradientStart ?? '#14B8A6';
+  const gradientEnd = config?.gradientEnd ?? '#10B981';
+
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const handlePressIn = useCallback(() => {
+    scale.value = withSpring(0.97, { damping: 15, stiffness: 300 });
+  }, [scale]);
+
+  const handlePressOut = useCallback(() => {
+    scale.value = withSpring(1, { damping: 15, stiffness: 300 });
+  }, [scale]);
 
   const previewClaims = Object.entries(credential.claims).slice(0, 3);
 
   return (
-    <Pressable
+    <AnimatedPressable
       onPress={onPress}
-      className="active:scale-[0.98]"
-      style={{ transform: [{ scale: 1 }] }}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      style={animatedStyle}
+      accessibilityLabel={`${credential.typeName} credential from ${credential.issuerName}, status ${credential.status}`}
+      accessibilityRole="button"
+      accessibilityHint="Double tap to view credential details"
     >
-      <View
-        style={{ borderLeftColor: accentColor, borderLeftWidth: 4 }}
-        className="bg-vault-surface rounded-xl p-4"
-      >
-        <View className="flex-row items-center justify-between mb-2">
-          <Text className="text-vault-foreground font-semibold text-base">
-            {credential.typeName}
-          </Text>
-          <StatusBadge status={credential.status} />
-        </View>
+      <View style={{ flexDirection: 'row', borderRadius: 12, overflow: 'hidden' }}>
+        {/* Gradient left border */}
+        <LinearGradient
+          colorStart={gradientStart}
+          colorEnd={gradientEnd}
+          width={4}
+        />
 
-        <Text className="text-vault-muted-text text-xs mb-3">
-          {credential.issuerName}
-        </Text>
-
-        {previewClaims.map(([key, value]) => (
-          <View key={key} className="flex-row justify-between mb-1">
-            <Text className="text-vault-muted-text text-xs capitalize">{key}</Text>
-            <Text className="text-vault-foreground text-xs">{String(value)}</Text>
+        {/* Card content */}
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: '#111827',
+            padding: 16,
+          }}
+        >
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: 8,
+            }}
+          >
+            <Text
+              style={{ color: '#F9FAFB', fontWeight: '600', fontSize: 16 }}
+              numberOfLines={1}
+            >
+              {credential.typeName}
+            </Text>
+            <StatusBadge status={credential.status} />
           </View>
-        ))}
 
-        <Text className="text-vault-muted-text text-[10px] mt-2">
-          Issued {new Date(credential.issuedAt).toLocaleDateString()}
-        </Text>
+          <Text
+            style={{ color: '#6B7280', fontSize: 12, marginBottom: 12 }}
+            numberOfLines={1}
+          >
+            {credential.issuerName}
+          </Text>
+
+          {previewClaims.map(([key, value]) => (
+            <View
+              key={key}
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                marginBottom: 4,
+              }}
+            >
+              <Text
+                style={{
+                  color: '#6B7280',
+                  fontSize: 12,
+                  textTransform: 'capitalize',
+                }}
+              >
+                {key}
+              </Text>
+              <Text style={{ color: '#F9FAFB', fontSize: 12 }}>
+                {String(value)}
+              </Text>
+            </View>
+          ))}
+
+          <Text style={{ color: '#6B7280', fontSize: 10, marginTop: 8 }}>
+            Issued {new Date(credential.issuedAt).toLocaleDateString()}
+          </Text>
+        </View>
       </View>
-    </Pressable>
+    </AnimatedPressable>
   );
 });
