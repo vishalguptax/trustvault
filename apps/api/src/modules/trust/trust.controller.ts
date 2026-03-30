@@ -1,17 +1,42 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import { IsString, IsArray, IsOptional } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { TrustService } from './trust.service';
 
 class RegisterIssuerDto {
+  @ApiProperty({ example: 'did:key:z...' })
+  @IsString()
   did!: string;
+
+  @ApiProperty({ example: 'TrustBank India' })
+  @IsString()
   name!: string;
+
+  @ApiProperty({ example: ['VerifiableIncomeCredential'] })
+  @IsArray()
   credentialTypes!: string[];
+
+  @ApiPropertyOptional({ example: 'Licensed bank for income verification' })
+  @IsOptional()
+  @IsString()
   description?: string;
 }
 
 class UpdateIssuerDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
   name?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsArray()
   credentialTypes?: string[];
+
+  @ApiPropertyOptional({ example: 'active' })
+  @IsOptional()
+  @IsString()
   status?: string;
 }
 
@@ -38,6 +63,7 @@ export class TrustController {
   @Post('issuers')
   @ApiOperation({ summary: 'Register trusted issuer' })
   @ApiResponse({ status: 201, description: 'Issuer registered' })
+  @ApiResponse({ status: 409, description: 'Issuer already registered' })
   async registerIssuer(@Body() dto: RegisterIssuerDto) {
     const issuer = await this.trustService.registerIssuer(
       dto.did,
@@ -51,6 +77,7 @@ export class TrustController {
   @Put('issuers/:did')
   @ApiOperation({ summary: 'Update trusted issuer' })
   @ApiResponse({ status: 200, description: 'Issuer updated' })
+  @ApiResponse({ status: 404, description: 'Issuer not found' })
   async updateIssuer(@Param('did') did: string, @Body() dto: UpdateIssuerDto) {
     return this.trustService.updateIssuer(decodeURIComponent(did), dto);
   }
@@ -58,6 +85,7 @@ export class TrustController {
   @Delete('issuers/:did')
   @ApiOperation({ summary: 'Remove trusted issuer' })
   @ApiResponse({ status: 200, description: 'Issuer removed' })
+  @ApiResponse({ status: 404, description: 'Issuer not found' })
   async removeIssuer(@Param('did') did: string) {
     return this.trustService.removeIssuer(decodeURIComponent(did));
   }

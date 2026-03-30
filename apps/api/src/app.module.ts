@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { configuration } from './config/configuration';
 import { PrismaModule } from './prisma/prisma.module';
@@ -9,6 +9,8 @@ import { WalletModule } from './modules/wallet/wallet.module';
 import { StatusModule } from './modules/status/status.module';
 import { TrustModule } from './modules/trust/trust.module';
 import { VerifierModule } from './modules/verifier/verifier.module';
+import { LoggingMiddleware } from './common/middleware/logging.middleware';
+import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware';
 
 @Module({
   imports: [
@@ -26,4 +28,10 @@ import { VerifierModule } from './modules/verifier/verifier.module';
     VerifierModule,
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(CorrelationIdMiddleware, LoggingMiddleware)
+      .forRoutes('*');
+  }
+}

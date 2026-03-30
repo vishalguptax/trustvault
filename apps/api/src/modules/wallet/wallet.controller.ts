@@ -8,23 +8,50 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import { IsString, IsArray, IsObject, IsBoolean, IsOptional } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { WalletService } from './wallet.service';
 
 class ReceiveCredentialDto {
+  @ApiProperty({ example: 'openid-credential-offer://...' })
+  @IsString()
   credentialOfferUri!: string;
+
+  @ApiProperty({ example: 'user-1' })
+  @IsString()
   holderId!: string;
 }
 
 class CreatePresentationDto {
+  @ApiProperty()
+  @IsString()
   verificationRequestId!: string;
+
+  @ApiProperty({ example: 'user-1' })
+  @IsString()
   holderId!: string;
+
+  @ApiProperty({ example: ['cred-id-1'] })
+  @IsArray()
   selectedCredentials!: string[];
+
+  @ApiProperty({ example: { 'cred-id-1': ['degree', 'institution'] } })
+  @IsObject()
   disclosedClaims!: Record<string, string[]>;
+
+  @ApiProperty({ example: true })
+  @IsBoolean()
   consent!: boolean;
 }
 
 class CreateWalletDidDto {
+  @ApiProperty({ example: 'user-1' })
+  @IsString()
   holderId!: string;
+
+  @ApiPropertyOptional({ example: 'key' })
+  @IsOptional()
+  @IsString()
   method?: string;
 }
 
@@ -36,6 +63,7 @@ export class WalletController {
   @Post('credentials/receive')
   @ApiOperation({ summary: 'Receive credential via OID4VCI' })
   @ApiResponse({ status: 201, description: 'Credential received and stored' })
+  @ApiResponse({ status: 400, description: 'Invalid credential offer' })
   async receiveCredential(@Body() dto: ReceiveCredentialDto) {
     const result = await this.walletService.receiveCredential(dto.credentialOfferUri, dto.holderId);
     return { data: result };
@@ -52,6 +80,7 @@ export class WalletController {
   @Get('credentials/:id')
   @ApiOperation({ summary: 'Get credential details' })
   @ApiResponse({ status: 200, description: 'Credential details' })
+  @ApiResponse({ status: 404, description: 'Credential not found' })
   async getCredential(@Param('id') id: string) {
     const credential = await this.walletService.getCredential(id);
     return { data: credential };
@@ -74,6 +103,7 @@ export class WalletController {
   @Post('presentations/create')
   @ApiOperation({ summary: 'Create verifiable presentation' })
   @ApiResponse({ status: 201, description: 'Presentation created' })
+  @ApiResponse({ status: 400, description: 'Consent required or invalid data' })
   async createPresentation(@Body() dto: CreatePresentationDto) {
     const result = await this.walletService.createPresentation(
       dto.verificationRequestId,
