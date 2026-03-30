@@ -1,0 +1,68 @@
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* TrustVault Dark Mode — "Digital Vault" aesthetic */
+    --background: 222 47% 6%;       /* #0B1120 deep navy */
+    --foreground: 210 20% 98%;      /* #F9FAFB */
+
+    --card: 220 26% 9%;             /* #111827 surface */
+    --card-foreground: 210 20% 98%;
+
+    --popover: 220 26% 9%;
+    --popover-foreground: 210 20% 98%;
+
+    --primary: 174 58% 40%;         /* #14B8A6 teal */
+    --primary-foreground: 222 47% 6%;
+
+    --secondary: 217 19% 17%;       /* #1F2937 muted surface */
+    --secondary-foreground: 210 20% 98%;
+
+    --muted: 217 19% 17%;           /* #1F2937 */
+    --muted-foreground: 218 11% 50%; /* #6B7280 */
+
+    --accent: 217 19% 17%;
+    --accent-foreground: 210 20% 98%;
+
+    --destructive: 0 84% 60%;       /* #EF4444 red */
+    --destructive-foreground: 210 20% 98%;
+
+    --border: 217 19% 17%;
+    --input: 217 19% 17%;
+    --ring: 174 58% 40%;
+
+    --radius: 0.5rem;
+
+    /* Status colors */
+    --success: 160 60% 45%;         /* #10B981 emerald */
+    --warning: 38 92% 50%;          /* #F59E0B amber */
+    --info: 217 91% 60%;            /* #3B82F6 blue */
+
+    /* Credential type accents */
+    --credential-education: 263 70% 58%;  /* #7C3AED purple */
+    --credential-income: 174 58% 40%;     /* #14B8A6 teal */
+    --credential-identity: 38 92% 50%;    /* #F59E0B amber */
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Instrument Sans', system-ui, sans-serif;
+  }
+
+  code, pre {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}

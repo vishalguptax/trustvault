@@ -1,0 +1,42 @@
+{
+  "expo": {
+    "name": "TrustVault Wallet",
+    "slug": "trustvault-wallet",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "trustvault",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#0B1120"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.trustvault.wallet",
+      "infoPlist": {
+        "NSCameraUsageDescription": "TrustVault needs camera access to scan QR codes for receiving and presenting credentials."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0B1120"
+      },
+      "package": "com.trustvault.wallet",
+      "permissions": ["android.permission.CAMERA"]
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "TrustVault needs camera access to scan QR codes."
+        }
+      ],
+      "expo-secure-store"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
