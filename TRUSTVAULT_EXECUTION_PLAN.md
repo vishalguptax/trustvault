@@ -1031,6 +1031,11 @@ M1 ──► M2 ──► M3 ──► M4 ──► M5 ──► M6
 
 **Done when:** `pnpm dev` works, can create did:key, can sign/verify SD-JWT.
 
+**Commit & Push:**
+```bash
+git add -A && git commit -m "feat(m1): foundation — monorepo, prisma, did, crypto modules" && git push origin main
+```
+
 ---
 
 ### M2: Issuer (OID4VCI)
@@ -1048,6 +1053,11 @@ M1 ──► M2 ──► M3 ──► M4 ──► M5 ──► M6
 > - [ ] Verify issuer metadata at `GET /issuer/.well-known/openid-credential-issuer` returns valid JSON
 
 **Done when:** POST offer → POST token → POST credential returns valid SD-JWT-VC.
+
+**Commit & Push:**
+```bash
+git add -A && git commit -m "feat(m2): issuer service — OID4VCI endpoints, SD-JWT-VC issuance" && git push origin main
+```
 
 ---
 
@@ -1069,6 +1079,11 @@ M1 ──► M2 ──► M3 ──► M4 ──► M5 ──► M6
 
 **Done when:** Wallet receives creds from issuer, revocation flips status list bit.
 
+**Commit & Push:**
+```bash
+git add -A && git commit -m "feat(m3): wallet + status — credential storage, OID4VCI client, bitstring revocation" && git push origin main
+```
+
 ---
 
 ### M4: Verifier + Trust
@@ -1089,6 +1104,11 @@ M1 ──► M2 ──► M3 ──► M4 ──► M5 ──► M6
 
 **Done when:** Verifier validates VP, rejects untrusted/revoked credentials.
 
+**Commit & Push:**
+```bash
+git add -A && git commit -m "feat(m4): verifier + trust — OID4VP, validation pipeline, trust registry, policy engine" && git push origin main
+```
+
 ---
 
 ### M5: E2E Integration
@@ -1104,6 +1124,11 @@ M1 ──► M2 ──► M3 ──► M4 ──► M5 ──► M6
 > - [ ] Run all 5 test scenarios and confirm they pass: `pnpm test:e2e`
 
 **Done when:** All 5 mandatory scenarios pass, loan E2E < 2 minutes.
+
+**Commit & Push:**
+```bash
+git add -A && git commit -m "feat(m5): e2e integration — all 5 test scenarios passing, loan processing flow" && git push origin main
+```
 
 ---
 
@@ -1125,6 +1150,11 @@ M1 ──► M2 ──► M3 ──► M4 ──► M5 ──► M6
 > - [ ] If deploying publicly: choose hosting platform (see Section 0, #17-19)
 
 **Done when:** `docker compose up` → Swagger at localhost:3000/api/docs → Postman can demo E2E.
+
+**Commit & Push:**
+```bash
+git add -A && git commit -m "feat(m6): demo ready — swagger, postman, docker compose, seed data, README" && git push origin main
+```
 
 ---
 

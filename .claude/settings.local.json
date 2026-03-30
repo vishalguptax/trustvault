@@ -51,7 +51,8 @@
       "mcp__sequential-thinking__sequentialthinking",
       "mcp__filesystem__*",
       "mcp__github__*",
-      "mcp__playwright__*"
+      "mcp__playwright__*",
+      "Bash(gh api:*)"
     ]
   },
   "hooks": {
@@ -62,6 +63,10 @@
           {
             "type": "command",
             "command": "bash -c 'CMD=\"$CLAUDE_TOOL_INPUT\"; if echo \"$CMD\" | grep -qE \"\\bnpm (install|run|exec|init|ci|test|start|build|publish|uninstall|update|audit|fund|cache|pack|link|prune|dedupe|shrinkwrap)\\b|\\bnpm i\\b|\\byarn (install|add|remove|run|build|test|start)\\b|\\byarn\\b\"; then echo \"BLOCKED: Use pnpm instead of npm/yarn. This project uses pnpm exclusively.\"; exit 1; fi'"
+          },
+          {
+            "type": "command",
+            "command": "bash -c 'CMD=\"$CLAUDE_TOOL_INPUT\"; if echo \"$CMD\" | grep -qiE \"Co-Authored-By|co-authored-by|Authored-by|--author|git config.*(user\\.name|user\\.email)\"; then echo \"BLOCKED: Do not add co-authors or change git author. All commits must be from Sandhya Sharma only.\"; exit 1; fi'"
           },
           {
             "type": "command",

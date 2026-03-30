@@ -123,8 +123,9 @@ These rules override defaults. Apply to every response, every file, every change
 
 ### Git
 
-- **Never add AI author attribution** in commits.
+- **Never add AI author attribution** in commits. No `Co-Authored-By`. No `--author` flag. All commits are from Sandhya Sharma only.
 - **Conventional commits:** lowercase type, imperative mood. Examples: `feat: add OID4VCI token endpoint`, `fix: correct SD-JWT disclosure hashing`.
+- **Commit and push after every milestone.** When a milestone is complete, stage all changes, commit with the milestone message from the execution plan, and push to `origin main`.
 - **Commit logically grouped changes.** Do not bundle unrelated work.
 - **Do not commit `.env` files, private keys or credential data.**
 
