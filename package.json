@@ -13,6 +13,7 @@
   },
   "devDependencies": {
     "@swc/core": "^1.15.21",
+    "tsx": "^4.21.0",
     "turbo": "^2.0.0",
     "typescript": "^5.4.0",
     "unplugin-swc": "^1.5.9",
