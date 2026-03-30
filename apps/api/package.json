@@ -7,9 +7,9 @@
     "build": "nest build",
     "start": "node dist/main.js",
     "start:prod": "node dist/main.js",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:e2e": "vitest run --config vitest.e2e.config.ts",
+    "test": "node ../../node_modules/vitest/vitest.mjs run",
+    "test:watch": "node ../../node_modules/vitest/vitest.mjs",
+    "test:e2e": "node ../../node_modules/vitest/vitest.mjs run --config vitest.e2e.config.ts",
     "lint": "eslint \"src/**/*.ts\" --fix",
     "clean": "rimraf dist"
   },

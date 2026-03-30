@@ -6,14 +6,17 @@
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
-    "test": "turbo test",
-    "test:e2e": "turbo test:e2e",
+    "test": "turbo test --filter=@trustvault/api",
+    "test:e2e": "turbo test:e2e --filter=@trustvault/api",
     "lint": "turbo lint",
     "clean": "turbo clean"
   },
   "devDependencies": {
+    "@swc/core": "^1.15.21",
     "turbo": "^2.0.0",
-    "typescript": "^5.4.0"
+    "typescript": "^5.4.0",
+    "unplugin-swc": "^1.5.9",
+    "vitest": "^1.6.1"
   },
   "packageManager": "pnpm@10.18.2",
   "engines": {
