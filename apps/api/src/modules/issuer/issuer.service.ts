@@ -1,0 +1,291 @@
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { randomBytes, createHash } from 'crypto';
+import type { JWK } from 'jose';
+import * as jose from 'jose';
+import { PrismaService } from '../../prisma/prisma.service';
+import { DidService } from '../did/did.service';
+import { SdJwtService } from '../crypto/sd-jwt.service';
+import { SIGNING_ALGORITHM } from '../../common/constants';
+
+@Injectable()
+export class IssuerService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly didService: DidService,
+    private readonly sdJwtService: SdJwtService,
+    private readonly configService: ConfigService,
+  ) {}
+
+  async getOrCreateIssuerDid(): Promise<string> {
+    const configured = this.configService.get<string>('issuer.did');
+    if (configured) {
+      return configured;
+    }
+    const existing = await this.prisma.did.findFirst({
+      where: { method: 'key', active: true },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (existing) {
+      return existing.did;
+    }
+    const result = await this.didService.createDid('key');
+    return result.did;
+  }
+
+  async getIssuerMetadata(): Promise<Record<string, unknown>> {
+    const issuerDid = await this.getOrCreateIssuerDid();
+    const baseUrl = this.configService.get<string>('issuer.baseUrl') || 'http://localhost:3000/issuer';
+
+    const schemas = await this.prisma.credentialSchema.findMany({ where: { active: true } });
+
+    const credentialConfigurations: Record<string, unknown> = {};
+    for (const schema of schemas) {
+      credentialConfigurations[schema.typeUri] = {
+        format: 'vc+sd-jwt',
+        scope: schema.typeUri,
+        cryptographic_binding_methods_supported: ['did:key'],
+        credential_signing_alg_values_supported: [SIGNING_ALGORITHM],
+        credential_definition: {
+          type: [schema.typeUri],
+        },
+        display: [
+          {
+            name: schema.name,
+            locale: 'en-US',
+          },
+        ],
+      };
+    }
+
+    return {
+      credential_issuer: baseUrl,
+      credential_endpoint: `${baseUrl}/credential`,
+      token_endpoint: `${baseUrl}/token`,
+      credential_configurations_supported: credentialConfigurations,
+      display: [
+        {
+          name: 'TrustVault Issuer',
+          locale: 'en-US',
+        },
+      ],
+      issuer_did: issuerDid,
+    };
+  }
+
+  async createOffer(
+    schemaTypeUri: string,
+    subjectDid: string,
+    claims: Record<string, unknown>,
+    pinRequired: boolean = false,
+  ): Promise<{
+    offerId: string;
+    credentialOfferUri: string;
+    preAuthorizedCode: string;
+  }> {
+    const schema = await this.prisma.credentialSchema.findUnique({
+      where: { typeUri: schemaTypeUri },
+    });
+    if (!schema) {
+      throw new NotFoundException(`Credential schema not found: ${schemaTypeUri}`);
+    }
+
+    const issuerDid = await this.getOrCreateIssuerDid();
+    const preAuthorizedCode = randomBytes(32).toString('base64url');
+    const baseUrl = this.configService.get<string>('issuer.baseUrl') || 'http://localhost:3000/issuer';
+
+    const offer = await this.prisma.credentialOffer.create({
+      data: {
+        issuerDid,
+        schemaTypeUri,
+        preAuthorizedCode,
+        pinRequired,
+        claims: JSON.parse(JSON.stringify(claims)),
+        status: 'pending',
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+      },
+    });
+
+    const credentialOfferPayload = {
+      credential_issuer: baseUrl,
+      credential_configuration_ids: [schemaTypeUri],
+      grants: {
+        'urn:ietf:params:oauth:grant-type:pre-authorized_code': {
+          'pre-authorized_code': preAuthorizedCode,
+          user_pin_required: pinRequired,
+        },
+      },
+      subject_did: subjectDid,
+    };
+
+    const credentialOfferUri = `openid-credential-offer://?credential_offer=${encodeURIComponent(JSON.stringify(credentialOfferPayload))}`;
+
+    return {
+      offerId: offer.id,
+      credentialOfferUri,
+      preAuthorizedCode,
+    };
+  }
+
+  async exchangeToken(
+    preAuthorizedCode: string,
+    pin?: string,
+  ): Promise<{
+    access_token: string;
+    token_type: string;
+    expires_in: number;
+    c_nonce: string;
+    c_nonce_expires_in: number;
+  }> {
+    const offer = await this.prisma.credentialOffer.findUnique({
+      where: { preAuthorizedCode },
+    });
+
+    if (!offer) {
+      throw new BadRequestException('Invalid pre-authorized code');
+    }
+
+    if (offer.status !== 'pending') {
+      throw new BadRequestException(`Offer already used or expired. Status: ${offer.status}`);
+    }
+
+    if (new Date() > offer.expiresAt) {
+      await this.prisma.credentialOffer.update({
+        where: { id: offer.id },
+        data: { status: 'expired' },
+      });
+      throw new BadRequestException('Offer has expired');
+    }
+
+    if (offer.pinRequired && !pin) {
+      throw new BadRequestException('PIN is required');
+    }
+
+    const accessToken = randomBytes(32).toString('base64url');
+    const cNonce = randomBytes(16).toString('base64url');
+
+    await this.prisma.credentialOffer.update({
+      where: { id: offer.id },
+      data: {
+        accessToken,
+        cNonce,
+        status: 'token_issued',
+      },
+    });
+
+    return {
+      access_token: accessToken,
+      token_type: 'Bearer',
+      expires_in: 300,
+      c_nonce: cNonce,
+      c_nonce_expires_in: 300,
+    };
+  }
+
+  async issueCredential(
+    accessToken: string,
+    format: string,
+    credentialDefinition: { type: string[] },
+    proof?: { proof_type: string; jwt: string },
+  ): Promise<{
+    credential: string;
+    c_nonce: string;
+    c_nonce_expires_in: number;
+  }> {
+    const offer = await this.prisma.credentialOffer.findFirst({
+      where: { accessToken },
+    });
+
+    if (!offer) {
+      throw new UnauthorizedException('Invalid access token');
+    }
+
+    if (offer.status !== 'token_issued') {
+      throw new BadRequestException(`Invalid offer status: ${offer.status}`);
+    }
+
+    const schema = await this.prisma.credentialSchema.findUnique({
+      where: { typeUri: offer.schemaTypeUri },
+    });
+    if (!schema) {
+      throw new NotFoundException(`Schema not found: ${offer.schemaTypeUri}`);
+    }
+
+    let holderPublicKey: JWK | undefined;
+    if (proof?.jwt) {
+      try {
+        const decoded = jose.decodeJwt(proof.jwt);
+        const header = jose.decodeProtectedHeader(proof.jwt);
+
+        if (header.jwk) {
+          holderPublicKey = header.jwk as JWK;
+        }
+      } catch {
+        throw new BadRequestException('Invalid proof JWT');
+      }
+    }
+
+    const issuerKeyPair = await this.didService.getKeyPair(offer.issuerDid);
+    const claims = offer.claims as Record<string, unknown>;
+
+    const expiryDays = this.configService.get<number>('credential.defaultExpiryDays') || 365;
+    const expiresAt = new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000);
+
+    const sdJwtVc = await this.sdJwtService.issue({
+      issuerDid: offer.issuerDid,
+      subjectDid: (offer.claims as Record<string, unknown>).subjectDid as string || 'unknown',
+      credentialType: offer.schemaTypeUri,
+      claims,
+      disclosableClaims: schema.sdClaims,
+      holderPublicKey,
+      issuerPrivateKey: issuerKeyPair.privateKey,
+      expiresAt,
+    });
+
+    const credentialHash = createHash('sha256').update(sdJwtVc).digest('hex');
+    const newCNonce = randomBytes(16).toString('base64url');
+
+    await this.prisma.issuedCredential.create({
+      data: {
+        issuerDid: offer.issuerDid,
+        subjectDid: (claims.subjectDid as string) || 'unknown',
+        schemaTypeUri: offer.schemaTypeUri,
+        credentialHash,
+        status: 'active',
+        expiresAt,
+      },
+    });
+
+    await this.prisma.credentialOffer.update({
+      where: { id: offer.id },
+      data: { status: 'credential_issued', cNonce: newCNonce },
+    });
+
+    return {
+      credential: sdJwtVc,
+      c_nonce: newCNonce,
+      c_nonce_expires_in: 300,
+    };
+  }
+
+  async listSchemas() {
+    return this.prisma.credentialSchema.findMany({ where: { active: true } });
+  }
+
+  async getSchema(id: string) {
+    const schema = await this.prisma.credentialSchema.findUnique({ where: { id } });
+    if (!schema) {
+      throw new NotFoundException(`Schema not found: ${id}`);
+    }
+    return schema;
+  }
+
+  async listIssuedCredentials() {
+    return this.prisma.issuedCredential.findMany({ orderBy: { issuedAt: 'desc' } });
+  }
+}
