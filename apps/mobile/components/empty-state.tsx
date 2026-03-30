@@ -18,6 +18,10 @@ export function EmptyState() {
       <Pressable
         onPress={() => router.push('/scanner')}
         className="bg-primary px-6 py-3 rounded-lg active:opacity-80"
+        style={{ minHeight: 44, minWidth: 44 }}
+        accessibilityLabel="Scan QR code to receive your first credential"
+        accessibilityRole="button"
+        accessibilityHint="Opens the QR scanner camera"
       >
         <Text className="text-vault-bg font-bold">Scan QR Code</Text>
       </Pressable>

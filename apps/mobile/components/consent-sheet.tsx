@@ -193,9 +193,11 @@ export function ConsentSheet({
                 borderWidth: 1.5,
                 borderColor: '#1F2937',
                 backgroundColor: pressed ? '#1F2937' : 'transparent',
+                minHeight: 44,
               })}
               accessibilityLabel="Deny sharing credentials"
               accessibilityRole="button"
+              accessibilityHint="Cancels the presentation and returns to the wallet"
             >
               <Text style={{ color: '#F9FAFB', fontWeight: '600', fontSize: 16 }}>
                 Deny
@@ -209,9 +211,11 @@ export function ConsentSheet({
                 borderRadius: 12,
                 alignItems: 'center',
                 backgroundColor: pressed ? '#0D9488' : '#14B8A6',
+                minHeight: 44,
               })}
               accessibilityLabel="Allow sharing credentials"
               accessibilityRole="button"
+              accessibilityHint="Shares the selected claims with the verifier"
             >
               <Text style={{ color: '#0B1120', fontWeight: '700', fontSize: 16 }}>
                 Allow

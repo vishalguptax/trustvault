@@ -38,8 +38,11 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
         config.classes,
         className
       )}
+      role="status"
+      aria-label={`Credential status: ${config.label}`}
     >
       <span
+        aria-hidden="true"
         className={cn(
           'w-1.5 h-1.5 rounded-full',
           status === 'active' && 'bg-success',

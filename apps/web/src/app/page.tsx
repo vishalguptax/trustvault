@@ -60,7 +60,7 @@ export default function LandingPage() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.6 }}
-        className="flex-1 flex flex-col items-center justify-center px-6 pt-20 pb-12"
+        className="flex-1 flex flex-col items-center justify-center px-4 md:px-6 pt-20 pb-12"
       >
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
@@ -127,7 +127,7 @@ export default function LandingPage() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.8, duration: 0.5 }}
-        className="border-t border-border py-12 px-6"
+        className="border-t border-border py-12 px-4 md:px-6"
       >
         <div className="max-w-2xl mx-auto text-center">
           <h2 className="text-2xl font-semibold mb-3">TrustVault Wallet</h2>
@@ -147,7 +147,7 @@ export default function LandingPage() {
       </motion.section>
 
       {/* Footer */}
-      <footer className="border-t border-border py-6 px-6 text-center text-muted-foreground text-sm">
+      <footer className="border-t border-border py-6 px-4 md:px-6 text-center text-muted-foreground text-sm">
         TrustVault — Verifiable Credential Ecosystem Prototype
       </footer>
     </div>

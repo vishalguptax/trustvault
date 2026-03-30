@@ -93,6 +93,8 @@ export default function ScannerScreen() {
         <Pressable
           onPress={() => router.back()}
           style={styles.cancelButton}
+          accessibilityLabel="Cancel and go back"
+          accessibilityRole="button"
         >
           <Text style={styles.cancelText}>Cancel</Text>
         </Pressable>
@@ -191,6 +193,8 @@ export default function ScannerScreen() {
           <Pressable
             onPress={() => router.back()}
             style={styles.cancelButton}
+            accessibilityLabel="Cancel scanning and go back"
+            accessibilityRole="button"
           >
             <Text style={styles.cancelText}>Cancel</Text>
           </Pressable>
@@ -305,6 +309,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 20,
     marginBottom: 16,
+    minHeight: 44,
   },
   torchButtonActive: {
     backgroundColor: '#14B8A6',
@@ -323,6 +328,8 @@ const styles = StyleSheet.create({
   },
   manualToggle: {
     marginBottom: 12,
+    minHeight: 44,
+    justifyContent: 'center' as const,
   },
   manualToggleText: {
     color: '#14B8A6',
@@ -351,6 +358,8 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 44,
+    minWidth: 44,
   },
   primaryButton: {
     backgroundColor: '#14B8A6',
@@ -358,6 +367,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 10,
     marginBottom: 12,
+    minHeight: 44,
+    justifyContent: 'center' as const,
   },
   primaryButtonText: {
     color: '#0B1120',
@@ -370,6 +381,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 10,
     marginBottom: 12,
+    minHeight: 44,
+    justifyContent: 'center' as const,
   },
   secondaryButtonText: {
     color: '#F9FAFB',
@@ -379,6 +392,8 @@ const styles = StyleSheet.create({
   cancelButton: {
     paddingVertical: 12,
     paddingHorizontal: 16,
+    minHeight: 44,
+    justifyContent: 'center' as const,
   },
   cancelText: {
     color: '#6B7280',

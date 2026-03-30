@@ -21,10 +21,18 @@ export default function ConsentHistory() {
       keyExtractor={(item) => item.id}
       contentContainerStyle={{ padding: 16 }}
       renderItem={({ item }) => (
-        <View className="bg-vault-surface rounded-xl p-4 mb-3">
+        <View
+          className="bg-vault-surface rounded-xl p-4 mb-3"
+          accessibilityLabel={`Presentation to ${item.verifierName}, result: ${item.result}, shared: ${item.disclosedClaims.join(', ')}`}
+          accessibilityRole="summary"
+        >
           <View className="flex-row items-center justify-between mb-2">
             <Text className="text-vault-foreground font-semibold">{item.verifierName}</Text>
-            <Text className={`text-xs font-medium ${item.result === 'verified' ? 'text-success' : 'text-danger'}`}>
+            <Text
+              className={`text-xs font-medium ${item.result === 'verified' ? 'text-success' : 'text-danger'}`}
+              accessibilityLabel={`Result: ${item.result}`}
+              accessibilityHint={item.result === 'verified' ? 'Credentials were successfully verified' : 'Credentials were rejected'}
+            >
               {item.result.toUpperCase()}
             </Text>
           </View>

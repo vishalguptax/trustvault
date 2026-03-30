@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
+import { PageTransition } from './page-transition';
 
 interface NavItem {
   label: string;
@@ -50,16 +51,29 @@ const roleConfig = {
 export function AppShell({ role, children }: AppShellProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const config = roleConfig[role];
 
   return (
     <div className="flex h-screen overflow-hidden">
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
       <aside
         className={cn(
           'bg-card border-r border-border flex flex-col transition-all duration-300',
+          'fixed inset-y-0 left-0 z-50 md:relative md:translate-x-0',
+          mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
           collapsed ? 'w-16' : 'w-60'
         )}
+        role="navigation"
+        aria-label={`${config.label} navigation`}
       >
         {/* Logo */}
         <div className="h-14 flex items-center px-4 border-b border-border">
@@ -96,8 +110,10 @@ export function AppShell({ role, children }: AppShellProps) {
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={() => setMobileOpen(false)}
+                aria-current={isActive ? 'page' : undefined}
                 className={cn(
-                  'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors',
+                  'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
                   isActive
                     ? 'bg-primary/10 text-primary'
                     : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
@@ -113,7 +129,8 @@ export function AppShell({ role, children }: AppShellProps) {
         {/* Collapse Toggle */}
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="h-12 flex items-center justify-center border-t border-border text-muted-foreground hover:text-foreground transition-colors"
+          className="h-12 flex items-center justify-center border-t border-border text-muted-foreground hover:text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -129,17 +146,30 @@ export function AppShell({ role, children }: AppShellProps) {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto" aria-label={`${config.label} content`}>
         {/* Header */}
-        <header className="h-14 border-b border-border flex items-center justify-between px-6 bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-          <h1 className="text-lg font-semibold">{getPageTitle(pathname)}</h1>
+        <header className="h-14 border-b border-border flex items-center justify-between px-4 md:px-6 bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setMobileOpen(!mobileOpen)}
+              className="md:hidden text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Toggle navigation"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 256 256">
+                <path d="M224,128a8,8,0,0,1-8,8H40a8,8,0,0,1,0-16H216A8,8,0,0,1,224,128ZM40,72H216a8,8,0,0,0,0-16H40a8,8,0,0,0,0,16ZM216,184H40a8,8,0,0,0,0,16H216a8,8,0,0,0,0-16Z" />
+              </svg>
+            </button>
+            <h1 className="text-lg font-semibold">{getPageTitle(pathname)}</h1>
+          </div>
           <div className={cn('text-xs font-medium px-2 py-1 rounded-full', getRoleBadgeClass(role))}>
             {config.label}
           </div>
         </header>
 
         {/* Content */}
-        <div className="p-6">{children}</div>
+        <div className="p-4 md:p-6">
+          <PageTransition>{children}</PageTransition>
+        </div>
       </main>
     </div>
   );

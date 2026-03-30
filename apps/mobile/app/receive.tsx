@@ -345,6 +345,7 @@ export default function ReceiveScreen() {
               })}
               accessibilityLabel="Decline credential offer"
               accessibilityRole="button"
+              accessibilityHint="Returns to the previous screen without receiving the credential"
             >
               <Text style={{ color: '#F9FAFB', fontWeight: '500', fontSize: 15 }}>
                 Decline
@@ -361,6 +362,7 @@ export default function ReceiveScreen() {
               })}
               accessibilityLabel="Accept credential offer"
               accessibilityRole="button"
+              accessibilityHint="Receives and stores the credential in your wallet"
             >
               <Text style={{ color: '#0B1120', fontWeight: '700', fontSize: 15 }}>
                 Accept

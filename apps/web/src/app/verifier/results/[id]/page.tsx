@@ -131,8 +131,25 @@ export default function VerificationResultDetailPage() {
       </Link>
 
       {error && (
-        <div className="bg-warning/10 border border-warning/20 rounded-xl p-3">
+        <div className="bg-warning/10 border border-warning/20 rounded-xl p-3 flex items-center justify-between">
           <p className="text-warning text-xs">{error}. Showing demo data.</p>
+          <button
+            onClick={() => {
+              setError(null);
+              setLoading(true);
+              api.get<VerificationDetail>(`/verifier/presentations/${id}`).then((data) => {
+                setDetail(data);
+                setError(null);
+              }).catch((err) => {
+                const message = err instanceof Error ? err.message : 'Failed to fetch result';
+                setError(message);
+                setDetail({ ...FALLBACK_DETAIL, id });
+              }).finally(() => setLoading(false));
+            }}
+            className="text-warning text-xs font-medium hover:underline flex-shrink-0 ml-4"
+          >
+            Retry
+          </button>
         </div>
       )}
 
@@ -250,7 +267,7 @@ export default function VerificationResultDetailPage() {
         className="bg-card border border-border rounded-xl p-6"
       >
         <h3 className="text-lg font-semibold mb-4">Verification Metadata</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <MetadataItem label="Verifier DID" value={truncateDid(detail.verifierDid)} mono />
           <MetadataItem label="Nonce" value={detail.nonce.slice(0, 24) + '...'} mono />
           <MetadataItem label="Timestamp" value={formatDate(detail.timestamp)} />

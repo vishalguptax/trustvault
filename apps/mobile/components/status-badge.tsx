@@ -15,7 +15,12 @@ export function StatusBadge({ status }: StatusBadgeProps) {
   const style = STATUS_STYLES[status];
 
   return (
-    <View className={`${style.bg} px-2 py-0.5 rounded-full`}>
+    <View
+      className={`${style.bg} px-2 py-0.5 rounded-full`}
+      accessibilityLabel={`Status: ${style.label}`}
+      accessibilityRole="text"
+      accessibilityHint={`This credential is currently ${style.label.toLowerCase()}`}
+    >
       <Text className={`${style.text} text-[10px] font-semibold`}>
         {style.label}
       </Text>

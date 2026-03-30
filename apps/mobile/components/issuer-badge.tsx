@@ -12,9 +12,14 @@ export function IssuerBadge({ issuerDid, issuerName }: IssuerBadgeProps) {
       : issuerDid;
 
   return (
-    <View className="flex-row items-center">
+    <View
+      className="flex-row items-center"
+      accessibilityLabel={`Issued by ${issuerName}`}
+      accessibilityRole="text"
+      accessibilityHint={`Issuer DID: ${truncatedDid}`}
+    >
       <View className="w-6 h-6 bg-primary/20 rounded-full items-center justify-center mr-2">
-        <Text className="text-primary text-xs font-bold">
+        <Text className="text-primary text-xs font-bold" accessibilityElementsHidden>
           {issuerName.charAt(0).toUpperCase()}
         </Text>
       </View>

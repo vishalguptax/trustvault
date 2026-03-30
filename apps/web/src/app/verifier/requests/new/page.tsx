@@ -343,7 +343,7 @@ export default function NewVerificationRequestPage() {
               <p className="text-sm text-muted-foreground text-center mb-6">
                 Open TrustVault Wallet and scan this QR code to present your credentials
               </p>
-              <QRDisplay value={requestUri} size={280} />
+              <QRDisplay value={requestUri} size={280} waiting />
             </div>
             <div className="mt-6 flex gap-3">
               <button

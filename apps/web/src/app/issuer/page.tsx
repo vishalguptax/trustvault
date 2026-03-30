@@ -65,11 +65,11 @@ export default function IssuerDashboard() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <h2 className="text-2xl font-bold">Issuer Dashboard</h2>
         <Link
           href="/issuer/offers/new"
-          className="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+          className="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity text-center sm:text-left"
         >
           New Credential Offer
         </Link>
@@ -130,9 +130,31 @@ export default function IssuerDashboard() {
 
       {/* Error banner */}
       {error && (
-        <div className="bg-warning/10 border border-warning/20 rounded-xl p-4 mb-6">
-          <p className="text-warning text-sm font-medium">API Unavailable</p>
-          <p className="text-warning/70 text-xs mt-1">{error}. Showing empty state.</p>
+        <div className="bg-warning/10 border border-warning/20 rounded-xl p-4 mb-6 flex items-center justify-between">
+          <div>
+            <p className="text-warning text-sm font-medium">API Unavailable</p>
+            <p className="text-warning/70 text-xs mt-1">{error}. Showing empty state.</p>
+          </div>
+          <button
+            onClick={() => {
+              setError(null);
+              setLoading(true);
+              api.get<Credential[]>('/issuer/credentials').then((data) => {
+                setCredentials(data);
+                const active = data.filter((c) => c.status === 'active').length;
+                const revoked = data.filter((c) => c.status === 'revoked').length;
+                setStats({ total: data.length, active, revoked, recentTrend: generateMockTrend(data.length) });
+              }).catch((err) => {
+                const message = err instanceof Error ? err.message : 'Failed to fetch credentials';
+                setError(message);
+                setStats({ total: 0, active: 0, revoked: 0, recentTrend: [] });
+                setCredentials([]);
+              }).finally(() => setLoading(false));
+            }}
+            className="text-warning text-xs font-medium hover:underline flex-shrink-0 ml-4"
+          >
+            Retry
+          </button>
         </div>
       )}
 

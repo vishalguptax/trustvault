@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { useEffect, useState } from 'react';
+import { View, StyleSheet, AccessibilityInfo } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -20,12 +20,31 @@ export function AnimatedCheck({ variant, size = 80 }: AnimatedCheckProps) {
   const circleScale = useSharedValue(0);
   const iconOpacity = useSharedValue(0);
   const iconScale = useSharedValue(0.3);
+  const [reduceMotion, setReduceMotion] = useState(false);
 
   const isSuccess = variant === 'success';
   const circleColor = isSuccess ? '#10B981' : '#EF4444';
   const circleBgColor = isSuccess ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)';
 
   useEffect(() => {
+    const subscription = AccessibilityInfo.addEventListener(
+      'reduceMotionChanged',
+      (enabled: boolean) => setReduceMotion(enabled),
+    );
+    AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (reduceMotion) {
+      circleScale.value = 1;
+      iconOpacity.value = 1;
+      iconScale.value = 1;
+      return;
+    }
+
     circleScale.value = withSpring(1, { damping: 12, stiffness: 180 });
     iconOpacity.value = withDelay(
       300,
@@ -38,7 +57,7 @@ export function AnimatedCheck({ variant, size = 80 }: AnimatedCheckProps) {
         withSpring(1, { damping: 10, stiffness: 150 }),
       ),
     );
-  }, [circleScale, iconOpacity, iconScale]);
+  }, [circleScale, iconOpacity, iconScale, reduceMotion]);
 
   const circleAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: circleScale.value }],

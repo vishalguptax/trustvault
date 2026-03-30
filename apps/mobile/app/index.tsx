@@ -104,6 +104,7 @@ export default function WalletHome() {
           })}
           accessibilityLabel="Scan QR code to receive or present credential"
           accessibilityRole="button"
+          accessibilityHint="Opens the QR scanner camera"
         >
           <Text style={{ color: '#0B1120', fontSize: 28, fontWeight: '700', marginTop: -2 }}>
             +

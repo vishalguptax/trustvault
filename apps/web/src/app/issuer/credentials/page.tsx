@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { api } from '@/lib/api/client';
 import { cn, truncateDid, formatDate } from '@/lib/utils';
 import { StatusBadge } from '@/components/credential/status-badge';
+import { trapFocus } from '@/lib/focus-trap';
 
 interface Credential {
   id: string;
@@ -75,9 +76,17 @@ export default function IssuedCredentialsPage() {
       </div>
 
       {error && (
-        <div className="bg-warning/10 border border-warning/20 rounded-xl p-4 mb-6">
-          <p className="text-warning text-sm font-medium">API Unavailable</p>
-          <p className="text-warning/70 text-xs mt-1">{error}</p>
+        <div className="bg-warning/10 border border-warning/20 rounded-xl p-4 mb-6 flex items-center justify-between">
+          <div>
+            <p className="text-warning text-sm font-medium">API Unavailable</p>
+            <p className="text-warning/70 text-xs mt-1">{error}</p>
+          </div>
+          <button
+            onClick={fetchCredentials}
+            className="text-warning text-xs font-medium hover:underline flex-shrink-0 ml-4"
+          >
+            Retry
+          </button>
         </div>
       )}
 
@@ -169,6 +178,14 @@ export default function IssuedCredentialsPage() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
             onClick={() => !revoking && setRevokeTarget(null)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape' && !revoking) setRevokeTarget(null);
+            }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="revoke-dialog-title"
+            aria-describedby="revoke-dialog-description"
+            tabIndex={-1}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
@@ -176,9 +193,10 @@ export default function IssuedCredentialsPage() {
               exit={{ scale: 0.9, opacity: 0 }}
               className="bg-card border border-border rounded-xl p-6 max-w-md w-full mx-4"
               onClick={(e) => e.stopPropagation()}
+              onKeyDown={trapFocus}
             >
-              <h3 className="text-lg font-semibold mb-2">Revoke Credential</h3>
-              <p className="text-sm text-muted-foreground mb-1">
+              <h3 id="revoke-dialog-title" className="text-lg font-semibold mb-2">Revoke Credential</h3>
+              <p id="revoke-dialog-description" className="text-sm text-muted-foreground mb-1">
                 Are you sure you want to revoke this credential? This action cannot be undone.
               </p>
               <div className="bg-muted/50 rounded-lg p-3 my-4">
@@ -191,7 +209,7 @@ export default function IssuedCredentialsPage() {
                 <button
                   onClick={() => setRevokeTarget(null)}
                   disabled={revoking}
-                  className="text-sm text-muted-foreground hover:text-foreground transition-colors px-4 py-2"
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors px-4 py-2 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none rounded-lg"
                 >
                   Cancel
                 </button>
@@ -199,7 +217,7 @@ export default function IssuedCredentialsPage() {
                   onClick={handleRevoke}
                   disabled={revoking}
                   className={cn(
-                    'bg-destructive text-destructive-foreground px-4 py-2 rounded-lg text-sm font-medium transition-opacity',
+                    'bg-destructive text-destructive-foreground px-4 py-2 rounded-lg text-sm font-medium transition-opacity focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
                     revoking ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'
                   )}
                 >

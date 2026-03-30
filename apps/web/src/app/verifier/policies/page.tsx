@@ -84,20 +84,25 @@ function PolicyIcon({ policyId }: { policyId: string }) {
 export default function PoliciesPage() {
   const [policies, setPolicies] = useState<Policy[]>(FALLBACK_POLICIES);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  async function fetchPolicies() {
+    setLoading(true);
+    try {
+      const data = await api.get<Policy[]>('/verifier/policies');
+      if (data && data.length > 0) {
+        setPolicies(data);
+      }
+      setError(null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to fetch policies';
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    async function fetchPolicies() {
-      try {
-        const data = await api.get<Policy[]>('/verifier/policies');
-        if (data && data.length > 0) {
-          setPolicies(data);
-        }
-      } catch {
-        // Use fallback
-      } finally {
-        setLoading(false);
-      }
-    }
     fetchPolicies();
   }, []);
 
@@ -128,6 +133,21 @@ export default function PoliciesPage() {
       <p className="text-muted-foreground text-sm mb-6">
         Configure which verification checks are enforced when validating presentations.
       </p>
+
+      {error && (
+        <div className="bg-warning/10 border border-warning/20 rounded-xl p-4 mb-6 flex items-center justify-between">
+          <div>
+            <p className="text-warning text-sm font-medium">API Unavailable</p>
+            <p className="text-warning/70 text-xs mt-1">{error}. Showing default policies.</p>
+          </div>
+          <button
+            onClick={fetchPolicies}
+            className="text-warning text-xs font-medium hover:underline flex-shrink-0 ml-4"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       {loading ? (
         <div className="space-y-3">
@@ -169,9 +189,12 @@ export default function PoliciesPage() {
                 <button
                   onClick={() => togglePolicy(policy.id)}
                   className={cn(
-                    'relative w-12 h-6 rounded-full transition-colors flex-shrink-0',
+                    'relative w-12 h-6 rounded-full transition-colors flex-shrink-0 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none',
                     policy.enabled ? 'bg-info' : 'bg-muted'
                   )}
+                  role="switch"
+                  aria-checked={policy.enabled}
+                  aria-label={`${policy.name}: ${policy.enabled ? 'enabled' : 'disabled'}`}
                 >
                   <div
                     className={cn(

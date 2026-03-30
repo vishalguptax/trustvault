@@ -98,20 +98,25 @@ function SchemaIcon({ schemaId }: { schemaId: string }) {
 export default function SchemaRegistryPage() {
   const [schemas, setSchemas] = useState<Schema[]>(FALLBACK_SCHEMAS);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  async function fetchSchemas() {
+    setLoading(true);
+    try {
+      const data = await api.get<Schema[]>('/trust/schemas');
+      if (data && data.length > 0) {
+        setSchemas(data);
+      }
+      setError(null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to fetch schemas';
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    async function fetchSchemas() {
-      try {
-        const data = await api.get<Schema[]>('/trust/schemas');
-        if (data && data.length > 0) {
-          setSchemas(data);
-        }
-      } catch {
-        // Use fallback
-      } finally {
-        setLoading(false);
-      }
-    }
     fetchSchemas();
   }, []);
 
@@ -121,6 +126,21 @@ export default function SchemaRegistryPage() {
       <p className="text-muted-foreground text-sm mb-6">
         Credential schemas define the structure and claim definitions for each credential type.
       </p>
+
+      {error && (
+        <div className="bg-warning/10 border border-warning/20 rounded-xl p-4 mb-6 flex items-center justify-between">
+          <div>
+            <p className="text-warning text-sm font-medium">API Unavailable</p>
+            <p className="text-warning/70 text-xs mt-1">{error}. Showing default schemas.</p>
+          </div>
+          <button
+            onClick={fetchSchemas}
+            className="text-warning text-xs font-medium hover:underline flex-shrink-0 ml-4"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       {loading ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">

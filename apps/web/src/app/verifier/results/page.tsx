@@ -39,9 +39,28 @@ export default function VerificationResultsPage() {
       <h2 className="text-2xl font-bold mb-6">Verification Results</h2>
 
       {error && (
-        <div className="bg-warning/10 border border-warning/20 rounded-xl p-4 mb-6">
-          <p className="text-warning text-sm font-medium">API Unavailable</p>
-          <p className="text-warning/70 text-xs mt-1">{error}</p>
+        <div className="bg-warning/10 border border-warning/20 rounded-xl p-4 mb-6 flex items-center justify-between">
+          <div>
+            <p className="text-warning text-sm font-medium">API Unavailable</p>
+            <p className="text-warning/70 text-xs mt-1">{error}</p>
+          </div>
+          <button
+            onClick={() => {
+              setError(null);
+              setLoading(true);
+              api.get<VerificationResult[]>('/verifier/presentations').then((data) => {
+                setResults(data);
+                setError(null);
+              }).catch((err) => {
+                const message = err instanceof Error ? err.message : 'Failed to fetch results';
+                setError(message);
+                setResults([]);
+              }).finally(() => setLoading(false));
+            }}
+            className="text-warning text-xs font-medium hover:underline flex-shrink-0 ml-4"
+          >
+            Retry
+          </button>
         </div>
       )}
 

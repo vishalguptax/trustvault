@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage, type StateStorage } from 'zustand/middleware';
+import * as SecureStore from 'expo-secure-store';
 
 export interface StoredCredential {
   id: string;
@@ -32,18 +34,49 @@ interface CredentialStore {
   removeCredential: (id: string) => void;
   addConsentRecord: (record: ConsentRecord) => void;
   setCredentials: (credentials: StoredCredential[]) => void;
+  _hasHydrated: boolean;
 }
 
-export const useCredentialStore = create<CredentialStore>((set) => ({
-  credentials: [],
-  consentHistory: [],
-  addCredential: (credential) =>
-    set((state) => ({ credentials: [...state.credentials, credential] })),
-  removeCredential: (id) =>
-    set((state) => ({
-      credentials: state.credentials.filter((c) => c.id !== id),
-    })),
-  addConsentRecord: (record) =>
-    set((state) => ({ consentHistory: [record, ...state.consentHistory] })),
-  setCredentials: (credentials) => set({ credentials }),
-}));
+const STORAGE_KEY = 'trustvault_credentials';
+
+/**
+ * Secure storage adapter backed by expo-secure-store.
+ * Data is encrypted at rest on device.
+ */
+const secureStorage: StateStorage = {
+  getItem: async (name: string): Promise<string | null> => {
+    return SecureStore.getItemAsync(name);
+  },
+  setItem: async (name: string, value: string): Promise<void> => {
+    await SecureStore.setItemAsync(name, value);
+  },
+  removeItem: async (name: string): Promise<void> => {
+    await SecureStore.deleteItemAsync(name);
+  },
+};
+
+export const useCredentialStore = create<CredentialStore>()(
+  persist(
+    (set) => ({
+      credentials: [],
+      consentHistory: [],
+      _hasHydrated: false,
+      addCredential: (credential) =>
+        set((state) => ({ credentials: [...state.credentials, credential] })),
+      removeCredential: (id) =>
+        set((state) => ({
+          credentials: state.credentials.filter((c) => c.id !== id),
+        })),
+      addConsentRecord: (record) =>
+        set((state) => ({ consentHistory: [record, ...state.consentHistory] })),
+      setCredentials: (credentials) => set({ credentials }),
+    }),
+    {
+      name: STORAGE_KEY,
+      storage: createJSONStorage(() => secureStorage),
+      onRehydrateStorage: () => () => {
+        useCredentialStore.setState({ _hasHydrated: true });
+      },
+    },
+  ),
+);

@@ -58,11 +58,11 @@ export default function VerifierDashboard() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <h2 className="text-2xl font-bold">Verifier Dashboard</h2>
         <Link
           href="/verifier/requests/new"
-          className="bg-info text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+          className="bg-info text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity text-center sm:text-left"
         >
           New Verification Request
         </Link>
@@ -122,9 +122,30 @@ export default function VerifierDashboard() {
       </div>
 
       {error && (
-        <div className="bg-warning/10 border border-warning/20 rounded-xl p-4 mb-6">
-          <p className="text-warning text-sm font-medium">API Unavailable</p>
-          <p className="text-warning/70 text-xs mt-1">{error}. Showing empty state.</p>
+        <div className="bg-warning/10 border border-warning/20 rounded-xl p-4 mb-6 flex items-center justify-between">
+          <div>
+            <p className="text-warning text-sm font-medium">API Unavailable</p>
+            <p className="text-warning/70 text-xs mt-1">{error}. Showing empty state.</p>
+          </div>
+          <button
+            onClick={() => {
+              setError(null);
+              setLoading(true);
+              api.get<VerificationResult[]>('/verifier/presentations').then((data) => {
+                setResults(data);
+                const verified = data.filter((r) => r.result === 'verified').length;
+                setStats({ total: data.length, verified, rejected: data.length - verified });
+              }).catch((err) => {
+                const message = err instanceof Error ? err.message : 'Failed to fetch results';
+                setError(message);
+                setStats({ total: 0, verified: 0, rejected: 0 });
+                setResults([]);
+              }).finally(() => setLoading(false));
+            }}
+            className="text-warning text-xs font-medium hover:underline flex-shrink-0 ml-4"
+          >
+            Retry
+          </button>
         </div>
       )}
 

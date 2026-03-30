@@ -430,7 +430,7 @@ export default function NewOfferPage() {
                 Open TrustVault Wallet and scan this QR code
               </p>
 
-              <QRDisplay value={offerUri} size={280} />
+              <QRDisplay value={offerUri} size={280} waiting />
 
               {expiresAt && <ExpiryCountdown expiresAt={expiresAt} />}
             </div>

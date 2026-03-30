@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { api } from '@/lib/api/client';
 import { cn, truncateDid, formatDate } from '@/lib/utils';
+import { trapFocus } from '@/lib/focus-trap';
 
 interface TrustedIssuer {
   did: string;
@@ -121,7 +122,7 @@ export default function TrustedIssuersPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <h2 className="text-2xl font-bold">Trusted Issuers</h2>
         <button
           onClick={() => setShowRegisterDialog(true)}
@@ -132,9 +133,17 @@ export default function TrustedIssuersPage() {
       </div>
 
       {error && (
-        <div className="bg-warning/10 border border-warning/20 rounded-xl p-4 mb-6">
-          <p className="text-warning text-sm font-medium">API Unavailable</p>
-          <p className="text-warning/70 text-xs mt-1">{error}</p>
+        <div className="bg-warning/10 border border-warning/20 rounded-xl p-4 mb-6 flex items-center justify-between">
+          <div>
+            <p className="text-warning text-sm font-medium">API Unavailable</p>
+            <p className="text-warning/70 text-xs mt-1">{error}</p>
+          </div>
+          <button
+            onClick={fetchIssuers}
+            className="text-warning text-xs font-medium hover:underline flex-shrink-0 ml-4"
+          >
+            Retry
+          </button>
         </div>
       )}
 
@@ -264,6 +273,16 @@ export default function TrustedIssuersPage() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
             onClick={() => !registering && setShowRegisterDialog(false)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape' && !registering) {
+                setShowRegisterDialog(false);
+                form.reset();
+              }
+            }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="register-dialog-title"
+            tabIndex={-1}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
@@ -271,15 +290,17 @@ export default function TrustedIssuersPage() {
               exit={{ scale: 0.9, opacity: 0 }}
               className="bg-card border border-border rounded-xl p-6 max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
+              onKeyDown={trapFocus}
             >
-              <h3 className="text-lg font-semibold mb-4">Register New Issuer</h3>
+              <h3 id="register-dialog-title" className="text-lg font-semibold mb-4">Register New Issuer</h3>
 
               <form onSubmit={form.handleSubmit(handleRegister)} className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium mb-1.5 block">
+                  <label htmlFor="register-name" className="text-sm font-medium mb-1.5 block">
                     Name <span className="text-destructive">*</span>
                   </label>
                   <input
+                    id="register-name"
                     {...form.register('name')}
                     className={cn(
                       'w-full bg-background border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-warning/50 focus:border-warning transition-all',
@@ -293,10 +314,11 @@ export default function TrustedIssuersPage() {
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium mb-1.5 block">
+                  <label htmlFor="register-did" className="text-sm font-medium mb-1.5 block">
                     DID <span className="text-destructive">*</span>
                   </label>
                   <input
+                    id="register-did"
                     {...form.register('did')}
                     className={cn(
                       'w-full bg-background border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-warning/50 focus:border-warning transition-all',
@@ -310,8 +332,9 @@ export default function TrustedIssuersPage() {
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium mb-1.5 block">Description</label>
+                  <label htmlFor="register-description" className="text-sm font-medium mb-1.5 block">Description</label>
                   <textarea
+                    id="register-description"
                     {...form.register('description')}
                     rows={2}
                     className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-warning/50 focus:border-warning transition-all resize-none"
@@ -362,8 +385,9 @@ export default function TrustedIssuersPage() {
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium mb-1.5 block">Website</label>
+                  <label htmlFor="register-website" className="text-sm font-medium mb-1.5 block">Website</label>
                   <input
+                    id="register-website"
                     {...form.register('website')}
                     className={cn(
                       'w-full bg-background border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-warning/50 focus:border-warning transition-all',
@@ -414,6 +438,14 @@ export default function TrustedIssuersPage() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
             onClick={() => !removing && setRemoveTarget(null)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape' && !removing) setRemoveTarget(null);
+            }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="remove-dialog-title"
+            aria-describedby="remove-dialog-description"
+            tabIndex={-1}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
@@ -421,9 +453,10 @@ export default function TrustedIssuersPage() {
               exit={{ scale: 0.9, opacity: 0 }}
               className="bg-card border border-border rounded-xl p-6 max-w-md w-full mx-4"
               onClick={(e) => e.stopPropagation()}
+              onKeyDown={trapFocus}
             >
-              <h3 className="text-lg font-semibold mb-2">Remove Trusted Issuer</h3>
-              <p className="text-sm text-muted-foreground mb-1">
+              <h3 id="remove-dialog-title" className="text-lg font-semibold mb-2">Remove Trusted Issuer</h3>
+              <p id="remove-dialog-description" className="text-sm text-muted-foreground mb-1">
                 Are you sure you want to remove this issuer from the trust registry? Credentials issued by this entity will no longer pass trust verification.
               </p>
               <div className="bg-muted/50 rounded-lg p-3 my-4">
@@ -436,7 +469,7 @@ export default function TrustedIssuersPage() {
                 <button
                   onClick={() => setRemoveTarget(null)}
                   disabled={removing}
-                  className="text-sm text-muted-foreground hover:text-foreground transition-colors px-4 py-2"
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors px-4 py-2 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none rounded-lg"
                 >
                   Cancel
                 </button>
@@ -444,7 +477,7 @@ export default function TrustedIssuersPage() {
                   onClick={handleRemove}
                   disabled={removing}
                   className={cn(
-                    'bg-destructive text-destructive-foreground px-4 py-2 rounded-lg text-sm font-medium transition-opacity',
+                    'bg-destructive text-destructive-foreground px-4 py-2 rounded-lg text-sm font-medium transition-opacity focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
                     removing ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'
                   )}
                 >
