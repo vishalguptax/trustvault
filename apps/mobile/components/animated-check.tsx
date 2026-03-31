@@ -1,206 +1,38 @@
+import { View, Text, StyleSheet } from 'react-native';
 import { useEffect, useState } from 'react';
-import { View, StyleSheet, AccessibilityInfo } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withDelay,
-  withSequence,
-  withSpring,
-  Easing,
-  interpolate,
-} from 'react-native-reanimated';
 
 interface AnimatedCheckProps {
-  variant: 'success' | 'rejection';
+  type: 'success' | 'error';
   size?: number;
 }
 
-export function AnimatedCheck({ variant, size = 80 }: AnimatedCheckProps) {
-  const circleScale = useSharedValue(0);
-  const iconOpacity = useSharedValue(0);
-  const iconScale = useSharedValue(0.3);
-  const [reduceMotion, setReduceMotion] = useState(false);
-
-  const isSuccess = variant === 'success';
-  const circleColor = isSuccess ? '#10B981' : '#EF4444';
-  const circleBgColor = isSuccess ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)';
+export function AnimatedCheck({ type, size = 80 }: AnimatedCheckProps) {
+  const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    const subscription = AccessibilityInfo.addEventListener(
-      'reduceMotionChanged',
-      (enabled: boolean) => setReduceMotion(enabled),
-    );
-    AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
-    return () => {
-      subscription.remove();
-    };
+    const timer = setTimeout(() => setVisible(true), 200);
+    return () => clearTimeout(timer);
   }, []);
 
-  useEffect(() => {
-    if (reduceMotion) {
-      circleScale.value = 1;
-      iconOpacity.value = 1;
-      iconScale.value = 1;
-      return;
-    }
-
-    circleScale.value = withSpring(1, { damping: 12, stiffness: 180 });
-    iconOpacity.value = withDelay(
-      300,
-      withTiming(1, { duration: 300, easing: Easing.out(Easing.ease) }),
-    );
-    iconScale.value = withDelay(
-      300,
-      withSequence(
-        withSpring(1.2, { damping: 8, stiffness: 200 }),
-        withSpring(1, { damping: 10, stiffness: 150 }),
-      ),
-    );
-  }, [circleScale, iconOpacity, iconScale, reduceMotion]);
-
-  const circleAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: circleScale.value }],
-    opacity: interpolate(circleScale.value, [0, 0.5, 1], [0, 0.8, 1]),
-  }));
-
-  const iconAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: iconOpacity.value,
-    transform: [{ scale: iconScale.value }],
-  }));
+  const isSuccess = type === 'success';
+  const bgColor = isSuccess ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)';
+  const fgColor = isSuccess ? '#10B981' : '#EF4444';
+  const symbol = isSuccess ? '✓' : '✕';
 
   return (
-    <Animated.View
-      style={[
-        {
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          backgroundColor: circleBgColor,
-          alignItems: 'center',
-          justifyContent: 'center',
-        },
-        circleAnimatedStyle,
-      ]}
-      accessibilityLabel={isSuccess ? 'Success checkmark' : 'Rejection indicator'}
+    <View
+      style={[s.container, { width: size, height: size, borderRadius: size / 2, backgroundColor: bgColor }]}
+      accessibilityLabel={isSuccess ? 'Success' : 'Error'}
       accessibilityRole="image"
     >
-      <Animated.View
-        style={[
-          {
-            width: size * 0.6,
-            height: size * 0.6,
-            borderRadius: (size * 0.6) / 2,
-            backgroundColor: circleColor,
-            alignItems: 'center',
-            justifyContent: 'center',
-          },
-          iconAnimatedStyle,
-        ]}
-      >
-        {isSuccess ? (
-          <CheckmarkIcon size={size * 0.3} />
-        ) : (
-          <RejectionIcon size={size * 0.3} />
-        )}
-      </Animated.View>
-    </Animated.View>
-  );
-}
-
-function CheckmarkIcon({ size }: { size: number }) {
-  return (
-    <View
-      style={{
-        width: size,
-        height: size,
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <View style={styles.checkContainer}>
-        <View
-          style={[
-            styles.checkShort,
-            {
-              width: size * 0.4,
-              height: size * 0.15,
-              bottom: size * 0.2,
-              left: size * 0.05,
-            },
-          ]}
-        />
-        <View
-          style={[
-            styles.checkLong,
-            {
-              width: size * 0.7,
-              height: size * 0.15,
-              bottom: size * 0.25,
-              left: size * 0.2,
-            },
-          ]}
-        />
-      </View>
+      {visible && (
+        <Text style={[s.symbol, { color: fgColor, fontSize: size * 0.45 }]}>{symbol}</Text>
+      )}
     </View>
   );
 }
 
-function RejectionIcon({ size }: { size: number }) {
-  return (
-    <View
-      style={{
-        width: size,
-        height: size,
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <View
-        style={[
-          styles.xLine,
-          {
-            width: size * 0.8,
-            height: size * 0.15,
-            transform: [{ rotate: '45deg' }],
-          },
-        ]}
-      />
-      <View
-        style={[
-          styles.xLine,
-          {
-            width: size * 0.8,
-            height: size * 0.15,
-            transform: [{ rotate: '-45deg' }],
-          },
-        ]}
-      />
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  checkContainer: {
-    position: 'relative',
-    width: '100%',
-    height: '100%',
-  },
-  checkShort: {
-    position: 'absolute',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 2,
-    transform: [{ rotate: '45deg' }],
-  },
-  checkLong: {
-    position: 'absolute',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 2,
-    transform: [{ rotate: '-45deg' }],
-  },
-  xLine: {
-    position: 'absolute',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 2,
-  },
+const s = StyleSheet.create({
+  container: { alignItems: 'center', justifyContent: 'center' },
+  symbol: { fontWeight: '700' },
 });

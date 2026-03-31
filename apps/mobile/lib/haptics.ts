@@ -1,36 +1,40 @@
 /**
- * Safe haptics wrapper — expo-haptics crashes with TurboModule errors
- * on some Expo Go versions. This catches and silently ignores failures.
+ * Safe haptics wrapper. All calls are fire-and-forget.
+ * If expo-haptics is unavailable or crashes, calls silently do nothing.
  */
 
-let Haptics: typeof import('expo-haptics') | null = null;
-
-try {
-  Haptics = require('expo-haptics');
-} catch {
-  // expo-haptics not available
+async function getHaptics() {
+  try {
+    return await import('expo-haptics');
+  } catch {
+    return null;
+  }
 }
 
 export async function impactMedium(): Promise<void> {
   try {
-    await Haptics?.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const h = await getHaptics();
+    await h?.impactAsync(h.ImpactFeedbackStyle.Medium);
   } catch { /* ignore */ }
 }
 
 export async function notifySuccess(): Promise<void> {
   try {
-    await Haptics?.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    const h = await getHaptics();
+    await h?.notificationAsync(h.NotificationFeedbackType.Success);
   } catch { /* ignore */ }
 }
 
 export async function notifyError(): Promise<void> {
   try {
-    await Haptics?.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    const h = await getHaptics();
+    await h?.notificationAsync(h.NotificationFeedbackType.Error);
   } catch { /* ignore */ }
 }
 
 export async function notifyWarning(): Promise<void> {
   try {
-    await Haptics?.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    const h = await getHaptics();
+    await h?.notificationAsync(h.NotificationFeedbackType.Warning);
   } catch { /* ignore */ }
 }
