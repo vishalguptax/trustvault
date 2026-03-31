@@ -1,13 +1,16 @@
 import { Stack } from 'expo-router';
+import { useTheme } from '@/lib/theme';
 
 export default function TabsLayout() {
+  const { colors } = useTheme();
+
   return (
     <Stack
       screenOptions={{
-        headerStyle: { backgroundColor: '#111827' },
-        headerTintColor: '#F9FAFB',
+        headerStyle: { backgroundColor: colors.surface },
+        headerTintColor: colors.foreground,
         headerTitleStyle: { fontWeight: '600' },
-        contentStyle: { backgroundColor: '#0B1120' },
+        contentStyle: { backgroundColor: colors.bg },
         animation: 'slide_from_right',
       }}
     >
