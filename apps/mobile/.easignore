@@ -1,8 +1,10 @@
 # Backend — not needed for mobile build
 apps/api/
+apps/api/**
 
 # Web app — not needed for mobile build
 apps/web/
+apps/web/**
 
 # Build outputs
 apps/mobile/android/
@@ -21,6 +23,12 @@ docs/
 *.md
 !README.md
 
+# Infrastructure
+infrastructure/
+
+# Git
+.git/
+
 # Tests
 **/*.test.ts
 **/*.test.tsx
@@ -38,6 +46,10 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Cache
+.expo/
+**/.cache/
 
 # Temp
 *.tmp
