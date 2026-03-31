@@ -1,4 +1,5 @@
 import { View, Text, TextInput, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter, Link } from 'expo-router';
 import { useState, useCallback, useRef } from 'react';
 import { useAuth } from '@/lib/auth/auth-context';
@@ -43,7 +44,7 @@ export default function LoginScreen() {
           accessibilityLabel={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
           accessibilityRole="button"
         >
-          <Text style={{ fontSize: 20 }}>{isDark ? '☀️' : '🌙'}</Text>
+          <Ionicons name={isDark ? 'sunny-outline' : 'moon-outline'} size={20} color={colors.mutedText} />
         </Pressable>
 
         {/* Brand */}
