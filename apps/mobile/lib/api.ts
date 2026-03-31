@@ -40,9 +40,10 @@ async function request<T>(
     response = await fetch(url, { ...options, headers });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error';
-    console.error(`${TAG} NETWORK ERROR: ${method} ${url} — ${msg}`);
+    console.error(`${TAG} NETWORK ERROR: ${method} ${url}`);
+    console.error(`${TAG} Reason: ${msg}`);
     console.error(`${TAG} Base URL: ${API_BASE_URL}`);
-    throw new Error(`Cannot connect to server (${API_BASE_URL}). Is the backend running?`);
+    throw new Error('Unable to connect to server. Please check your connection.');
   }
 
   console.log(`${TAG} ${method} ${path} → ${response.status}`);

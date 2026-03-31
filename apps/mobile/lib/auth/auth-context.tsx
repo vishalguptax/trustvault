@@ -41,9 +41,15 @@ async function authFetch<T>(path: string, options: RequestInit = {}): Promise<T>
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown network error';
-    console.error(`[Auth] NETWORK ERROR: ${method} ${url} — ${msg}`);
-    console.error(`[Auth] Check: Is backend running at ${API_BASE_URL}? Is phone on same WiFi?`);
-    throw new Error(`Network request failed. Cannot reach ${API_BASE_URL}. Make sure the backend is running and your phone is on the same WiFi as the server.`);
+    console.error(`[Auth] NETWORK ERROR: ${method} ${url}`);
+    console.error(`[Auth] Reason: ${msg}`);
+    console.error(`[Auth] Base URL: ${API_BASE_URL}`);
+    console.error(`[Auth] Checklist:`);
+    console.error(`  1. Is the backend running? (pnpm dev:api)`);
+    console.error(`  2. Is EXPO_PUBLIC_API_URL set to your LAN IP? (not localhost)`);
+    console.error(`  3. Is your phone on the same WiFi as the server?`);
+    console.error(`  4. Is the firewall allowing port 8000?`);
+    throw new Error('Unable to connect to server. Please check your connection.');
   }
 
   console.log(`[Auth] ${method} ${path} → ${res.status}`);
