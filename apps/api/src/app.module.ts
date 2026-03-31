@@ -2,7 +2,6 @@ import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
-import { resolve } from 'path';
 import { configuration } from './config/configuration';
 import { PrismaModule } from './prisma/prisma.module';
 import { DidModule } from './modules/did/did.module';
@@ -20,11 +19,6 @@ import { CorrelationIdMiddleware } from './common/middleware/correlation-id.midd
     ConfigModule.forRoot({
       isGlobal: true,
       load: [configuration],
-      envFilePath: [
-        resolve(__dirname, '../../.env'),
-        resolve(process.cwd(), '.env'),
-        resolve(process.cwd(), '../../.env'),
-      ],
     }),
     ThrottlerModule.forRoot([{
       ttl: 60000,

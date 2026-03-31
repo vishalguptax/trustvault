@@ -15,15 +15,15 @@ async function bootstrap() {
     logger: ['error', 'warn', 'log', 'debug'],
   });
 
-  // --- Database readiness check ---
+  // --- Database connection ---
   const prisma = app.get(PrismaService);
+  await prisma.connect();
   if (!prisma.isConnected()) {
     logger.error('Database is not connected. Exiting.');
     logger.error('Ensure DATABASE_URL is set in apps/api/.env');
     await app.close();
     process.exit(1);
   }
-  logger.log('Database connection verified');
 
   // --- Security headers ---
   app.use(helmet());
@@ -82,14 +82,11 @@ async function bootstrap() {
   logger.log(`  Swagger: http://localhost:${port}/api/docs`);
   logger.log('===========================================');
 
-  // --- Shutdown signal handlers ---
   const shutdown = async (signal: string) => {
-    logger.warn(`${signal} received. Shutting down gracefully...`);
+    logger.warn(`${signal} received. Shutting down...`);
     await app.close();
-    logger.warn('Server shutdown complete');
     process.exit(0);
   };
-
   process.on('SIGTERM', () => shutdown('SIGTERM'));
   process.on('SIGINT', () => shutdown('SIGINT'));
 }
