@@ -29,15 +29,40 @@ interface TokenResponse {
 }
 
 async function authFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers: { 'Content-Type': 'application/json', ...options.headers },
-  });
-  const json = await res.json();
+  const method = options.method || 'GET';
+  const url = `${API_BASE_URL}${path}`;
+  console.log(`[Auth] ${method} ${url}`);
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      ...options,
+      headers: { 'Content-Type': 'application/json', ...options.headers },
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Unknown network error';
+    console.error(`[Auth] NETWORK ERROR: ${method} ${url} — ${msg}`);
+    console.error(`[Auth] Check: Is backend running at ${API_BASE_URL}? Is phone on same WiFi?`);
+    throw new Error(`Network request failed. Cannot reach ${API_BASE_URL}. Make sure the backend is running and your phone is on the same WiFi as the server.`);
+  }
+
+  console.log(`[Auth] ${method} ${path} → ${res.status}`);
+
+  let json: Record<string, unknown>;
+  try {
+    json = await res.json();
+  } catch {
+    console.error(`[Auth] Response not JSON: ${method} ${path} status ${res.status}`);
+    throw new Error(`Server returned invalid response (${res.status})`);
+  }
+
   if (!res.ok) {
     const msg = json?.message || json?.error || `Request failed: ${res.status}`;
-    throw new Error(typeof msg === 'string' ? msg : JSON.stringify(msg));
+    const errorStr = typeof msg === 'string' ? msg : JSON.stringify(msg);
+    console.error(`[Auth] ERROR: ${method} ${path} — ${errorStr}`);
+    throw new Error(errorStr);
   }
+
   return json && typeof json === 'object' && 'data' in json ? (json.data as T) : (json as T);
 }
 
