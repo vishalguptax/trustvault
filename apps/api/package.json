@@ -7,7 +7,7 @@
     "prisma:push": "prisma db push --schema=prisma/schema.prisma",
     "postinstall": "prisma generate --schema=prisma/schema.prisma",
     "dev": "nest start --watch",
-    "build": "prisma generate --schema=prisma/schema.prisma && nest build",
+    "build": "nest build",
     "start": "node dist/main.js",
     "start:prod": "node dist/main.js",
     "test": "node ../../node_modules/vitest/vitest.mjs run",
