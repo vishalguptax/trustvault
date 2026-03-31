@@ -7,6 +7,7 @@ import { AnimatedCheck } from '@/components/animated-check';
 import { useCredentialStore, StoredCredential } from '@/lib/store';
 import { api } from '@/lib/api';
 import { CREDENTIAL_TYPE_CONFIG } from '@/lib/constants';
+import { useTheme } from '@/lib/theme';
 
 type ReceiveStep = 'loading' | 'preview' | 'confirming' | 'success' | 'error';
 
@@ -66,6 +67,7 @@ function parseOfferUri(uri: string): OfferPreview | null {
 
 export default function ReceiveScreen() {
   const router = useRouter();
+  const { colors } = useTheme();
   const { user } = useAuth();
   const { uri } = useLocalSearchParams<{ uri: string }>();
   const addCredential = useCredentialStore((state) => state.addCredential);
@@ -155,7 +157,7 @@ export default function ReceiveScreen() {
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: '#0B1120' }}
+      style={{ flex: 1, backgroundColor: colors.bg }}
       contentContainerStyle={{ padding: 16 }}
     >
       <StepIndicator
@@ -165,8 +167,8 @@ export default function ReceiveScreen() {
 
       {step === 'loading' && (
         <View style={{ marginTop: 48, alignItems: 'center' }}>
-          <ActivityIndicator size="large" color="#14B8A6" />
-          <Text style={{ color: '#6B7280', fontSize: 14, marginTop: 12 }}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={{ color: colors.mutedText, fontSize: 14, marginTop: 12 }}>
             Resolving credential offer...
           </Text>
         </View>
@@ -176,7 +178,7 @@ export default function ReceiveScreen() {
         <View style={{ marginTop: 24 }}>
           <View
             style={{
-              backgroundColor: '#111827',
+              backgroundColor: colors.surface,
               borderRadius: 16,
               padding: 16,
               marginBottom: 16,
@@ -184,7 +186,7 @@ export default function ReceiveScreen() {
           >
             <Text
               style={{
-                color: '#F9FAFB',
+                color: colors.foreground,
                 fontSize: 18,
                 fontWeight: '600',
                 marginBottom: 8,
@@ -193,7 +195,7 @@ export default function ReceiveScreen() {
               Credential Offer
             </Text>
             <Text
-              style={{ color: '#6B7280', fontSize: 14, marginBottom: 16 }}
+              style={{ color: colors.mutedText, fontSize: 14, marginBottom: 16 }}
             >
               An issuer wants to send you a credential.
             </Text>
@@ -201,7 +203,7 @@ export default function ReceiveScreen() {
             {/* Issuer */}
             <View
               style={{
-                backgroundColor: '#1F2937',
+                backgroundColor: colors.muted,
                 borderRadius: 12,
                 padding: 12,
                 marginBottom: 10,
@@ -209,7 +211,7 @@ export default function ReceiveScreen() {
             >
               <Text
                 style={{
-                  color: '#6B7280',
+                  color: colors.mutedText,
                   fontSize: 11,
                   marginBottom: 4,
                   textTransform: 'uppercase',
@@ -218,13 +220,13 @@ export default function ReceiveScreen() {
               >
                 Issuer
               </Text>
-              <Text style={{ color: '#F9FAFB', fontSize: 15, fontWeight: '500' }}>
+              <Text style={{ color: colors.foreground, fontSize: 15, fontWeight: '500' }}>
                 {offer.issuerName}
               </Text>
               {offer.issuerDid.length > 0 && (
                 <Text
                   style={{
-                    color: '#6B7280',
+                    color: colors.mutedText,
                     fontSize: 10,
                     fontFamily: 'monospace',
                     marginTop: 2,
@@ -239,7 +241,7 @@ export default function ReceiveScreen() {
             {/* Credential Type */}
             <View
               style={{
-                backgroundColor: '#1F2937',
+                backgroundColor: colors.muted,
                 borderRadius: 12,
                 padding: 12,
                 marginBottom: 10,
@@ -247,7 +249,7 @@ export default function ReceiveScreen() {
             >
               <Text
                 style={{
-                  color: '#6B7280',
+                  color: colors.mutedText,
                   fontSize: 11,
                   marginBottom: 4,
                   textTransform: 'uppercase',
@@ -270,7 +272,7 @@ export default function ReceiveScreen() {
                 ) : null}
                 <Text
                   style={{
-                    color: '#F9FAFB',
+                    color: colors.foreground,
                     fontSize: 15,
                     fontWeight: '500',
                   }}
@@ -284,14 +286,14 @@ export default function ReceiveScreen() {
             {offer.claims.length > 0 && (
               <View
                 style={{
-                  backgroundColor: '#1F2937',
+                  backgroundColor: colors.muted,
                   borderRadius: 12,
                   padding: 12,
                 }}
               >
                 <Text
                   style={{
-                    color: '#6B7280',
+                    color: colors.mutedText,
                     fontSize: 11,
                     marginBottom: 8,
                     textTransform: 'uppercase',
@@ -314,13 +316,13 @@ export default function ReceiveScreen() {
                         width: 4,
                         height: 4,
                         borderRadius: 2,
-                        backgroundColor: '#14B8A6',
+                        backgroundColor: colors.primary,
                         marginRight: 8,
                       }}
                     />
                     <Text
                       style={{
-                        color: '#F9FAFB',
+                        color: colors.foreground,
                         fontSize: 14,
                         textTransform: 'capitalize',
                       }}
@@ -339,16 +341,18 @@ export default function ReceiveScreen() {
               onPress={() => router.back()}
               style={({ pressed }) => ({
                 flex: 1,
-                backgroundColor: pressed ? '#374151' : '#1F2937',
+                backgroundColor: colors.muted,
+                opacity: pressed ? 0.85 : 1,
                 paddingVertical: 14,
                 borderRadius: 12,
                 alignItems: 'center',
+                minHeight: 44,
               })}
               accessibilityLabel="Decline credential offer"
               accessibilityRole="button"
               accessibilityHint="Returns to the previous screen without receiving the credential"
             >
-              <Text style={{ color: '#F9FAFB', fontWeight: '500', fontSize: 15 }}>
+              <Text style={{ color: colors.foreground, fontWeight: '500', fontSize: 15 }}>
                 Decline
               </Text>
             </Pressable>
@@ -356,16 +360,18 @@ export default function ReceiveScreen() {
               onPress={handleAccept}
               style={({ pressed }) => ({
                 flex: 1,
-                backgroundColor: pressed ? '#0D9488' : '#14B8A6',
+                backgroundColor: colors.primary,
+                opacity: pressed ? 0.85 : 1,
                 paddingVertical: 14,
                 borderRadius: 12,
                 alignItems: 'center',
+                minHeight: 44,
               })}
               accessibilityLabel="Accept credential offer"
               accessibilityRole="button"
               accessibilityHint="Receives and stores the credential in your wallet"
             >
-              <Text style={{ color: '#0B1120', fontWeight: '700', fontSize: 15 }}>
+              <Text style={{ color: colors.primaryFg, fontWeight: '700', fontSize: 15 }}>
                 Accept
               </Text>
             </Pressable>
@@ -375,10 +381,10 @@ export default function ReceiveScreen() {
 
       {step === 'confirming' && (
         <View style={{ marginTop: 48, alignItems: 'center' }}>
-          <ActivityIndicator size="large" color="#14B8A6" />
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text
             style={{
-              color: '#F9FAFB',
+              color: colors.foreground,
               fontSize: 18,
               fontWeight: '600',
               marginTop: 16,
@@ -386,7 +392,7 @@ export default function ReceiveScreen() {
           >
             Receiving credential...
           </Text>
-          <Text style={{ color: '#6B7280', fontSize: 14, marginTop: 8 }}>
+          <Text style={{ color: colors.mutedText, fontSize: 14, marginTop: 8 }}>
             Communicating with issuer
           </Text>
         </View>
@@ -397,7 +403,7 @@ export default function ReceiveScreen() {
           <AnimatedCheck variant="success" size={80} />
           <Text
             style={{
-              color: '#F9FAFB',
+              color: colors.foreground,
               fontSize: 22,
               fontWeight: '700',
               marginTop: 20,
@@ -408,7 +414,7 @@ export default function ReceiveScreen() {
           </Text>
           <Text
             style={{
-              color: '#6B7280',
+              color: colors.mutedText,
               fontSize: 14,
               textAlign: 'center',
               marginBottom: 32,
@@ -420,15 +426,17 @@ export default function ReceiveScreen() {
           <Pressable
             onPress={() => router.replace('/')}
             style={({ pressed }) => ({
-              backgroundColor: pressed ? '#0D9488' : '#14B8A6',
+              backgroundColor: colors.primary,
+              opacity: pressed ? 0.85 : 1,
               paddingHorizontal: 32,
               paddingVertical: 14,
               borderRadius: 12,
+              minHeight: 44,
             })}
             accessibilityLabel="Return to wallet"
             accessibilityRole="button"
           >
-            <Text style={{ color: '#0B1120', fontWeight: '700', fontSize: 15 }}>
+            <Text style={{ color: colors.primaryFg, fontWeight: '700', fontSize: 15 }}>
               View in Wallet
             </Text>
           </Pressable>
@@ -440,7 +448,7 @@ export default function ReceiveScreen() {
           <AnimatedCheck variant="rejection" size={80} />
           <Text
             style={{
-              color: '#F9FAFB',
+              color: colors.foreground,
               fontSize: 20,
               fontWeight: '700',
               marginTop: 20,
@@ -451,7 +459,7 @@ export default function ReceiveScreen() {
           </Text>
           <Text
             style={{
-              color: '#6B7280',
+              color: colors.mutedText,
               fontSize: 14,
               textAlign: 'center',
               marginBottom: 32,
@@ -464,15 +472,17 @@ export default function ReceiveScreen() {
             <Pressable
               onPress={() => router.replace('/')}
               style={({ pressed }) => ({
-                backgroundColor: pressed ? '#374151' : '#1F2937',
+                backgroundColor: colors.muted,
+                opacity: pressed ? 0.85 : 1,
                 paddingHorizontal: 24,
                 paddingVertical: 14,
                 borderRadius: 12,
+                minHeight: 44,
               })}
               accessibilityLabel="Return to wallet"
               accessibilityRole="button"
             >
-              <Text style={{ color: '#F9FAFB', fontWeight: '500' }}>
+              <Text style={{ color: colors.foreground, fontWeight: '500' }}>
                 Back to Wallet
               </Text>
             </Pressable>
@@ -496,15 +506,17 @@ export default function ReceiveScreen() {
                 }
               }}
               style={({ pressed }) => ({
-                backgroundColor: pressed ? '#0D9488' : '#14B8A6',
+                backgroundColor: colors.primary,
+                opacity: pressed ? 0.85 : 1,
                 paddingHorizontal: 24,
                 paddingVertical: 14,
                 borderRadius: 12,
+                minHeight: 44,
               })}
               accessibilityLabel="Retry receiving credential"
               accessibilityRole="button"
             >
-              <Text style={{ color: '#0B1120', fontWeight: '700' }}>Retry</Text>
+              <Text style={{ color: colors.primaryFg, fontWeight: '700' }}>Retry</Text>
             </Pressable>
           </View>
         </View>

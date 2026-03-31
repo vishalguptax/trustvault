@@ -1,5 +1,6 @@
 import { View, Text, Pressable, Modal, ScrollView } from 'react-native';
 import { impactMedium, notifySuccess, notifyError, notifyWarning } from '@/lib/haptics';
+import { useTheme } from '@/lib/theme';
 
 interface DisclosureItem {
   credentialType: string;
@@ -23,6 +24,8 @@ export function ConsentSheet({
   onAllow,
   onDeny,
 }: ConsentSheetProps) {
+  const { colors } = useTheme();
+
   const handleAllow = () => {
     notifySuccess();
     onAllow();
@@ -49,7 +52,7 @@ export function ConsentSheet({
       >
         <View
           style={{
-            backgroundColor: '#111827',
+            backgroundColor: colors.surface,
             borderTopLeftRadius: 24,
             borderTopRightRadius: 24,
             paddingTop: 12,
@@ -65,7 +68,7 @@ export function ConsentSheet({
             style={{
               width: 40,
               height: 4,
-              backgroundColor: '#1F2937',
+              backgroundColor: colors.muted,
               borderRadius: 2,
               alignSelf: 'center',
               marginBottom: 20,
@@ -85,18 +88,18 @@ export function ConsentSheet({
                 width: 8,
                 height: 8,
                 borderRadius: 4,
-                backgroundColor: '#F59E0B',
+                backgroundColor: colors.warning,
                 marginRight: 8,
               }}
             />
-            <Text style={{ color: '#F59E0B', fontSize: 13, fontWeight: '600' }}>
+            <Text style={{ color: colors.warning, fontSize: 13, fontWeight: '600' }}>
               Consent Required
             </Text>
           </View>
 
           <Text
             style={{
-              color: '#F9FAFB',
+              color: colors.foreground,
               fontSize: 20,
               fontWeight: '700',
               marginBottom: 4,
@@ -108,7 +111,7 @@ export function ConsentSheet({
 
           <Text
             style={{
-              color: '#6B7280',
+              color: colors.mutedText,
               fontSize: 14,
               marginBottom: 20,
             }}
@@ -119,7 +122,7 @@ export function ConsentSheet({
           {/* Disclosure list */}
           <Text
             style={{
-              color: '#F9FAFB',
+              color: colors.foreground,
               fontSize: 14,
               fontWeight: '600',
               marginBottom: 12,
@@ -136,7 +139,7 @@ export function ConsentSheet({
               <View
                 key={disclosure.credentialType}
                 style={{
-                  backgroundColor: '#1F2937',
+                  backgroundColor: colors.muted,
                   borderRadius: 12,
                   padding: 14,
                   marginBottom: 10,
@@ -144,7 +147,7 @@ export function ConsentSheet({
               >
                 <Text
                   style={{
-                    color: '#14B8A6',
+                    color: colors.primary,
                     fontSize: 12,
                     fontWeight: '600',
                     marginBottom: 8,
@@ -168,11 +171,11 @@ export function ConsentSheet({
                         width: 4,
                         height: 4,
                         borderRadius: 2,
-                        backgroundColor: '#6B7280',
+                        backgroundColor: colors.mutedText,
                         marginRight: 8,
                       }}
                     />
-                    <Text style={{ color: '#F9FAFB', fontSize: 14 }}>
+                    <Text style={{ color: colors.foreground, fontSize: 14 }}>
                       {claim}
                     </Text>
                   </View>
@@ -191,15 +194,15 @@ export function ConsentSheet({
                 borderRadius: 12,
                 alignItems: 'center',
                 borderWidth: 1.5,
-                borderColor: '#1F2937',
-                backgroundColor: pressed ? '#1F2937' : 'transparent',
+                borderColor: colors.muted,
+                backgroundColor: pressed ? colors.muted : 'transparent',
                 minHeight: 44,
               })}
               accessibilityLabel="Deny sharing credentials"
               accessibilityRole="button"
               accessibilityHint="Cancels the presentation and returns to the wallet"
             >
-              <Text style={{ color: '#F9FAFB', fontWeight: '600', fontSize: 16 }}>
+              <Text style={{ color: colors.foreground, fontWeight: '600', fontSize: 16 }}>
                 Deny
               </Text>
             </Pressable>
@@ -210,14 +213,15 @@ export function ConsentSheet({
                 paddingVertical: 14,
                 borderRadius: 12,
                 alignItems: 'center',
-                backgroundColor: pressed ? '#0D9488' : '#14B8A6',
+                backgroundColor: colors.primary,
+                opacity: pressed ? 0.85 : 1,
                 minHeight: 44,
               })}
               accessibilityLabel="Allow sharing credentials"
               accessibilityRole="button"
               accessibilityHint="Shares the selected claims with the verifier"
             >
-              <Text style={{ color: '#0B1120', fontWeight: '700', fontSize: 16 }}>
+              <Text style={{ color: colors.primaryFg, fontWeight: '700', fontSize: 16 }}>
                 Allow
               </Text>
             </Pressable>

@@ -8,6 +8,7 @@ import { IssuerBadge } from '@/components/issuer-badge';
 import { QrDisplay } from '@/components/qr-display';
 import { CREDENTIAL_TYPE_CONFIG } from '@/lib/constants';
 import { api } from '@/lib/api';
+import { useTheme } from '@/lib/theme';
 
 interface ClaimsApiResponse {
   claims: Record<string, unknown>;
@@ -15,6 +16,7 @@ interface ClaimsApiResponse {
 }
 
 export default function CredentialDetail() {
+  const { colors } = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const credential = useCredentialStore((state) =>
     state.credentials.find((c) => c.id === id),
@@ -58,12 +60,12 @@ export default function CredentialDetail() {
       <View
         style={{
           flex: 1,
-          backgroundColor: '#0B1120',
+          backgroundColor: colors.bg,
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        <Text style={{ color: '#6B7280' }}>Credential not found</Text>
+        <Text style={{ color: colors.mutedText }}>Credential not found</Text>
       </View>
     );
   }
@@ -72,7 +74,7 @@ export default function CredentialDetail() {
     CREDENTIAL_TYPE_CONFIG[
       credential.type as keyof typeof CREDENTIAL_TYPE_CONFIG
     ];
-  const accentColor = typeConfig?.accent ?? '#14B8A6';
+  const accentColor = typeConfig?.accent ?? colors.primary;
 
   // Use API claims if available, fall back to store claims
   const displayClaims = claims ?? credential.claims;
@@ -80,13 +82,13 @@ export default function CredentialDetail() {
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: '#0B1120' }}
+      style={{ flex: 1, backgroundColor: colors.bg }}
       contentContainerStyle={{ padding: 16 }}
     >
       {/* Header card */}
       <View
         style={{
-          backgroundColor: '#111827',
+          backgroundColor: colors.surface,
           borderRadius: 16,
           padding: 16,
           marginBottom: 16,
@@ -103,7 +105,7 @@ export default function CredentialDetail() {
           }}
         >
           <Text
-            style={{ color: '#F9FAFB', fontSize: 20, fontWeight: '700', flex: 1 }}
+            style={{ color: colors.foreground, fontSize: 20, fontWeight: '700', flex: 1 }}
             numberOfLines={2}
           >
             {credential.typeName}
@@ -117,11 +119,11 @@ export default function CredentialDetail() {
         />
 
         <View style={{ marginTop: 12 }}>
-          <Text style={{ color: '#6B7280', fontSize: 12 }}>
+          <Text style={{ color: colors.mutedText, fontSize: 12 }}>
             Issued: {new Date(credential.issuedAt).toLocaleDateString()}
           </Text>
           {credential.expiresAt ? (
-            <Text style={{ color: '#6B7280', fontSize: 12, marginTop: 2 }}>
+            <Text style={{ color: colors.mutedText, fontSize: 12, marginTop: 2 }}>
               Expires: {new Date(credential.expiresAt).toLocaleDateString()}
             </Text>
           ) : null}
@@ -131,7 +133,7 @@ export default function CredentialDetail() {
       {/* Claims section */}
       <View
         style={{
-          backgroundColor: '#111827',
+          backgroundColor: colors.surface,
           borderRadius: 16,
           padding: 16,
           marginBottom: 16,
@@ -139,7 +141,7 @@ export default function CredentialDetail() {
       >
         <Text
           style={{
-            color: '#F9FAFB',
+            color: colors.foreground,
             fontSize: 17,
             fontWeight: '600',
             marginBottom: 12,
@@ -150,14 +152,14 @@ export default function CredentialDetail() {
 
         {loadingClaims && !claims ? (
           <View style={{ alignItems: 'center', paddingVertical: 16 }}>
-            <ActivityIndicator size="small" color="#14B8A6" />
-            <Text style={{ color: '#6B7280', fontSize: 12, marginTop: 8 }}>
+            <ActivityIndicator size="small" color={colors.primary} />
+            <Text style={{ color: colors.mutedText, fontSize: 12, marginTop: 8 }}>
               Loading claims from server...
             </Text>
           </View>
         ) : claimsError && !claims ? (
           <View>
-            <Text style={{ color: '#6B7280', fontSize: 12, marginBottom: 8 }}>
+            <Text style={{ color: colors.mutedText, fontSize: 12, marginBottom: 8 }}>
               Could not load latest claims: {claimsError}
             </Text>
             <ClaimsList claims={displayClaims} sdClaims={displaySdClaims} />
@@ -171,7 +173,7 @@ export default function CredentialDetail() {
       {credential.subjectDid ? (
         <View
           style={{
-            backgroundColor: '#111827',
+            backgroundColor: colors.surface,
             borderRadius: 16,
             padding: 16,
             marginBottom: 16,
@@ -179,7 +181,7 @@ export default function CredentialDetail() {
         >
           <Text
             style={{
-              color: '#F9FAFB',
+              color: colors.foreground,
               fontSize: 17,
               fontWeight: '600',
               marginBottom: 4,
@@ -189,7 +191,7 @@ export default function CredentialDetail() {
           </Text>
           <Text
             style={{
-              color: '#6B7280',
+              color: colors.mutedText,
               fontSize: 12,
               marginBottom: 8,
               fontFamily: 'monospace',

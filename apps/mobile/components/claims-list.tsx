@@ -1,4 +1,5 @@
 import { View, Text } from 'react-native';
+import { useTheme } from '@/lib/theme';
 
 interface ClaimsListProps {
   claims: Record<string, unknown>;
@@ -6,6 +7,8 @@ interface ClaimsListProps {
 }
 
 export function ClaimsList({ claims, sdClaims }: ClaimsListProps) {
+  const { colors } = useTheme();
+
   return (
     <View accessibilityRole="list">
       {Object.entries(claims).map(([key, value]) => {
@@ -23,7 +26,7 @@ export function ClaimsList({ claims, sdClaims }: ClaimsListProps) {
               justifyContent: 'space-between',
               paddingVertical: 8,
               borderBottomWidth: 1,
-              borderBottomColor: '#1F2937',
+              borderBottomColor: colors.muted,
             }}
             accessibilityLabel={`${key}: ${String(value)}, ${disclosureLabel}`}
             accessibilityRole="text"
@@ -35,9 +38,9 @@ export function ClaimsList({ claims, sdClaims }: ClaimsListProps) {
               >
                 {isSelectivelyDisclosable ? '🔓' : '🔒'}
               </Text>
-              <Text style={{ color: '#6B7280', fontSize: 14, textTransform: 'capitalize' }}>{key}</Text>
+              <Text style={{ color: colors.mutedText, fontSize: 14, textTransform: 'capitalize' }}>{key}</Text>
             </View>
-            <Text style={{ color: '#F9FAFB', fontSize: 14, flex: 1, textAlign: 'right' }}>
+            <Text style={{ color: colors.foreground, fontSize: 14, flex: 1, textAlign: 'right' }}>
               {String(value)}
             </Text>
           </View>

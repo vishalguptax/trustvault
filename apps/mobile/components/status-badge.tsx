@@ -1,17 +1,20 @@
 import { View, Text } from 'react-native';
+import { useTheme } from '@/lib/theme';
 
 interface StatusBadgeProps {
   status: 'active' | 'revoked' | 'suspended' | 'expired';
 }
 
-const STATUS_STYLES = {
-  active: { bg: 'rgba(16,185,129,0.2)', text: '#10B981', label: 'Active' },
-  revoked: { bg: 'rgba(239,68,68,0.2)', text: '#EF4444', label: 'Revoked' },
-  suspended: { bg: 'rgba(245,158,11,0.2)', text: '#F59E0B', label: 'Suspended' },
-  expired: { bg: '#1F2937', text: '#6B7280', label: 'Expired' },
-} as const;
-
 export function StatusBadge({ status }: StatusBadgeProps) {
+  const { colors } = useTheme();
+
+  const STATUS_STYLES = {
+    active: { bg: `${colors.success}33`, text: colors.success, label: 'Active' },
+    revoked: { bg: `${colors.danger}33`, text: colors.danger, label: 'Revoked' },
+    suspended: { bg: `${colors.warning}33`, text: colors.warning, label: 'Suspended' },
+    expired: { bg: colors.muted, text: colors.mutedText, label: 'Expired' },
+  } as const;
+
   const style = STATUS_STYLES[status];
 
   return (

@@ -5,9 +5,11 @@ import { impactMedium, notifySuccess, notifyError, notifyWarning } from '@/lib/h
 import { CredentialCard } from '@/components/credential-card';
 import { EmptyState } from '@/components/empty-state';
 import { useCredentials } from '@/hooks/use-credentials';
+import { useTheme } from '@/lib/theme';
 
 export default function WalletHome() {
   const router = useRouter();
+  const { colors } = useTheme();
   const { credentials, loading, error, refresh } = useCredentials();
   const [refreshing, setRefreshing] = useState(false);
 
@@ -30,15 +32,15 @@ export default function WalletHome() {
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#0B1120' }}>
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
       {/* Header info */}
       <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 }}>
-        <Text style={{ color: '#6B7280', fontSize: 13 }}>
+        <Text style={{ color: colors.mutedText, fontSize: 13 }}>
           {credentials.length} credential{credentials.length !== 1 ? 's' : ''}{' '}
           stored
         </Text>
         {error ? (
-          <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>
+          <Text style={{ color: colors.danger, fontSize: 12, marginTop: 4 }}>
             {error} — showing cached data
           </Text>
         ) : null}
@@ -47,8 +49,8 @@ export default function WalletHome() {
       {/* Loading state on first load */}
       {loading && credentials.length === 0 && !error ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator size="large" color="#14B8A6" />
-          <Text style={{ color: '#6B7280', fontSize: 14, marginTop: 12 }}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={{ color: colors.mutedText, fontSize: 14, marginTop: 12 }}>
             Loading credentials...
           </Text>
         </View>
@@ -71,9 +73,9 @@ export default function WalletHome() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
-              tintColor="#14B8A6"
-              colors={['#14B8A6']}
-              progressBackgroundColor="#111827"
+              tintColor={colors.primary}
+              colors={[colors.primary]}
+              progressBackgroundColor={colors.surface}
             />
           }
         />
@@ -90,13 +92,14 @@ export default function WalletHome() {
         <Pressable
           onPress={handleFabPress}
           style={({ pressed }) => ({
-            backgroundColor: pressed ? '#0D9488' : '#14B8A6',
+            backgroundColor: colors.primary,
+            opacity: pressed ? 0.85 : 1,
             width: 56,
             height: 56,
             borderRadius: 28,
             alignItems: 'center',
             justifyContent: 'center',
-            shadowColor: '#14B8A6',
+            shadowColor: colors.primary,
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.3,
             shadowRadius: 8,
@@ -106,7 +109,7 @@ export default function WalletHome() {
           accessibilityRole="button"
           accessibilityHint="Opens the QR scanner camera"
         >
-          <Text style={{ color: '#0B1120', fontSize: 28, fontWeight: '700', marginTop: -2 }}>
+          <Text style={{ color: colors.primaryFg, fontSize: 28, fontWeight: '700', marginTop: -2 }}>
             +
           </Text>
         </Pressable>

@@ -15,6 +15,7 @@ import { ConsentSheet } from '@/components/consent-sheet';
 import { useCredentialStore, StoredCredential } from '@/lib/store';
 import { api } from '@/lib/api';
 import { CREDENTIAL_TYPE_CONFIG } from '@/lib/constants';
+import { useTheme } from '@/lib/theme';
 
 type PresentStep = 'loading' | 'select' | 'disclose' | 'consent' | 'submitting' | 'result' | 'error';
 
@@ -75,6 +76,7 @@ function parseVerificationUri(uri: string): VerificationRequest | null {
 
 export default function PresentScreen() {
   const router = useRouter();
+  const { colors } = useTheme();
   const { user } = useAuth();
   const { uri } = useLocalSearchParams<{ uri: string }>();
   const credentials = useCredentialStore((state) => state.credentials);
@@ -288,12 +290,12 @@ export default function PresentScreen() {
   const getAccentColor = (type: string): string => {
     const config =
       CREDENTIAL_TYPE_CONFIG[type as keyof typeof CREDENTIAL_TYPE_CONFIG];
-    return config?.accent ?? '#14B8A6';
+    return config?.accent ?? colors.primary;
   };
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: '#0B1120' }}
+      style={{ flex: 1, backgroundColor: colors.bg }}
       contentContainerStyle={{ padding: 16 }}
     >
       <StepIndicator
@@ -303,8 +305,8 @@ export default function PresentScreen() {
 
       {step === 'loading' && (
         <View style={{ marginTop: 48, alignItems: 'center' }}>
-          <ActivityIndicator size="large" color="#14B8A6" />
-          <Text style={{ color: '#6B7280', fontSize: 14, marginTop: 12 }}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={{ color: colors.mutedText, fontSize: 14, marginTop: 12 }}>
             Loading verification request...
           </Text>
         </View>
@@ -314,7 +316,7 @@ export default function PresentScreen() {
         <View style={{ marginTop: 24 }}>
           <Text
             style={{
-              color: '#F9FAFB',
+              color: colors.foreground,
               fontSize: 18,
               fontWeight: '600',
               marginBottom: 8,
@@ -322,7 +324,7 @@ export default function PresentScreen() {
           >
             Select Credentials
           </Text>
-          <Text style={{ color: '#6B7280', fontSize: 14, marginBottom: 16 }}>
+          <Text style={{ color: colors.mutedText, fontSize: 14, marginBottom: 16 }}>
             {verificationRequest?.requiredCredentialTypes.length
               ? `The verifier requests: ${verificationRequest.requiredCredentialTypes.join(', ')}`
               : 'Choose which credentials to present to the verifier.'}
@@ -331,13 +333,13 @@ export default function PresentScreen() {
           {credentials.length === 0 ? (
             <View
               style={{
-                backgroundColor: '#111827',
+                backgroundColor: colors.surface,
                 borderRadius: 12,
                 padding: 24,
                 alignItems: 'center',
               }}
             >
-              <Text style={{ color: '#6B7280', fontSize: 14, textAlign: 'center' }}>
+              <Text style={{ color: colors.mutedText, fontSize: 14, textAlign: 'center' }}>
                 No credentials in your wallet. Receive a credential first.
               </Text>
             </View>
@@ -351,7 +353,7 @@ export default function PresentScreen() {
                   key={cred.id}
                   onPress={() => toggleCredential(cred.id)}
                   style={({ pressed }) => ({
-                    backgroundColor: '#111827',
+                    backgroundColor: colors.surface,
                     borderRadius: 12,
                     padding: 16,
                     marginBottom: 10,
@@ -372,11 +374,11 @@ export default function PresentScreen() {
                   >
                     <View style={{ flex: 1 }}>
                       <Text
-                        style={{ color: '#F9FAFB', fontWeight: '500', fontSize: 15 }}
+                        style={{ color: colors.foreground, fontWeight: '500', fontSize: 15 }}
                       >
                         {cred.typeName}
                       </Text>
-                      <Text style={{ color: '#6B7280', fontSize: 12, marginTop: 2 }}>
+                      <Text style={{ color: colors.mutedText, fontSize: 12, marginTop: 2 }}>
                         {cred.issuerName}
                       </Text>
                     </View>
@@ -386,14 +388,14 @@ export default function PresentScreen() {
                         height: 24,
                         borderRadius: 12,
                         borderWidth: 2,
-                        borderColor: isSelected ? accent : '#1F2937',
+                        borderColor: isSelected ? accent : colors.muted,
                         backgroundColor: isSelected ? accent : 'transparent',
                         alignItems: 'center',
                         justifyContent: 'center',
                       }}
                     >
                       {isSelected && (
-                        <Text style={{ color: '#0B1120', fontSize: 12, fontWeight: '700' }}>
+                        <Text style={{ color: colors.primaryFg, fontSize: 12, fontWeight: '700' }}>
                           ✓
                         </Text>
                       )}
@@ -414,12 +416,12 @@ export default function PresentScreen() {
               paddingVertical: 14,
               borderRadius: 12,
               alignItems: 'center',
+              minHeight: 44,
               backgroundColor:
                 selectedIds.length > 0
-                  ? pressed
-                    ? '#0D9488'
-                    : '#14B8A6'
-                  : '#1F2937',
+                  ? colors.primary
+                  : colors.muted,
+              opacity: selectedIds.length > 0 && pressed ? 0.85 : 1,
             })}
             accessibilityLabel="Proceed to disclosure selection"
             accessibilityRole="button"
@@ -428,7 +430,7 @@ export default function PresentScreen() {
               style={{
                 fontWeight: selectedIds.length > 0 ? '700' : '500',
                 fontSize: 15,
-                color: selectedIds.length > 0 ? '#0B1120' : '#6B7280',
+                color: selectedIds.length > 0 ? colors.primaryFg : colors.mutedText,
               }}
             >
               Next
@@ -441,7 +443,7 @@ export default function PresentScreen() {
         <View style={{ marginTop: 24 }}>
           <Text
             style={{
-              color: '#F9FAFB',
+              color: colors.foreground,
               fontSize: 18,
               fontWeight: '600',
               marginBottom: 8,
@@ -449,7 +451,7 @@ export default function PresentScreen() {
           >
             Choose Disclosures
           </Text>
-          <Text style={{ color: '#6B7280', fontSize: 14, marginBottom: 16 }}>
+          <Text style={{ color: colors.mutedText, fontSize: 14, marginBottom: 16 }}>
             Toggle which claims to reveal. Required claims cannot be turned off.
           </Text>
 
@@ -464,7 +466,7 @@ export default function PresentScreen() {
                   flexDirection: 'row',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  backgroundColor: '#111827',
+                  backgroundColor: colors.surface,
                   borderRadius: 10,
                   paddingHorizontal: 16,
                   paddingVertical: 12,
@@ -474,14 +476,14 @@ export default function PresentScreen() {
                 <View style={{ flex: 1 }}>
                   <Text
                     style={{
-                      color: '#F9FAFB',
+                      color: colors.foreground,
                       fontSize: 14,
                       textTransform: 'capitalize',
                     }}
                   >
                     {claim.key}
                   </Text>
-                  <Text style={{ color: '#6B7280', fontSize: 11, marginTop: 2 }}>
+                  <Text style={{ color: colors.mutedText, fontSize: 11, marginTop: 2 }}>
                     {claim.credentialType}
                     {isRequired ? ' (required)' : ''}
                   </Text>
@@ -490,8 +492,8 @@ export default function PresentScreen() {
                   value={isOn}
                   onValueChange={() => toggleDisclosure(claim.key)}
                   disabled={isRequired}
-                  trackColor={{ false: '#1F2937', true: '#14B8A6' }}
-                  thumbColor="#F9FAFB"
+                  trackColor={{ false: colors.muted, true: colors.primary }}
+                  thumbColor={colors.foreground}
                   accessibilityLabel={`${isOn ? 'Hide' : 'Reveal'} ${claim.key}`}
                 />
               </View>
@@ -505,12 +507,14 @@ export default function PresentScreen() {
               paddingVertical: 14,
               borderRadius: 12,
               alignItems: 'center',
-              backgroundColor: pressed ? '#0D9488' : '#14B8A6',
+              minHeight: 44,
+              backgroundColor: colors.primary,
+              opacity: pressed ? 0.85 : 1,
             })}
             accessibilityLabel="Review and provide consent"
             accessibilityRole="button"
           >
-            <Text style={{ color: '#0B1120', fontWeight: '700', fontSize: 15 }}>
+            <Text style={{ color: colors.primaryFg, fontWeight: '700', fontSize: 15 }}>
               Review & Consent
             </Text>
           </Pressable>
@@ -519,7 +523,7 @@ export default function PresentScreen() {
 
       {step === 'consent' && (
         <View style={{ marginTop: 48, alignItems: 'center' }}>
-          <Text style={{ color: '#6B7280', fontSize: 14 }}>
+          <Text style={{ color: colors.mutedText, fontSize: 14 }}>
             Waiting for consent...
           </Text>
         </View>
@@ -527,10 +531,10 @@ export default function PresentScreen() {
 
       {step === 'submitting' && (
         <View style={{ marginTop: 48, alignItems: 'center' }}>
-          <ActivityIndicator size="large" color="#14B8A6" />
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text
             style={{
-              color: '#F9FAFB',
+              color: colors.foreground,
               fontSize: 18,
               fontWeight: '600',
               marginTop: 16,
@@ -538,7 +542,7 @@ export default function PresentScreen() {
           >
             Submitting presentation...
           </Text>
-          <Text style={{ color: '#6B7280', fontSize: 14, marginTop: 8 }}>
+          <Text style={{ color: colors.mutedText, fontSize: 14, marginTop: 8 }}>
             Communicating with verifier
           </Text>
         </View>
@@ -552,7 +556,7 @@ export default function PresentScreen() {
           />
           <Text
             style={{
-              color: '#F9FAFB',
+              color: colors.foreground,
               fontSize: 22,
               fontWeight: '700',
               marginTop: 20,
@@ -563,7 +567,7 @@ export default function PresentScreen() {
           </Text>
           <Text
             style={{
-              color: '#6B7280',
+              color: colors.mutedText,
               fontSize: 14,
               textAlign: 'center',
               marginBottom: 32,
@@ -577,15 +581,17 @@ export default function PresentScreen() {
           <Pressable
             onPress={() => router.replace('/')}
             style={({ pressed }) => ({
-              backgroundColor: pressed ? '#0D9488' : '#14B8A6',
+              backgroundColor: colors.primary,
+              opacity: pressed ? 0.85 : 1,
               paddingHorizontal: 32,
               paddingVertical: 14,
               borderRadius: 12,
+              minHeight: 44,
             })}
             accessibilityLabel="Return to wallet"
             accessibilityRole="button"
           >
-            <Text style={{ color: '#0B1120', fontWeight: '700', fontSize: 15 }}>
+            <Text style={{ color: colors.primaryFg, fontWeight: '700', fontSize: 15 }}>
               Back to Wallet
             </Text>
           </Pressable>
@@ -597,7 +603,7 @@ export default function PresentScreen() {
           <AnimatedCheck variant="rejection" size={80} />
           <Text
             style={{
-              color: '#F9FAFB',
+              color: colors.foreground,
               fontSize: 20,
               fontWeight: '700',
               marginTop: 20,
@@ -608,7 +614,7 @@ export default function PresentScreen() {
           </Text>
           <Text
             style={{
-              color: '#6B7280',
+              color: colors.mutedText,
               fontSize: 14,
               textAlign: 'center',
               marginBottom: 32,
@@ -620,15 +626,17 @@ export default function PresentScreen() {
           <Pressable
             onPress={() => router.replace('/')}
             style={({ pressed }) => ({
-              backgroundColor: pressed ? '#374151' : '#1F2937',
+              backgroundColor: colors.muted,
+              opacity: pressed ? 0.85 : 1,
               paddingHorizontal: 32,
               paddingVertical: 14,
               borderRadius: 12,
+              minHeight: 44,
             })}
             accessibilityLabel="Return to wallet"
             accessibilityRole="button"
           >
-            <Text style={{ color: '#F9FAFB', fontWeight: '500', fontSize: 15 }}>
+            <Text style={{ color: colors.foreground, fontWeight: '500', fontSize: 15 }}>
               Back to Wallet
             </Text>
           </Pressable>

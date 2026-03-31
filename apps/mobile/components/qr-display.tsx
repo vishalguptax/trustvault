@@ -1,5 +1,6 @@
 import { View, Text } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
+import { useTheme } from '@/lib/theme';
 
 interface QrDisplayProps {
   value: string;
@@ -8,6 +9,8 @@ interface QrDisplayProps {
 }
 
 export function QrDisplay({ value, size = 200, label }: QrDisplayProps) {
+  const { colors } = useTheme();
+
   return (
     <View
       style={{
@@ -30,20 +33,20 @@ export function QrDisplay({ value, size = 200, label }: QrDisplayProps) {
           value={value}
           size={size}
           backgroundColor="#FFFFFF"
-          color="#0B1120"
+          color={colors.bg}
         />
         <View
           style={{
             marginTop: 12,
             paddingHorizontal: 12,
             paddingVertical: 4,
-            backgroundColor: '#0B1120',
+            backgroundColor: colors.bg,
             borderRadius: 8,
           }}
         >
           <Text
             style={{
-              color: '#14B8A6',
+              color: colors.primary,
               fontSize: 11,
               fontWeight: '700',
               letterSpacing: 1,
@@ -56,7 +59,7 @@ export function QrDisplay({ value, size = 200, label }: QrDisplayProps) {
       {label ? (
         <Text
           style={{
-            color: '#6B7280',
+            color: colors.mutedText,
             fontSize: 12,
             marginTop: 12,
             textAlign: 'center',

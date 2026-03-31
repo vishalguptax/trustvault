@@ -1,15 +1,17 @@
 import { View, Text, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useTheme } from '@/lib/theme';
 
 export function EmptyState() {
   const router = useRouter();
+  const { colors } = useTheme();
 
   return (
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
       <View style={{
         width: 96,
         height: 96,
-        backgroundColor: '#111827',
+        backgroundColor: colors.surface,
         borderRadius: 24,
         alignItems: 'center',
         justifyContent: 'center',
@@ -17,16 +19,17 @@ export function EmptyState() {
       }}>
         <Text style={{ fontSize: 40 }}>🔐</Text>
       </View>
-      <Text style={{ color: '#F9FAFB', fontSize: 20, fontWeight: '700', textAlign: 'center', marginBottom: 8 }}>
+      <Text style={{ color: colors.foreground, fontSize: 20, fontWeight: '700', textAlign: 'center', marginBottom: 8 }}>
         No Credentials Yet
       </Text>
-      <Text style={{ color: '#6B7280', fontSize: 14, textAlign: 'center', marginBottom: 24 }}>
+      <Text style={{ color: colors.mutedText, fontSize: 14, textAlign: 'center', marginBottom: 24 }}>
         Scan a QR code from an issuer to receive your first verifiable credential.
       </Text>
       <Pressable
         onPress={() => router.push('/scanner')}
         style={({ pressed }) => ({
-          backgroundColor: pressed ? '#0D9488' : '#14B8A6',
+          backgroundColor: colors.primary,
+          opacity: pressed ? 0.85 : 1,
           paddingHorizontal: 24,
           paddingVertical: 12,
           borderRadius: 8,
@@ -39,7 +42,7 @@ export function EmptyState() {
         accessibilityRole="button"
         accessibilityHint="Opens the QR scanner camera"
       >
-        <Text style={{ color: '#0B1120', fontWeight: '700' }}>Scan QR Code</Text>
+        <Text style={{ color: colors.primaryFg, fontWeight: '700' }}>Scan QR Code</Text>
       </Pressable>
     </View>
   );

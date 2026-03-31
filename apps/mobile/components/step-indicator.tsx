@@ -1,4 +1,5 @@
 import { View, Text } from 'react-native';
+import { useTheme } from '@/lib/theme';
 
 interface StepIndicatorProps {
   steps: string[];
@@ -6,6 +7,8 @@ interface StepIndicatorProps {
 }
 
 export function StepIndicator({ steps, currentStep }: StepIndicatorProps) {
+  const { colors } = useTheme();
+
   return (
     <View
       style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
@@ -28,14 +31,14 @@ export function StepIndicator({ steps, currentStep }: StepIndicatorProps) {
                 borderRadius: 14,
                 alignItems: 'center',
                 justifyContent: 'center',
-                backgroundColor: isActive ? '#14B8A6' : '#1F2937',
+                backgroundColor: isActive ? colors.primary : colors.muted,
               }}
               accessibilityLabel={`Step ${index + 1}: ${step}, ${stepState}`}
             >
               <Text style={{
                 fontSize: 12,
                 fontWeight: '700',
-                color: isActive ? '#0B1120' : '#6B7280',
+                color: isActive ? colors.primaryFg : colors.mutedText,
               }}>
                 {isComplete ? '✓' : index + 1}
               </Text>
@@ -44,7 +47,7 @@ export function StepIndicator({ steps, currentStep }: StepIndicatorProps) {
               <View style={{
                 width: 24,
                 height: 2,
-                backgroundColor: index < currentStep ? '#14B8A6' : '#1F2937',
+                backgroundColor: index < currentStep ? colors.primary : colors.muted,
               }} />
             )}
           </View>
