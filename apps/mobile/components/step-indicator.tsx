@@ -8,7 +8,7 @@ interface StepIndicatorProps {
 export function StepIndicator({ steps, currentStep }: StepIndicatorProps) {
   return (
     <View
-      className="flex-row items-center justify-center"
+      style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
       accessibilityRole="progressbar"
       accessibilityLabel={`Step ${currentStep + 1} of ${steps.length}: ${steps[currentStep]}`}
       accessibilityValue={{ min: 1, max: steps.length, now: currentStep + 1 }}
@@ -16,30 +16,36 @@ export function StepIndicator({ steps, currentStep }: StepIndicatorProps) {
       {steps.map((step, index) => {
         const isComplete = index < currentStep;
         const isCurrent = index === currentStep;
+        const isActive = index <= currentStep;
         const stepState = isComplete ? 'complete' : isCurrent ? 'current' : 'upcoming';
 
         return (
-          <View key={step} className="flex-row items-center">
+          <View key={step} style={{ flexDirection: 'row', alignItems: 'center' }}>
             <View
-              className={`w-7 h-7 rounded-full items-center justify-center ${
-                index <= currentStep ? 'bg-primary' : 'bg-vault-muted'
-              }`}
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: 14,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: isActive ? '#14B8A6' : '#1F2937',
+              }}
               accessibilityLabel={`Step ${index + 1}: ${step}, ${stepState}`}
             >
-              <Text
-                className={`text-xs font-bold ${
-                  index <= currentStep ? 'text-vault-bg' : 'text-vault-muted-text'
-                }`}
-              >
-                {index < currentStep ? '✓' : index + 1}
+              <Text style={{
+                fontSize: 12,
+                fontWeight: '700',
+                color: isActive ? '#0B1120' : '#6B7280',
+              }}>
+                {isComplete ? '✓' : index + 1}
               </Text>
             </View>
             {index < steps.length - 1 && (
-              <View
-                className={`w-6 h-0.5 ${
-                  index < currentStep ? 'bg-primary' : 'bg-vault-muted'
-                }`}
-              />
+              <View style={{
+                width: 24,
+                height: 2,
+                backgroundColor: index < currentStep ? '#14B8A6' : '#1F2937',
+              }} />
             )}
           </View>
         );

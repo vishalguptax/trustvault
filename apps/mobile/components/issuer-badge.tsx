@@ -13,19 +13,27 @@ export function IssuerBadge({ issuerDid, issuerName }: IssuerBadgeProps) {
 
   return (
     <View
-      className="flex-row items-center"
+      style={{ flexDirection: 'row', alignItems: 'center' }}
       accessibilityLabel={`Issued by ${issuerName}`}
       accessibilityRole="text"
       accessibilityHint={`Issuer DID: ${truncatedDid}`}
     >
-      <View className="w-6 h-6 bg-primary/20 rounded-full items-center justify-center mr-2">
-        <Text className="text-primary text-xs font-bold" accessibilityElementsHidden>
+      <View style={{
+        width: 24,
+        height: 24,
+        backgroundColor: 'rgba(20,184,166,0.2)',
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 8,
+      }}>
+        <Text style={{ color: '#14B8A6', fontSize: 12, fontWeight: '700' }} accessibilityElementsHidden>
           {issuerName.charAt(0).toUpperCase()}
         </Text>
       </View>
       <View>
-        <Text className="text-vault-foreground text-sm font-medium">{issuerName}</Text>
-        <Text className="text-vault-muted-text text-[10px] font-mono">{truncatedDid}</Text>
+        <Text style={{ color: '#F9FAFB', fontSize: 14, fontWeight: '500' }}>{issuerName}</Text>
+        <Text style={{ color: '#6B7280', fontSize: 10, fontFamily: 'monospace' }}>{truncatedDid}</Text>
       </View>
     </View>
   );

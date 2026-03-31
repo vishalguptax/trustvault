@@ -17,20 +17,27 @@ export function ClaimsList({ claims, sdClaims }: ClaimsListProps) {
         return (
           <View
             key={key}
-            className="flex-row items-center justify-between py-2 border-b border-vault-muted"
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingVertical: 8,
+              borderBottomWidth: 1,
+              borderBottomColor: '#1F2937',
+            }}
             accessibilityLabel={`${key}: ${String(value)}, ${disclosureLabel}`}
             accessibilityRole="text"
           >
-            <View className="flex-row items-center flex-1">
+            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
               <Text
-                className="text-xs mr-2"
+                style={{ fontSize: 12, marginRight: 8 }}
                 accessibilityLabel={disclosureLabel}
               >
                 {isSelectivelyDisclosable ? '🔓' : '🔒'}
               </Text>
-              <Text className="text-vault-muted-text text-sm capitalize">{key}</Text>
+              <Text style={{ color: '#6B7280', fontSize: 14, textTransform: 'capitalize' }}>{key}</Text>
             </View>
-            <Text className="text-vault-foreground text-sm flex-1 text-right">
+            <Text style={{ color: '#F9FAFB', fontSize: 14, flex: 1, textAlign: 'right' }}>
               {String(value)}
             </Text>
           </View>

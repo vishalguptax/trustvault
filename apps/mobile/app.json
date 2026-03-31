@@ -35,6 +35,9 @@
       ],
       "expo-secure-store"
     ],
+    "web": {
+      "bundler": "metro"
+    },
     "experiments": {
       "typedRoutes": true
     }

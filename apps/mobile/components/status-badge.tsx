@@ -5,10 +5,10 @@ interface StatusBadgeProps {
 }
 
 const STATUS_STYLES = {
-  active: { bg: 'bg-success/20', text: 'text-success', label: 'Active' },
-  revoked: { bg: 'bg-danger/20', text: 'text-danger', label: 'Revoked' },
-  suspended: { bg: 'bg-warning/20', text: 'text-warning', label: 'Suspended' },
-  expired: { bg: 'bg-vault-muted', text: 'text-vault-muted-text', label: 'Expired' },
+  active: { bg: 'rgba(16,185,129,0.2)', text: '#10B981', label: 'Active' },
+  revoked: { bg: 'rgba(239,68,68,0.2)', text: '#EF4444', label: 'Revoked' },
+  suspended: { bg: 'rgba(245,158,11,0.2)', text: '#F59E0B', label: 'Suspended' },
+  expired: { bg: '#1F2937', text: '#6B7280', label: 'Expired' },
 } as const;
 
 export function StatusBadge({ status }: StatusBadgeProps) {
@@ -16,12 +16,12 @@ export function StatusBadge({ status }: StatusBadgeProps) {
 
   return (
     <View
-      className={`${style.bg} px-2 py-0.5 rounded-full`}
+      style={{ backgroundColor: style.bg, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 }}
       accessibilityLabel={`Status: ${style.label}`}
       accessibilityRole="text"
       accessibilityHint={`This credential is currently ${style.label.toLowerCase()}`}
     >
-      <Text className={`${style.text} text-[10px] font-semibold`}>
+      <Text style={{ color: style.text, fontSize: 10, fontWeight: '600' }}>
         {style.label}
       </Text>
     </View>

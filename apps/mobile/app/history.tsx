@@ -6,8 +6,8 @@ export default function ConsentHistory() {
 
   if (history.length === 0) {
     return (
-      <View className="flex-1 bg-vault-bg items-center justify-center px-8">
-        <Text className="text-vault-muted-text text-center">
+      <View style={{ flex: 1, backgroundColor: '#0B1120', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
+        <Text style={{ color: '#6B7280', textAlign: 'center' }}>
           No presentations yet. Your consent history will appear here after you present credentials to a verifier.
         </Text>
       </View>
@@ -16,30 +16,39 @@ export default function ConsentHistory() {
 
   return (
     <FlatList
-      className="flex-1 bg-vault-bg"
+      style={{ flex: 1, backgroundColor: '#0B1120' }}
       data={history}
       keyExtractor={(item) => item.id}
       contentContainerStyle={{ padding: 16 }}
       renderItem={({ item }) => (
         <View
-          className="bg-vault-surface rounded-xl p-4 mb-3"
+          style={{
+            backgroundColor: '#111827',
+            borderRadius: 12,
+            padding: 16,
+            marginBottom: 12,
+          }}
           accessibilityLabel={`Presentation to ${item.verifierName}, result: ${item.result}, shared: ${item.disclosedClaims.join(', ')}`}
           accessibilityRole="summary"
         >
-          <View className="flex-row items-center justify-between mb-2">
-            <Text className="text-vault-foreground font-semibold">{item.verifierName}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <Text style={{ color: '#F9FAFB', fontWeight: '600' }}>{item.verifierName}</Text>
             <Text
-              className={`text-xs font-medium ${item.result === 'verified' ? 'text-success' : 'text-danger'}`}
+              style={{
+                fontSize: 12,
+                fontWeight: '500',
+                color: item.result === 'verified' ? '#10B981' : '#EF4444',
+              }}
               accessibilityLabel={`Result: ${item.result}`}
               accessibilityHint={item.result === 'verified' ? 'Credentials were successfully verified' : 'Credentials were rejected'}
             >
               {item.result.toUpperCase()}
             </Text>
           </View>
-          <Text className="text-vault-muted-text text-xs mb-1">
+          <Text style={{ color: '#6B7280', fontSize: 12, marginBottom: 4 }}>
             Shared: {item.disclosedClaims.join(', ')}
           </Text>
-          <Text className="text-vault-muted-text text-xs">
+          <Text style={{ color: '#6B7280', fontSize: 12 }}>
             {new Date(item.timestamp).toLocaleString()}
           </Text>
         </View>
