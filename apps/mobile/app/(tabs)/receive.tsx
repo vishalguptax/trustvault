@@ -1,7 +1,7 @@
 import { View, Text, Pressable, ScrollView, ActivityIndicator } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useState, useEffect, useCallback } from 'react';
-import * as Haptics from 'expo-haptics';
+import { impactMedium, notifySuccess, notifyError, notifyWarning } from '@/lib/haptics';
 import { StepIndicator } from '@/components/step-indicator';
 import { AnimatedCheck } from '@/components/animated-check';
 import { useCredentialStore, StoredCredential } from '@/lib/store';
@@ -135,13 +135,13 @@ export default function ReceiveScreen() {
       };
 
       addCredential(stored);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      notifySuccess();
       setStep('success');
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Failed to receive credential';
       setErrorMessage(message);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      notifyError();
       setStep('error');
     }
   }, [uri, addCredential]);

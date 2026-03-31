@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import * as Haptics from 'expo-haptics';
+import { impactMedium, notifySuccess, notifyError, notifyWarning } from '@/lib/haptics';
 import { StepIndicator } from '@/components/step-indicator';
 import { AnimatedCheck } from '@/components/animated-check';
 import { ConsentSheet } from '@/components/consent-sheet';
@@ -267,7 +267,7 @@ export default function PresentScreen() {
       const message =
         err instanceof Error ? err.message : 'Failed to create presentation';
       setErrorMessage(message);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      notifyError();
       setStep('error');
     }
   }, [

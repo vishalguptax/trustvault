@@ -1,7 +1,7 @@
 import { View, Text, FlatList, Pressable, ActivityIndicator, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import * as Haptics from 'expo-haptics';
+import { impactMedium, notifySuccess, notifyError, notifyWarning } from '@/lib/haptics';
 import { CredentialCard } from '@/components/credential-card';
 import { EmptyState } from '@/components/empty-state';
 import { useCredentials } from '@/hooks/use-credentials';
@@ -18,7 +18,7 @@ export default function WalletHome() {
   }, [refresh]);
 
   const handleFabPress = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    impactMedium();
     router.push('/scanner');
   }, [router]);
 

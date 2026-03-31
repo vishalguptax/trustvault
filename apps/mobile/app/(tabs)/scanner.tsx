@@ -2,7 +2,7 @@ import { View, Text, Pressable, TextInput, StyleSheet, Platform } from 'react-na
 import { useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import * as Haptics from 'expo-haptics';
+import { impactMedium, notifySuccess, notifyError, notifyWarning } from '@/lib/haptics';
 import { useScanner } from '@/hooks/use-scanner';
 
 export default function ScannerScreen() {
@@ -17,7 +17,7 @@ export default function ScannerScreen() {
   useEffect(() => {
     if (scanResult === null) return;
 
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    notifySuccess();
 
     if (scanResult.type === 'offer') {
       router.replace({ pathname: '/receive', params: { uri: scanResult.uri } });

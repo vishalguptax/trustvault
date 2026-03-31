@@ -1,5 +1,5 @@
 import { View, Text, Pressable, Modal, ScrollView } from 'react-native';
-import * as Haptics from 'expo-haptics';
+import { impactMedium, notifySuccess, notifyError, notifyWarning } from '@/lib/haptics';
 
 interface DisclosureItem {
   credentialType: string;
@@ -24,12 +24,12 @@ export function ConsentSheet({
   onDeny,
 }: ConsentSheetProps) {
   const handleAllow = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    notifySuccess();
     onAllow();
   };
 
   const handleDeny = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    notifyWarning();
     onDeny();
   };
 
