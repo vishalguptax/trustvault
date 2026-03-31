@@ -26,13 +26,20 @@
     },
     "plugins": [
       "expo-router",
+      "expo-dev-client",
       [
         "expo-camera",
         {
           "cameraPermission": "TrustVault needs camera access to scan QR codes."
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "TrustVault uses Face ID to unlock the wallet."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
