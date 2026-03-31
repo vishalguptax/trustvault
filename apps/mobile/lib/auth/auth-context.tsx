@@ -61,8 +61,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshSession = useCallback(async (): Promise<boolean> => {
     const token = await getRefreshToken();
-    if (!token) return false;
+    if (!token) {
+      console.log('[Auth] No refresh token found, skip restore');
+      return false;
+    }
     try {
+      console.log('[Auth] Refreshing session...');
       const data = await authFetch<TokenResponse>('/auth/refresh', {
         method: 'POST',
         body: JSON.stringify({ refresh_token: token }),
@@ -71,8 +75,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       accessTokenRef.current = data.access_token;
       setUser(data.user);
       await setRefreshToken(data.refresh_token);
+      console.log('[Auth] Session refreshed for', data.user.email);
       return true;
-    } catch {
+    } catch (err) {
+      console.warn('[Auth] Refresh failed:', err instanceof Error ? err.message : err);
       await clearSession();
       return false;
     }
@@ -107,6 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [refreshSession]);
 
   const login = useCallback(async (email: string, password: string) => {
+    console.log('[Auth] Login attempt for', email);
     const data = await authFetch<TokenResponse>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
@@ -115,17 +122,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     accessTokenRef.current = data.access_token;
     setUser(data.user);
     await setRefreshToken(data.refresh_token);
+    console.log('[Auth] Login success:', data.user.email, 'role:', data.user.role);
   }, []);
 
   const register = useCallback(async (email: string, password: string, name: string) => {
+    console.log('[Auth] Register attempt for', email);
     await authFetch('/auth/register', {
       method: 'POST',
       body: JSON.stringify({ email, password, name, role: 'holder' }),
     });
+    console.log('[Auth] Registration success, auto-logging in...');
     await login(email, password);
   }, [login]);
 
   const logout = useCallback(async () => {
+    console.log('[Auth] Logging out...');
     if (accessTokenRef.current) {
       try {
         await authFetch('/auth/logout', {
@@ -135,6 +146,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch { /* ignore */ }
     }
     await clearSession();
+    console.log('[Auth] Logged out');
   }, [clearSession]);
 
   return (

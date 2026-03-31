@@ -41,6 +41,7 @@ export function useCredentials(): UseCredentialsReturn {
   const holderId = user?.id ?? 'demo-holder';
 
   const refresh = useCallback(async () => {
+    console.log('[Credentials] Fetching for holderId:', holderId);
     setLoading(true);
     setError(null);
     try {
@@ -48,6 +49,7 @@ export function useCredentials(): UseCredentialsReturn {
         `/wallet/credentials?holderId=${holderId}`,
       );
       const items = Array.isArray(response) ? response : [];
+      console.log('[Credentials] Loaded', items.length, 'credentials');
       const mapped: StoredCredential[] = items.map((item) => ({
         id: item.id,
         type: item.type,
@@ -65,6 +67,7 @@ export function useCredentials(): UseCredentialsReturn {
       setCredentials(mapped);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load credentials';
+      console.warn('[Credentials] Error:', message);
       setError(message);
     } finally {
       setLoading(false);

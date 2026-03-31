@@ -1,5 +1,7 @@
 export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000';
 
+console.log('[Config] API_BASE_URL:', API_BASE_URL);
+
 export const CREDENTIAL_TYPE_CONFIG = {
   VerifiableEducationCredential: {
     name: 'Education Credential',

@@ -1,5 +1,7 @@
 import { API_BASE_URL } from './constants';
 
+const TAG = '[API]';
+
 let getAccessTokenFn: (() => string | null) | null = null;
 let refreshSessionFn: (() => Promise<boolean>) | null = null;
 let clearSessionFn: (() => Promise<void>) | null = null;
@@ -19,6 +21,7 @@ async function request<T>(
   options: RequestInit = {},
   retry = true,
 ): Promise<T> {
+  const method = options.method || 'GET';
   const url = `${API_BASE_URL}${path}`;
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -30,21 +33,29 @@ async function request<T>(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
+  console.log(`${TAG} ${method} ${path}`);
+
   let response: Response;
   try {
     response = await fetch(url, { ...options, headers });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error';
-    console.error(`[API] Network error: ${options.method || 'GET'} ${url} — ${msg}`);
+    console.error(`${TAG} NETWORK ERROR: ${method} ${url} — ${msg}`);
+    console.error(`${TAG} Base URL: ${API_BASE_URL}`);
     throw new Error(`Cannot connect to server (${API_BASE_URL}). Is the backend running?`);
   }
 
+  console.log(`${TAG} ${method} ${path} → ${response.status}`);
+
   // Handle 401 — attempt refresh and retry once
   if (response.status === 401 && retry && refreshSessionFn) {
+    console.log(`${TAG} 401 received, attempting token refresh...`);
     const refreshed = await refreshSessionFn();
     if (refreshed) {
+      console.log(`${TAG} Token refreshed, retrying ${method} ${path}`);
       return request<T>(path, options, false);
     }
+    console.warn(`${TAG} Token refresh failed, clearing session`);
     if (clearSessionFn) await clearSessionFn();
     throw new Error('Session expired. Please log in again.');
   }
@@ -52,11 +63,12 @@ async function request<T>(
   if (!response.ok) {
     const json = await response.json().catch(() => null);
     const message = json?.message || json?.error || `Request failed: ${response.status}`;
-    throw new Error(typeof message === 'string' ? message : JSON.stringify(message));
+    const errorStr = typeof message === 'string' ? message : JSON.stringify(message);
+    console.error(`${TAG} ERROR ${response.status}: ${method} ${path} — ${errorStr}`);
+    throw new Error(errorStr);
   }
 
   const json = await response.json();
-  // Support { success, data } wrapper and direct responses
   if (json && typeof json === 'object' && 'data' in json) {
     return json.data as T;
   }
