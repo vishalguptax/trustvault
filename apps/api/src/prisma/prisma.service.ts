@@ -1,5 +1,12 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
+import { resolve } from 'path';
+import { config } from 'dotenv';
+
+// Load .env from multiple locations before PrismaClient reads DATABASE_URL
+config({ path: resolve(__dirname, '../../prisma/.env') });
+config({ path: resolve(__dirname, '../../.env') });
+config({ path: resolve(process.cwd(), '.env') });
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
@@ -7,6 +14,12 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   private connected = false;
 
   async onModuleInit() {
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      this.logger.error('DATABASE_URL is not set. Check apps/api/.env or apps/api/prisma/.env');
+      return;
+    }
+
     try {
       await this.$connect();
       this.connected = true;

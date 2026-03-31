@@ -21,6 +21,7 @@ import { CorrelationIdMiddleware } from './common/middleware/correlation-id.midd
       isGlobal: true,
       load: [configuration],
       envFilePath: [
+        resolve(__dirname, '../../.env'),
         resolve(process.cwd(), '.env'),
         resolve(process.cwd(), '../../.env'),
       ],
