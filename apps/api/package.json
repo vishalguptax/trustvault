@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "node -r dotenv/config node_modules/.bin/nest start --watch",
+    "dev": "nest start --watch",
     "build": "nest build",
-    "start": "node -r dotenv/config dist/main.js",
-    "start:prod": "node -r dotenv/config dist/main.js",
+    "start": "node dist/main.js",
+    "start:prod": "node dist/main.js",
     "test": "node ../../node_modules/vitest/vitest.mjs run",
     "test:watch": "node ../../node_modules/vitest/vitest.mjs",
     "test:e2e": "node ../../node_modules/vitest/vitest.mjs run --config vitest.e2e.config.ts",
