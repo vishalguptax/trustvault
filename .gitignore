@@ -41,3 +41,4 @@ apps/api/prisma/generated/
 # Temporary
 tmp/
 temp/
+/app

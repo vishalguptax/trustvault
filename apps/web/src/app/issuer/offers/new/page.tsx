@@ -129,15 +129,15 @@ function IdentityIcon() {
 }
 
 const schemaIcons: Record<string, React.ReactNode> = {
-  education: <EducationIcon />,
-  income: <IncomeIcon />,
-  identity: <IdentityIcon />,
+  VerifiableEducationCredential: <EducationIcon />,
+  VerifiableIncomeCredential: <IncomeIcon />,
+  VerifiableIdentityCredential: <IdentityIcon />,
 };
 
 const schemaAccents: Record<string, string> = {
-  education: 'credential-education',
-  income: 'credential-income',
-  identity: 'credential-identity',
+  VerifiableEducationCredential: 'credential-education',
+  VerifiableIncomeCredential: 'credential-income',
+  VerifiableIdentityCredential: 'credential-identity',
 };
 
 /* ------------------------------------------------------------------ */
@@ -201,7 +201,7 @@ export default function NewOfferPage() {
   const handleSchemaSelect = useCallback((schema: SchemaDefinition) => {
     setSelectedSchema(schema);
     form.reset(
-      schema.claims.reduce<Record<string, string>>((acc, c) => {
+      (schema.claims ?? []).reduce<Record<string, string>>((acc, c) => {
         acc[c.key] = '';
         return acc;
       }, {})
@@ -280,9 +280,9 @@ export default function NewOfferPage() {
             className="space-y-4"
           >
             {schemas.map((schema) => {
-              const accent = schemaAccents[schema.id] ?? 'primary';
-              const icon = schemaIcons[schema.id];
-              const isSelected = selectedSchema?.id === schema.id;
+              const accent = schemaAccents[schema.type] ?? 'primary';
+              const icon = schemaIcons[schema.type];
+              const isSelected = selectedSchema?.type === schema.type;
 
               return (
                 <button
@@ -309,7 +309,7 @@ export default function NewOfferPage() {
                         )}
                       </div>
                       <p className="text-sm text-muted-foreground mt-1">{schema.description}</p>
-                      <p className="text-xs text-muted-foreground mt-2">{schema.claims.length} claims</p>
+                      <p className="text-xs text-muted-foreground mt-2">{schema.claims?.length ?? 0} claims</p>
                     </div>
                     <div className={cn(
                       'w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-1',
@@ -349,8 +349,8 @@ export default function NewOfferPage() {
           >
             <div className="bg-card border border-border rounded-xl p-6">
               <div className="flex items-center gap-3 mb-6">
-                <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center', `bg-${schemaAccents[selectedSchema.id]}/10 text-${schemaAccents[selectedSchema.id]}`)}>
-                  {schemaIcons[selectedSchema.id]}
+                <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center', `bg-${schemaAccents[selectedSchema.type]}/10 text-${schemaAccents[selectedSchema.type]}`)}>
+                  {schemaIcons[selectedSchema.type]}
                 </div>
                 <div>
                   <h3 className="font-semibold">{selectedSchema.name}</h3>

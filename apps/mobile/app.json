@@ -25,6 +25,11 @@
       "package": "com.trustvault.wallet",
       "permissions": ["android.permission.CAMERA"]
     },
+    "extra": {
+      "router": {
+        "root": "apps/mobile/app"
+      }
+    },
     "plugins": [
       "expo-router",
       [
