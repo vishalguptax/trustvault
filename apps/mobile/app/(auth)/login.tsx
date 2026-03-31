@@ -122,7 +122,7 @@ export default function LoginScreen() {
             accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
             accessibilityRole="button"
           >
-            <Text style={{ fontSize: 18 }}>{showPassword ? '🙈' : '👁️'}</Text>
+            <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={colors.mutedText} />
           </Pressable>
         </View>
 
