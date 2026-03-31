@@ -1,9 +1,5 @@
 import { config as loadEnv } from 'dotenv';
-import { resolve } from 'path';
-
-// Load .env before anything else — check multiple locations for monorepo compatibility
-loadEnv({ path: resolve(process.cwd(), '.env') });
-loadEnv({ path: resolve(process.cwd(), 'apps/api/.env') });
+loadEnv();
 
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
