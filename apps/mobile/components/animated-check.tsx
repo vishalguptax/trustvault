@@ -1,5 +1,7 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { useEffect, useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '@/lib/theme';
 
 interface AnimatedCheckProps {
   type: 'success' | 'error';
@@ -7,6 +9,7 @@ interface AnimatedCheckProps {
 }
 
 export function AnimatedCheck({ type, size = 80 }: AnimatedCheckProps) {
+  const { colors } = useTheme();
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -15,9 +18,8 @@ export function AnimatedCheck({ type, size = 80 }: AnimatedCheckProps) {
   }, []);
 
   const isSuccess = type === 'success';
-  const bgColor = isSuccess ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)';
-  const fgColor = isSuccess ? '#10B981' : '#EF4444';
-  const symbol = isSuccess ? '✓' : '✕';
+  const bgColor = isSuccess ? `${colors.success}25` : `${colors.danger}25`;
+  const fgColor = isSuccess ? colors.success : colors.danger;
 
   return (
     <View
@@ -26,7 +28,11 @@ export function AnimatedCheck({ type, size = 80 }: AnimatedCheckProps) {
       accessibilityRole="image"
     >
       {visible && (
-        <Text style={[s.symbol, { color: fgColor, fontSize: size * 0.45 }]}>{symbol}</Text>
+        <Ionicons
+          name={isSuccess ? 'checkmark' : 'close'}
+          size={size * 0.45}
+          color={fgColor}
+        />
       )}
     </View>
   );
@@ -34,5 +40,4 @@ export function AnimatedCheck({ type, size = 80 }: AnimatedCheckProps) {
 
 const s = StyleSheet.create({
   container: { alignItems: 'center', justifyContent: 'center' },
-  symbol: { fontWeight: '700' },
 });

@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import {
   View,
   Text,
@@ -395,9 +396,7 @@ export default function PresentScreen() {
                       }}
                     >
                       {isSelected && (
-                        <Text style={{ color: colors.primaryFg, fontSize: 12, fontWeight: '700' }}>
-                          ✓
-                        </Text>
+                        <Ionicons name="checkmark" size={14} color={colors.primaryFg} />
                       )}
                     </View>
                   </View>

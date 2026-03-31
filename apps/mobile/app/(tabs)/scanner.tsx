@@ -1,4 +1,5 @@
 import { View, Text, Pressable, TextInput, StyleSheet, Platform } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState, useEffect, useMemo } from 'react';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -352,7 +353,7 @@ export default function ScannerScreen() {
             accessibilityLabel={torchOn ? 'Turn off flashlight' : 'Turn on flashlight'}
             accessibilityRole="button"
           >
-            <Text style={themedStyles.torchIcon}>{torchOn ? '🔦' : '💡'}</Text>
+            <Ionicons name={torchOn ? 'flash' : 'flash-outline'} size={20} color={torchOn ? '#F59E0B' : '#F9FAFB'} />
             <Text style={[themedStyles.torchText, torchOn && themedStyles.torchTextActive]}>
               {torchOn ? 'Torch On' : 'Torch'}
             </Text>

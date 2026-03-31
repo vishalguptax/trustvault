@@ -1,4 +1,5 @@
 import { View, Text } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/lib/theme';
 
 interface StepIndicatorProps {
@@ -40,7 +41,7 @@ export function StepIndicator({ steps, currentStep }: StepIndicatorProps) {
                 fontWeight: '700',
                 color: isActive ? colors.primaryFg : colors.mutedText,
               }}>
-                {isComplete ? '✓' : index + 1}
+{isComplete ? <Ionicons name="checkmark" size={14} color={colors.primaryFg} /> : <Text style={{ fontSize: 12, fontWeight: '700', color: isActive ? colors.primaryFg : colors.mutedText }}>{index + 1}</Text>}
               </Text>
             </View>
             {index < steps.length - 1 && (

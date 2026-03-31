@@ -1,4 +1,5 @@
 import { View, Text } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/lib/theme';
 
 interface ClaimsListProps {
@@ -36,7 +37,7 @@ export function ClaimsList({ claims, sdClaims }: ClaimsListProps) {
                 style={{ fontSize: 12, marginRight: 8 }}
                 accessibilityLabel={disclosureLabel}
               >
-                {isSelectivelyDisclosable ? '🔓' : '🔒'}
+{isSelectivelyDisclosable ? <Ionicons name="lock-open-outline" size={14} color={colors.primary} /> : <Ionicons name="lock-closed-outline" size={14} color={colors.mutedText} />}
               </Text>
               <Text style={{ color: colors.mutedText, fontSize: 14, textTransform: 'capitalize' }}>{key}</Text>
             </View>
