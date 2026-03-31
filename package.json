@@ -14,7 +14,10 @@
     "test:e2e": "turbo test:e2e --filter=@trustvault/api",
     "lint": "turbo lint",
     "clean": "turbo clean",
-    "start": "node tools/dev.mjs"
+    "start": "node tools/dev.mjs",
+    "build:mobile:dev": "pnpm --filter @trustvault/mobile build:dev",
+    "build:mobile:preview": "pnpm --filter @trustvault/mobile build:preview",
+    "build:mobile:prod": "pnpm --filter @trustvault/mobile build:prod"
   },
   "devDependencies": {
     "@swc/core": "^1.15.21",
