@@ -8,6 +8,32 @@ datasource db {
 }
 
 // ============================================
+// Users & Authentication
+// ============================================
+
+model User {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  email          String   @unique
+  passwordHash   String
+  name           String
+  role           String   @default("holder")
+  refreshTokens  String[]
+  apiKeys        ApiKey[]
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([role])
+  @@map("users")
+}
+
+type ApiKey {
+  hash      String
+  name      String
+  createdAt DateTime
+}
+
+// ============================================
 // DID Management
 // ============================================
 

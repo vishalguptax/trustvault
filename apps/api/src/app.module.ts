@@ -11,6 +11,7 @@ import { WalletModule } from './modules/wallet/wallet.module';
 import { StatusModule } from './modules/status/status.module';
 import { TrustModule } from './modules/trust/trust.module';
 import { VerifierModule } from './modules/verifier/verifier.module';
+import { AuthModule } from './modules/auth/auth.module';
 import { LoggingMiddleware } from './common/middleware/logging.middleware';
 import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware';
 
@@ -32,6 +33,7 @@ import { CorrelationIdMiddleware } from './common/middleware/correlation-id.midd
     StatusModule,
     TrustModule,
     VerifierModule,
+    AuthModule,
   ],
   providers: [
     {
