@@ -44,8 +44,7 @@
         {
           "faceIDPermission": "TrustVault uses Face ID to unlock the wallet."
         }
-      ],
-      "./plugins/with-custom-root"
+      ]
     ],
     "experiments": {
       "typedRoutes": true
