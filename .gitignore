@@ -42,3 +42,4 @@ apps/api/prisma/generated/
 tmp/
 temp/
 /app
+apps/mobile/android/
