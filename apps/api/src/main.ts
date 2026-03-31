@@ -1,6 +1,8 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import helmet from 'helmet';
+import compression from 'compression';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
@@ -15,14 +17,19 @@ async function bootstrap() {
 
   // --- Database readiness check ---
   const prisma = app.get(PrismaService);
-  const dbConnected = prisma.isConnected();
-  if (!dbConnected) {
+  if (!prisma.isConnected()) {
     logger.error('Database is not connected. Exiting.');
     logger.error('Ensure DATABASE_URL is set in apps/api/.env');
     await app.close();
     process.exit(1);
   }
   logger.log('Database connection verified');
+
+  // --- Security headers ---
+  app.use(helmet());
+
+  // --- Response compression (skip responses < 1KB) ---
+  app.use(compression({ threshold: 1024 }));
 
   // --- Global pipes, filters, interceptors ---
   app.useGlobalFilters(new AllExceptionsFilter());
@@ -40,6 +47,7 @@ async function bootstrap() {
     origin: process.env.CORS_ORIGIN || '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization', 'x-correlation-id'],
+    credentials: true,
   });
 
   // --- Swagger ---
@@ -73,6 +81,17 @@ async function bootstrap() {
   logger.log(`  API: http://localhost:${port}`);
   logger.log(`  Swagger: http://localhost:${port}/api/docs`);
   logger.log('===========================================');
+
+  // --- Shutdown signal handlers ---
+  const shutdown = async (signal: string) => {
+    logger.warn(`${signal} received. Shutting down gracefully...`);
+    await app.close();
+    logger.warn('Server shutdown complete');
+    process.exit(0);
+  };
+
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 }
 
 bootstrap().catch((err) => {
