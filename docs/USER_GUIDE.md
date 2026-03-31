@@ -19,8 +19,6 @@ TrustVault has four actors that work together:
 
 ### The Flow
 
-Here is how a credential moves through the system:
-
 ```
   ISSUER                    HOLDER (You)                 VERIFIER
   (University)              (Phone Wallet)               (Loan Company)
@@ -40,6 +38,53 @@ Here is how a credential moves through the system:
       |                          |                            |   - Not revoked?
   6.  |                          |                            |-- VERIFIED
 ```
+
+---
+
+## Authentication
+
+TrustVault uses JWT (JSON Web Token) authentication. Every user must log in to access protected features.
+
+### Default Accounts
+
+These accounts are created automatically when you seed the database:
+
+| Email | Password | Role | Access |
+|-------|----------|------|--------|
+| `admin@trustvault.dev` | `Admin@123456` | Admin | Full access — trust registry, policies, all endpoints |
+| `issuer@trustvault.dev` | `Issuer@123456` | Issuer | Create offers, issue credentials, revoke/suspend |
+| `verifier@trustvault.dev` | `Verifier@123456` | Verifier | Create verification requests, view results |
+| `holder@trustvault.dev` | `Holder@123456` | Holder | Wallet — receive, store, present credentials |
+
+### How Login Works
+
+1. Send your email and password to `/auth/login`
+2. You receive two tokens:
+   - **Access token** (15 minutes) — used in every API request
+   - **Refresh token** (7 days) — used to get a new access token when it expires
+3. Include the access token in every request: `Authorization: Bearer <token>`
+4. When the access token expires, send the refresh token to `/auth/refresh` to get a new pair
+
+### Role Permissions
+
+| Role | Can Do | Cannot Do |
+|------|--------|-----------|
+| **Admin** | Everything — manage trust registry, create policies, view all data | Nothing restricted |
+| **Issuer** | Create credential offers, view issued credentials, revoke/suspend | Modify trust registry, create policies |
+| **Verifier** | Create verification requests, view results | Issue credentials, modify trust registry |
+| **Holder** | Receive credentials, view wallet, create presentations, consent history | Issue credentials, verify, admin tasks |
+
+### Public Endpoints (No Login Required)
+
+These endpoints work without any authentication:
+- Credential schemas (`GET /issuer/schemas`)
+- Issuer metadata (`GET /issuer/.well-known/openid-credential-issuer`)
+- OID4VCI protocol endpoints (`POST /issuer/token`, `POST /issuer/credential`)
+- Trust registry (read) (`GET /trust/issuers`, `GET /trust/verify`)
+- Status lists (`GET /status/lists/:id`)
+- Verifier policies (`GET /verifier/policies`)
+- Auth endpoints (`POST /auth/register`, `POST /auth/login`, `POST /auth/refresh`)
+- Swagger docs (`GET /api/docs`)
 
 ---
 
@@ -66,12 +111,6 @@ The mobile wallet is a phone app where you receive, store, and share your digita
 5. Review the credential details on screen
 6. Tap "Accept" to store it in your wallet
 
-**How to view your credentials:**
-
-1. Open the TrustVault app
-2. Your home screen shows all stored credentials as cards
-3. Tap any card to see full details — issuer name, issue date, expiry, and all the claims (like degree name, GPA, income amount)
-
 **How to share credentials (selective disclosure):**
 
 When a verifier asks for proof, you do not have to share everything. For example, a loan company might need to know your income amount but does not need your employee ID. This is called **selective disclosure** — you pick exactly which pieces of information to reveal.
@@ -85,21 +124,17 @@ When a verifier asks for proof, you do not have to share everything. For example
 
 **Consent tracking:**
 
-Every time you share a credential, the app records:
-- What you shared
-- Who you shared it with
-- When you shared it
-- Which specific details you disclosed
-
-You can view this history anytime in the app.
+Every time you share a credential, the app records what you shared, who you shared it with, when, and which specific details you disclosed. You can view this history anytime.
 
 ---
 
 ### 2. Issuer Dashboard (Web Portal)
 
+**Login:** `issuer@trustvault.dev` / `Issuer@123456`
+
 The Issuer Dashboard is a web-based control panel for organizations that issue credentials.
 
-**Who uses it:** Universities, banks, employers, government agencies — any organization that certifies facts about a person.
+**Who uses it:** Universities, banks, employers, government agencies.
 
 **Creating credential offers:**
 
@@ -117,31 +152,19 @@ The Issuer Dashboard is a web-based control panel for organizations that issue c
 | **Income** | Employer, job title, annual income, currency, start date | Bank or employer |
 | **Identity** | Full name, date of birth, nationality, document number | Government agency |
 
-**Tracking issued credentials:**
-
-The dashboard shows a list of all credentials you have issued, including:
-- Who received it (holder identifier)
-- When it was issued
-- Current status (active, revoked, or suspended)
-
 **Revoking credentials:**
 
-Sometimes a credential needs to be canceled — for example, if a degree is rescinded or an employment ends. To revoke:
-
-1. Find the credential in your issued list
-2. Click "Revoke"
-3. The credential is immediately marked as invalid
-4. Any future verification of this credential will fail the status check
-
-This works like canceling a credit card — the card still physically exists, but it will be declined if anyone tries to use it.
+Sometimes a credential needs to be canceled — for example, if a degree is rescinded or an employment ends. This works like canceling a credit card — the card still physically exists, but it will be declined if anyone tries to use it.
 
 ---
 
 ### 3. Verifier Dashboard (Web Portal)
 
-The Verifier Dashboard is for organizations that need to check someone's credentials before making a decision.
+**Login:** `verifier@trustvault.dev` / `Verifier@123456`
 
-**Who uses it:** Loan officers, employers running background checks, landlords verifying income, any organization that needs proof.
+The Verifier Dashboard is for organizations that need to check someone's credentials.
+
+**Who uses it:** Loan officers, employers, landlords.
 
 **Creating verification requests:**
 
@@ -149,15 +172,7 @@ The Verifier Dashboard is for organizations that need to check someone's credent
 2. Select what credentials you need (for example: education + income)
 3. Specify which fields are required vs. optional
 4. Click "Create Request" — the system generates a QR code or link
-5. Send this to the person you need to verify, or display the QR code for them to scan
-
-**Viewing verification results:**
-
-After a holder shares their credentials, the dashboard shows a detailed verification report:
-
-- **Holder information:** The disclosed claims (only what the holder chose to share)
-- **Verification checks:** A pass/fail list of every security check performed
-- **Overall result:** Verified or Not Verified
+5. Send this to the person you need to verify
 
 **Understanding the trust checks:**
 
@@ -165,10 +180,10 @@ Every credential goes through four checks:
 
 | Check | What It Means | Analogy |
 |---|---|---|
-| **Trusted Issuer** | Is the organization that issued this credential on the approved list? | Is this diploma from an accredited university? |
-| **Valid Signature** | Has the credential been tampered with since it was issued? | Is the wax seal on this letter intact? |
-| **Not Expired** | Is the credential still within its validity period? | Is this ID card still valid or has it expired? |
-| **Not Revoked** | Has the issuer canceled this credential? | Has this credit card been reported as canceled? |
+| **Trusted Issuer** | Is the organization on the approved list? | Is this diploma from an accredited university? |
+| **Valid Signature** | Has the credential been tampered with? | Is the wax seal on this letter intact? |
+| **Not Expired** | Is the credential still valid? | Is this ID card still within its validity period? |
+| **Not Revoked** | Has the issuer canceled it? | Has this credit card been reported as canceled? |
 
 All four checks must pass for the credential to be considered verified.
 
@@ -176,32 +191,19 @@ All four checks must pass for the credential to be considered verified.
 
 ### 4. Trust Registry (Admin Portal)
 
-The Trust Registry is the backbone of trust in the system. It is an **approved list** that determines which issuers are considered legitimate.
+**Login:** `admin@trustvault.dev` / `Admin@123456`
 
-**What it is:**
+The Trust Registry is the backbone of trust. Without it, anyone could claim to be a university and issue fake degrees. It maintains a list of verified, approved issuers.
 
-Without the Trust Registry, anyone could claim to be a university and issue fake degrees. The Trust Registry solves this by maintaining a list of verified, approved issuers. When a verifier checks a credential, one of the first things they check is: "Is the issuer on the approved list?"
+**Adding trusted issuers:**
 
-**Who uses it:** Platform administrators who are responsible for maintaining trust in the ecosystem.
-
-**Adding/removing trusted issuers:**
-
-1. Log into the Trust Admin portal
-2. To add an issuer: Enter the issuer's identifier (DID), organization name, and which credential types they are authorized to issue
-3. To remove an issuer: Find them in the list and revoke their trusted status
-4. Changes take effect immediately — any future verifications will use the updated list
-
-**Managing credential types:**
-
-The admin can define what types of credentials exist in the system and what fields each type contains. The current types are:
-
-- **VerifiableEducationCredential** — for academic qualifications
-- **VerifiableIncomeCredential** — for employment and income
-- **VerifiableIdentityCredential** — for government-issued identity
+1. Log into the Admin portal
+2. Enter the issuer's DID (identifier), organization name, and which credential types they are authorized to issue
+3. Changes take effect immediately
 
 **Policies:**
 
-The admin configures verification policies that determine what checks are required:
+The admin configures verification policies:
 
 - **require-trusted-issuer** — The credential issuer must be in the trust registry
 - **require-active-status** — The credential must not be revoked or suspended
@@ -211,43 +213,39 @@ The admin configures verification policies that determine what checks are requir
 
 ## Step-by-Step: Loan Application Example
 
-This walks through a complete real-world scenario where Sandhya applies for a home loan.
-
 ### The Cast
 
 - **National Technical University** — Issuer (education credentials)
 - **TrustBank India** — Issuer (income credentials)
 - **Sandhya** — Holder (the loan applicant)
 - **HomeFirst Finance** — Verifier (the loan company)
-- **Trust Registry** — Already configured with both issuers as trusted
 
 ---
 
 **Step 1: University issues education credential to Sandhya**
 
-National Technical University logs into the Issuer Dashboard and creates an education credential for Sandhya:
+National Technical University logs into the Issuer Dashboard (`issuer@trustvault.dev`) and creates an education credential:
 - Institution: National Technical University
 - Degree: Bachelor of Technology
 - Field of Study: Computer Science
 - GPA: 3.8
 - Graduation Date: 2023-06-15
 
-The system generates a QR code. Sandhya scans it with her TrustVault app and accepts the credential. It now appears as a blue card in her wallet.
+The system generates a QR code. Sandhya scans it with her TrustVault app and accepts the credential.
 
 **Step 2: Bank issues income credential to Sandhya**
 
 TrustBank India creates an income credential:
 - Employer: TrustBank India
 - Job Title: Software Engineer
-- Annual Income: 1,200,000
-- Currency: INR
+- Annual Income: 1,200,000 INR
 - Employment Start Date: 2023-08-01
 
-Sandhya scans the QR code and accepts. A green card appears in her wallet.
+Sandhya scans the QR code and accepts.
 
 **Step 3: Sandhya stores both in her wallet**
 
-Sandhya now has two credential cards in her TrustVault app:
+Sandhya now has two credential cards:
 - A blue Education Credential from National Technical University
 - A green Income Credential from TrustBank India
 
@@ -255,25 +253,13 @@ Both are stored securely (encrypted) on her phone.
 
 **Step 4: Loan company requests verification**
 
-HomeFirst Finance needs to verify Sandhya's education and income before approving her loan. A loan officer logs into the Verifier Dashboard and creates a verification request asking for:
-- Education credential (required fields: institution, degree)
-- Income credential (required fields: employer, annual income, currency)
+HomeFirst Finance logs into the Verifier Dashboard (`verifier@trustvault.dev`) and creates a verification request asking for education and income credentials.
 
-The system generates a QR code. The loan officer displays it on screen or sends Sandhya a link.
+**Step 5: Sandhya selects what to share**
 
-**Step 5: Sandhya selects what to share (selective disclosure)**
-
-Sandhya scans the QR code with her app. She sees the request:
-
-> HomeFirst Finance is asking for:
-> - Education: Institution (required), Degree (required), GPA (optional), Student ID (optional)
-> - Income: Employer (required), Annual Income (required), Currency (required), Job Title (optional), Employee ID (optional)
-
-Sandhya unchecks GPA, Student ID, and Employee ID — she does not want to share those. She keeps Job Title checked because she wants to. She taps "Share."
+Sandhya scans the QR code with her app. She sees the request and unchecks GPA, Student ID, and Employee ID — she does not want to share those. She taps "Share."
 
 **Step 6: Loan company verifies**
-
-HomeFirst Finance receives Sandhya's presentation. The system automatically runs four checks on each credential:
 
 ```
 Education Credential (National Technical University):
@@ -291,11 +277,9 @@ Income Credential (TrustBank India):
 OVERALL RESULT: VERIFIED
 ```
 
-The loan officer sees only the fields Sandhya chose to share — no GPA, no student ID, no employee ID.
-
 **Step 7: Loan approved**
 
-With both credentials verified and all checks passing, HomeFirst Finance has the confidence to approve Sandhya's loan application. The entire process — from scanning QR codes to getting a verified result — takes under a minute.
+With both credentials verified, HomeFirst Finance approves Sandhya's loan. The entire process takes under a minute.
 
 ---
 
@@ -307,81 +291,86 @@ TrustVault does not store your credentials on a central server. They live on you
 
 ### You choose what to share
 
-Selective disclosure means you reveal only the specific pieces of information that are needed. If a verifier only needs to know your degree and institution, they do not get to see your GPA, student ID, or any other detail. You are in control.
+Selective disclosure means you reveal only the specific pieces of information that are needed. You are in control.
 
 ### Credentials are cryptographically signed
 
-Every credential is digitally signed by the issuer using strong cryptography (ES256 with P-256 curves). Think of this like a **tamper-proof wax seal** on a medieval letter — if anyone changes even a single character of the credential, the seal breaks, and the verification fails. It is mathematically impossible to forge.
+Every credential is digitally signed by the issuer using strong cryptography (ES256 with P-256 curves). Think of this like a **tamper-proof wax seal** — if anyone changes even a single character, the seal breaks and verification fails.
 
 ### Revocation
 
-If an issuer needs to invalidate a credential (for example, a degree is rescinded), they can revoke it at any time. This works like **canceling a credit card** — the credential still exists in your wallet, but any attempt to verify it will show that it has been revoked. TrustVault uses a standard called Bitstring Status List to track revocation efficiently.
+If an issuer needs to invalidate a credential, they can revoke it at any time. This works like **canceling a credit card** — the credential still exists in your wallet, but any attempt to verify it will show that it has been revoked.
 
 ### No one can see your data without your consent
 
-Every time someone asks for your credentials, you must explicitly approve the request. You see exactly what they are asking for, you choose what to share, and you tap "Share" to confirm. Nothing is ever shared automatically or without your knowledge.
+Every time someone asks for your credentials, you must explicitly approve the request. Nothing is ever shared automatically.
 
 ---
 
 ## Technical Details (For Developers)
 
-### API Base URL
+### API
+
+| Item | Value |
+|------|-------|
+| Base URL | `http://localhost:8000` |
+| Swagger Docs | `http://localhost:8000/api/docs` |
+| Auth | JWT Bearer token (`Authorization: Bearer <token>`) |
+| Response Format | `{ success, statusCode, data, timestamp }` |
+| Error Format | `{ success: false, statusCode, error, message, timestamp, path }` |
+
+### Authentication Endpoints
 
 ```
-Development:  http://localhost:3000
+POST /auth/register   — Create account { email, password, name, role }
+POST /auth/login      — Login { email, password } → { access_token, refresh_token, user }
+POST /auth/refresh    — Refresh token { refresh_token } → new token pair
+POST /auth/logout     — Invalidate tokens (requires Bearer token)
+GET  /auth/me         — Current user profile (requires Bearer token)
+POST /auth/api-keys   — Generate API key (admin only)
 ```
-
-All API endpoints are prefixed with `/api`.
-
-### Authentication
-
-- **Mobile wallet:** JWT-based authentication. Obtain a token via the wallet auth endpoint and include it in the `Authorization: Bearer <token>` header.
-- **Web dashboards:** API key authentication for service-to-service calls between the Next.js frontend and the NestJS backend.
-
-### Swagger Documentation
-
-Interactive API documentation is available at:
-
-```
-http://localhost:3000/api/docs
-```
-
-This provides a complete list of all endpoints, request/response schemas, and the ability to test API calls directly from the browser.
 
 ### Key Protocols
 
-| Protocol | What It Does | Specification |
-|---|---|---|
-| **OID4VCI** | OpenID for Verifiable Credential Issuance — the protocol used when an issuer gives a credential to a holder | [OpenID4VCI Spec](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html) |
-| **OID4VP** | OpenID for Verifiable Presentations — the protocol used when a holder shares credentials with a verifier | [OpenID4VP Spec](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html) |
-| **SD-JWT-VC** | Selective Disclosure JWT Verifiable Credentials — the credential format that enables sharing only specific fields | [SD-JWT-VC Spec](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-05.html) |
-| **Bitstring Status List** | W3C standard for tracking which credentials have been revoked or suspended | [W3C Status List](https://www.w3.org/TR/vc-bitstring-status-list/) |
+| Protocol | What It Does |
+|---|---|
+| **OID4VCI** | Credential issuance — how an issuer gives a credential to a holder |
+| **OID4VP** | Credential presentation — how a holder shares credentials with a verifier |
+| **SD-JWT-VC** | Credential format that enables selective disclosure |
+| **Bitstring Status List** | W3C standard for tracking revocation/suspension |
 
 ### Quick Start
 
 ```bash
-# 1. Clone the repository
+# 1. Clone and install
 git clone <repository-url>
 cd trustvault
-
-# 2. Install dependencies (pnpm only)
 pnpm install
 
-# 3. Set up environment
-#    Copy .env.example to .env in apps/api/
-#    Set DATABASE_URL to your MongoDB Atlas connection string
+# 2. Set up environment
+cp apps/api/.env.example apps/api/.env
+# Edit apps/api/.env — set DATABASE_URL to your MongoDB Atlas connection string
 
-# 4. Generate Prisma client
-npx prisma generate --schema=apps/api/prisma/schema.prisma
+# 3. Push schema to database
+cd apps/api && npx prisma db push --schema=prisma/schema.prisma && cd ../..
 
-# 5. Push schema to database
-npx prisma db push --schema=apps/api/prisma/schema.prisma
+# 4. Seed default data (schemas, policies, users)
+cd apps/api && pnpm exec tsx ../../infrastructure/seed/seed-data.ts && cd ../..
 
-# 6. Start all services (API + Web + Mobile)
+# 5. Start all services
 pnpm dev
 
-# 7. Open Swagger docs
-#    Navigate to http://localhost:3000/api/docs
+# 6. Open Swagger docs
+# http://localhost:8000/api/docs
+
+# 7. Login with default credentials
+# admin@trustvault.dev / Admin@123456
+```
+
+### Running Tests
+
+```bash
+pnpm test        # 110 unit tests across 12 files
 ```
 
 ### Project Structure
@@ -389,26 +378,15 @@ pnpm dev
 ```
 trustvault/
   apps/
-    api/          NestJS backend (issuer, wallet, verifier, trust, status modules)
+    api/          NestJS backend (auth, issuer, wallet, verifier, trust, status)
     web/          Next.js web portals (issuer, verifier, trust admin dashboards)
     mobile/       React Native + Expo wallet app
   packages/
     shared/       Shared TypeScript types and utilities
   infrastructure/
-    seed/         Database seed scripts (demo issuers, schemas, policies)
+    seed/         Database seed scripts
     docker-compose.yml
-```
-
-### Running Tests
-
-```bash
-pnpm test          # Unit tests
-pnpm test:e2e      # End-to-end test scenarios (5 mandatory scenarios)
-```
-
-### Building for Production
-
-```bash
-pnpm build                                              # Build all apps
-docker compose -f infrastructure/docker-compose.yml up --build  # Run via Docker
+  docs/
+    USER_GUIDE.md          This file
+    DEFAULT_CREDENTIALS.md Login details for all default accounts
 ```
