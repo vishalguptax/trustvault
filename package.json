@@ -4,12 +4,17 @@
   "private": true,
   "description": "Verifiable Credential ecosystem prototype — issuer, wallet, verifier, trust registry",
   "scripts": {
-    "dev": "turbo dev",
+    "dev": "turbo dev --filter=@trustvault/api --filter=@trustvault/web --filter=@trustvault/mobile",
+    "dev:api": "turbo dev --filter=@trustvault/api",
+    "dev:web": "turbo dev --filter=@trustvault/web",
+    "dev:mobile": "turbo dev --filter=@trustvault/mobile",
+    "dev:all": "turbo dev",
     "build": "turbo build",
     "test": "turbo test --filter=@trustvault/api",
     "test:e2e": "turbo test:e2e --filter=@trustvault/api",
     "lint": "turbo lint",
-    "clean": "turbo clean"
+    "clean": "turbo clean",
+    "start": "node tools/dev.mjs"
   },
   "devDependencies": {
     "@swc/core": "^1.15.21",
