@@ -29,7 +29,10 @@ async function bootstrap() {
   }
 
   // --- Security headers ---
-  app.use(helmet());
+  app.use(helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    crossOriginOpenerPolicy: false,
+  }));
 
   // --- Response compression (skip responses < 1KB) ---
   app.use(compression({ threshold: 1024 }));
