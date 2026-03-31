@@ -1,13 +1,87 @@
 import { View, Text, Pressable, ScrollView, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/lib/auth/auth-context';
 import { useTheme } from '@/lib/theme';
 import { API_BASE_URL } from '@/lib/constants';
+import {
+  hasMpin,
+  isLockEnabled,
+  setLockEnabled,
+  isBiometricAvailable,
+  isBiometricEnabled,
+  setBiometricEnabled,
+  clearMpin,
+} from '@/lib/auth/lock-store';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const { colors, isDark, toggleTheme } = useTheme();
+
+  const [lockOn, setLockOn] = useState(false);
+  const [pinExists, setPinExists] = useState(false);
+  const [bioAvailable, setBioAvailable] = useState(false);
+  const [bioEnabled, setBioEnabled] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [le, mp, ba, be] = await Promise.all([
+        isLockEnabled(),
+        hasMpin(),
+        isBiometricAvailable(),
+        isBiometricEnabled(),
+      ]);
+      if (cancelled) return;
+      setLockOn(le);
+      setPinExists(mp);
+      setBioAvailable(ba);
+      setBioEnabled(be);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleToggleLock = useCallback(async () => {
+    if (!pinExists) {
+      // No PIN set yet — navigate to setup
+      router.push('/(auth)/setup-mpin');
+      return;
+    }
+    const newValue = !lockOn;
+    await setLockEnabled(newValue);
+    setLockOn(newValue);
+  }, [lockOn, pinExists, router]);
+
+  const handleChangePin = useCallback(() => {
+    router.push('/(auth)/setup-mpin');
+  }, [router]);
+
+  const handleToggleBiometric = useCallback(async () => {
+    const newValue = !bioEnabled;
+    await setBiometricEnabled(newValue);
+    setBioEnabled(newValue);
+  }, [bioEnabled]);
+
+  const handleResetPin = useCallback(() => {
+    Alert.alert(
+      'Reset PIN',
+      'This will remove your PIN and disable app lock. You can set a new PIN afterwards.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: async () => {
+            await clearMpin();
+            setLockOn(false);
+            setPinExists(false);
+            setBioEnabled(false);
+          },
+        },
+      ],
+    );
+  }, []);
 
   const handleLogout = () => {
     Alert.alert(
@@ -135,6 +209,124 @@ export default function ProfileScreen() {
             }} />
           </View>
         </Pressable>
+      </View>
+
+      {/* App Lock section */}
+      <Text style={{ color: colors.mutedText, fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8, marginLeft: 4 }}>
+        Security
+      </Text>
+      <View style={{
+        backgroundColor: colors.surface,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: colors.border,
+        marginBottom: 16,
+        overflow: 'hidden',
+      }}>
+        {/* Lock toggle */}
+        <Pressable
+          onPress={handleToggleLock}
+          style={({ pressed }) => ({
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingHorizontal: 16,
+            paddingVertical: 14,
+            backgroundColor: pressed ? colors.muted : 'transparent',
+          })}
+          accessibilityLabel={lockOn ? 'Disable app lock' : 'Enable app lock'}
+          accessibilityRole="switch"
+          accessibilityState={{ checked: lockOn }}
+        >
+          <Text style={{ color: colors.foreground, fontSize: 15 }}>App Lock</Text>
+          <View style={{
+            width: 44, height: 26, borderRadius: 13,
+            backgroundColor: lockOn ? colors.primary : colors.muted,
+            justifyContent: 'center',
+            paddingHorizontal: 2,
+          }}>
+            <View style={{
+              width: 22, height: 22, borderRadius: 11,
+              backgroundColor: colors.surface,
+              alignSelf: lockOn ? 'flex-end' : 'flex-start',
+            }} />
+          </View>
+        </Pressable>
+
+        {pinExists ? (
+          <>
+            <View style={{ height: 1, backgroundColor: colors.border }} />
+            {/* Change PIN */}
+            <Pressable
+              onPress={handleChangePin}
+              style={({ pressed }) => ({
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                paddingHorizontal: 16,
+                paddingVertical: 14,
+                backgroundColor: pressed ? colors.muted : 'transparent',
+              })}
+              accessibilityLabel="Change PIN"
+              accessibilityRole="button"
+            >
+              <Text style={{ color: colors.foreground, fontSize: 15 }}>Change PIN</Text>
+              <Text style={{ color: colors.mutedText, fontSize: 18 }}>{'>'}</Text>
+            </Pressable>
+
+            {/* Biometric toggle — only if hardware supports it */}
+            {bioAvailable ? (
+              <>
+                <View style={{ height: 1, backgroundColor: colors.border }} />
+                <Pressable
+                  onPress={handleToggleBiometric}
+                  style={({ pressed }) => ({
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    paddingHorizontal: 16,
+                    paddingVertical: 14,
+                    backgroundColor: pressed ? colors.muted : 'transparent',
+                  })}
+                  accessibilityLabel={bioEnabled ? 'Disable biometric unlock' : 'Enable biometric unlock'}
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: bioEnabled }}
+                >
+                  <Text style={{ color: colors.foreground, fontSize: 15 }}>Use Biometric</Text>
+                  <View style={{
+                    width: 44, height: 26, borderRadius: 13,
+                    backgroundColor: bioEnabled ? colors.primary : colors.muted,
+                    justifyContent: 'center',
+                    paddingHorizontal: 2,
+                  }}>
+                    <View style={{
+                      width: 22, height: 22, borderRadius: 11,
+                      backgroundColor: colors.surface,
+                      alignSelf: bioEnabled ? 'flex-end' : 'flex-start',
+                    }} />
+                  </View>
+                </Pressable>
+              </>
+            ) : null}
+
+            <View style={{ height: 1, backgroundColor: colors.border }} />
+            {/* Reset PIN */}
+            <Pressable
+              onPress={handleResetPin}
+              style={({ pressed }) => ({
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingHorizontal: 16,
+                paddingVertical: 14,
+                backgroundColor: pressed ? colors.muted : 'transparent',
+              })}
+              accessibilityLabel="Reset PIN"
+              accessibilityRole="button"
+            >
+              <Text style={{ color: colors.danger, fontSize: 15 }}>Reset PIN</Text>
+            </Pressable>
+          </>
+        ) : null}
       </View>
 
       {/* Info section */}
