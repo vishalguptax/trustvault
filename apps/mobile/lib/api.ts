@@ -1,36 +1,55 @@
 import { API_BASE_URL } from './constants';
 
-interface ApiResponse<T> {
-  data: T;
-  message?: string;
-}
+let getAccessTokenFn: (() => string | null) | null = null;
+let refreshSessionFn: (() => Promise<boolean>) | null = null;
+let clearSessionFn: (() => Promise<void>) | null = null;
 
-interface ApiError {
-  error: string;
-  statusCode: number;
-  message: string;
+export function setAuthHelpers(helpers: {
+  getAccessToken: () => string | null;
+  refreshSession: () => Promise<boolean>;
+  clearSession: () => Promise<void>;
+}) {
+  getAccessTokenFn = helpers.getAccessToken;
+  refreshSessionFn = helpers.refreshSession;
+  clearSessionFn = helpers.clearSession;
 }
 
 async function request<T>(
   path: string,
   options: RequestInit = {},
+  retry = true,
 ): Promise<T> {
   const url = `${API_BASE_URL}${path}`;
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-  });
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options.headers as Record<string, string>),
+  };
+
+  const token = getAccessTokenFn?.();
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(url, { ...options, headers });
+
+  // Handle 401 — attempt refresh and retry once
+  if (response.status === 401 && retry && refreshSessionFn) {
+    const refreshed = await refreshSessionFn();
+    if (refreshed) {
+      return request<T>(path, options, false);
+    }
+    if (clearSessionFn) await clearSessionFn();
+    throw new Error('Session expired. Please log in again.');
+  }
 
   if (!response.ok) {
-    const error: ApiError = await response.json();
-    throw new Error(error.message || `Request failed: ${response.status}`);
+    const json = await response.json().catch(() => null);
+    const message = json?.message || json?.error || `Request failed: ${response.status}`;
+    throw new Error(typeof message === 'string' ? message : JSON.stringify(message));
   }
 
   const json = await response.json();
-  // Support both { data: T } wrapper and direct T responses
+  // Support { success, data } wrapper and direct responses
   if (json && typeof json === 'object' && 'data' in json) {
     return json.data as T;
   }

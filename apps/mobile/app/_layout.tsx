@@ -1,46 +1,52 @@
-import '../global.css';
-import { Stack } from 'expo-router';
+import { useEffect } from 'react';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { Slot, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View } from 'react-native';
+import { AuthProvider, useAuth } from '@/lib/auth/auth-context';
+
+function AuthGate() {
+  const { isAuthenticated, isLoading } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isLoading) return;
+
+    const inAuthGroup = segments[0] === '(auth)';
+
+    if (!isAuthenticated && !inAuthGroup) {
+      router.replace('/(auth)/login');
+    } else if (isAuthenticated && inAuthGroup) {
+      router.replace('/(tabs)');
+    }
+  }, [isAuthenticated, isLoading, segments, router]);
+
+  if (isLoading) {
+    return (
+      <View style={s.splash}>
+        <View style={s.splashIcon}>
+          <ActivityIndicator size="large" color="#14B8A6" />
+        </View>
+      </View>
+    );
+  }
+
+  return <Slot />;
+}
 
 export default function RootLayout() {
   return (
-    <View style={{ flex: 1, backgroundColor: '#0B1120' }}>
+    <View style={s.root}>
       <StatusBar style="light" />
-      <Stack
-        screenOptions={{
-          headerStyle: { backgroundColor: '#111827' },
-          headerTintColor: '#F9FAFB',
-          headerTitleStyle: { fontWeight: '600' },
-          contentStyle: { backgroundColor: '#0B1120' },
-          animation: 'slide_from_right',
-        }}
-      >
-        <Stack.Screen
-          name="index"
-          options={{ title: 'TrustVault Wallet', headerShown: true }}
-        />
-        <Stack.Screen
-          name="credential/[id]"
-          options={{ title: 'Credential Details' }}
-        />
-        <Stack.Screen
-          name="receive"
-          options={{ title: 'Receive Credential', presentation: 'modal' }}
-        />
-        <Stack.Screen
-          name="present"
-          options={{ title: 'Present Credential', presentation: 'modal' }}
-        />
-        <Stack.Screen
-          name="scanner"
-          options={{ title: 'Scan QR Code', presentation: 'fullScreenModal' }}
-        />
-        <Stack.Screen
-          name="history"
-          options={{ title: 'Consent History' }}
-        />
-      </Stack>
+      <AuthProvider>
+        <AuthGate />
+      </AuthProvider>
     </View>
   );
 }
+
+const s = StyleSheet.create({
+  root: { flex: 1, backgroundColor: '#0B1120' },
+  splash: { flex: 1, backgroundColor: '#0B1120', alignItems: 'center', justifyContent: 'center' },
+  splashIcon: { width: 80, height: 80, borderRadius: 20, backgroundColor: 'rgba(20,184,166,0.1)', alignItems: 'center', justifyContent: 'center' },
+});

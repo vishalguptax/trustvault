@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useCredentialStore, StoredCredential } from '@/lib/store';
-
-const HOLDER_ID = 'demo-holder';
+import { useAuth } from '@/lib/auth/auth-context';
 
 interface CredentialApiItem {
   id: string;
@@ -35,15 +34,18 @@ interface UseCredentialsReturn {
 export function useCredentials(): UseCredentialsReturn {
   const credentials = useCredentialStore((state) => state.credentials);
   const setCredentials = useCredentialStore((state) => state.setCredentials);
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const holderId = user?.id ?? 'demo-holder';
 
   const refresh = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const response = await api.get<CredentialApiItem[]>(
-        `/wallet/credentials?holderId=${HOLDER_ID}`,
+        `/wallet/credentials?holderId=${holderId}`,
       );
       const items = Array.isArray(response) ? response : [];
       const mapped: StoredCredential[] = items.map((item) => ({
@@ -67,7 +69,7 @@ export function useCredentials(): UseCredentialsReturn {
     } finally {
       setLoading(false);
     }
-  }, [setCredentials]);
+  }, [setCredentials, holderId]);
 
   const fetchClaims = useCallback(
     async (credentialId: string): Promise<CredentialClaimsResponse | null> => {
