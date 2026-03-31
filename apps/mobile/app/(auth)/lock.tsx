@@ -3,6 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTheme } from '@/lib/theme';
+import { useLock } from '@/app/_layout';
 import {
   verifyMpin,
   clearMpin,
@@ -18,6 +19,7 @@ const MAX_ATTEMPTS = 3;
 export default function LockScreen() {
   const router = useRouter();
   const { colors } = useTheme();
+  const { unlock } = useLock();
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [attempts, setAttempts] = useState(0);
@@ -42,16 +44,12 @@ export default function LockScreen() {
         const success = await authenticateWithBiometric();
         if (cancelled) return;
         if (success) {
-          handleUnlock();
+          unlock();
         }
       }
     })();
     return () => { cancelled = true; };
-  }, []);
-
-  const handleUnlock = useCallback(() => {
-    router.replace('/(tabs)');
-  }, [router]);
+  }, [unlock]);
 
   const handleForceLogin = useCallback(async () => {
     await clearMpin();
@@ -70,7 +68,7 @@ export default function LockScreen() {
     const correct = await verifyMpin(fullPin);
     if (correct) {
       setError('');
-      handleUnlock();
+      unlock();
       return;
     }
 
@@ -85,7 +83,7 @@ export default function LockScreen() {
     } else {
       setError(`Incorrect PIN. ${MAX_ATTEMPTS - newAttempts} attempt${MAX_ATTEMPTS - newAttempts === 1 ? '' : 's'} remaining.`);
     }
-  }, [attempts, handleUnlock, handleForceLogin, triggerShake]);
+  }, [attempts, unlock, handleForceLogin, triggerShake]);
 
   const handleDigit = useCallback((digit: string) => {
     setError('');
@@ -93,7 +91,6 @@ export default function LockScreen() {
       if (prev.length >= PIN_LENGTH) return prev;
       const next = prev + digit;
       if (next.length === PIN_LENGTH) {
-        // Defer verification to next tick so state updates first
         setTimeout(() => handlePinComplete(next), 50);
       }
       return next;
@@ -108,9 +105,9 @@ export default function LockScreen() {
   const handleBiometric = useCallback(async () => {
     const success = await authenticateWithBiometric();
     if (success) {
-      handleUnlock();
+      unlock();
     }
-  }, [handleUnlock]);
+  }, [unlock]);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>

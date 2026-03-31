@@ -14,34 +14,36 @@ function AuthGate() {
   const [isLocked, setIsLocked] = useState(false);
   const [lockChecked, setLockChecked] = useState(false);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+  const justUnlockedRef = useRef(false);
 
-  // Check lock state after session restore
-  const checkLockState = useCallback(async () => {
-    if (!isAuthenticated) {
-      setIsLocked(false);
-      setLockChecked(true);
-      return;
-    }
-    const [lockOn, pinExists] = await Promise.all([isLockEnabled(), hasMpin()]);
-    const shouldLock = lockOn && pinExists;
-    setIsLocked(shouldLock);
-    setLockChecked(true);
-  }, [isAuthenticated]);
-
+  // Check lock state once after session restore
   useEffect(() => {
-    if (!isLoading) {
-      checkLockState();
-    }
-  }, [isLoading, isAuthenticated, checkLockState]);
+    if (isLoading) return;
+    if (lockChecked) return; // Only run once on initial load
 
-  // Lock on background
+    (async () => {
+      if (!isAuthenticated) {
+        setIsLocked(false);
+        setLockChecked(true);
+        return;
+      }
+      const [lockOn, pinExists] = await Promise.all([isLockEnabled(), hasMpin()]);
+      const shouldLock = lockOn && pinExists;
+      console.log('[AuthGate] Initial lock check:', { lockOn, pinExists, shouldLock });
+      setIsLocked(shouldLock);
+      setLockChecked(true);
+    })();
+  }, [isLoading, isAuthenticated, lockChecked]);
+
+  // Lock when going to background
   useEffect(() => {
     const handleAppState = async (nextState: AppStateStatus) => {
       if (appStateRef.current.match(/active/) && nextState.match(/inactive|background/)) {
-        // Going to background: mark locked if lock is enabled
         if (isAuthenticated) {
           const [lockOn, pinExists] = await Promise.all([isLockEnabled(), hasMpin()]);
           if (lockOn && pinExists) {
+            console.log('[AuthGate] App going to background, locking');
+            justUnlockedRef.current = false;
             setIsLocked(true);
           }
         }
@@ -52,6 +54,14 @@ function AuthGate() {
     return () => sub.remove();
   }, [isAuthenticated]);
 
+  // Provide unlock function that child screens can call
+  const unlock = useCallback(() => {
+    console.log('[AuthGate] Unlocking');
+    justUnlockedRef.current = true;
+    setIsLocked(false);
+  }, []);
+
+  // Navigation routing
   useEffect(() => {
     if (isLoading || !lockChecked) return;
     const inAuthGroup = segments[0] === '(auth)';
@@ -63,21 +73,12 @@ function AuthGate() {
     } else if (isAuthenticated && isLocked && !onLockScreen) {
       router.replace('/(auth)/lock');
     } else if (isAuthenticated && !isLocked && inAuthGroup && !onSetupMpin) {
-      router.replace('/(tabs)');
+      // Only redirect to tabs if we are on login/register or just unlocked
+      if (!onLockScreen || justUnlockedRef.current) {
+        router.replace('/(tabs)');
+      }
     }
   }, [isAuthenticated, isLoading, isLocked, lockChecked, segments, router]);
-
-  // Expose unlock function via callback in lock screen
-  // The lock screen navigates to /(tabs) which triggers the effect above
-  // to recognize isAuthenticated && !isLocked && not in auth group => no redirect needed
-
-  // Listen for navigation to /(tabs) from lock screen — clear lock state
-  useEffect(() => {
-    const inTabs = segments[0] === '(tabs)';
-    if (inTabs && isLocked) {
-      setIsLocked(false);
-    }
-  }, [segments, isLocked]);
 
   if (isLoading || !lockChecked) {
     return (
@@ -92,10 +93,17 @@ function AuthGate() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
-      <Slot />
+      <LockContext.Provider value={{ unlock }}>
+        <Slot />
+      </LockContext.Provider>
     </View>
   );
 }
+
+// Context to expose unlock function to lock screen
+import { createContext, useContext } from 'react';
+const LockContext = createContext<{ unlock: () => void }>({ unlock: () => {} });
+export function useLock() { return useContext(LockContext); }
 
 export default function RootLayout() {
   return (
