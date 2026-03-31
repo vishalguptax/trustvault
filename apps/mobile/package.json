@@ -4,7 +4,7 @@
   "private": true,
   "main": "./index.js",
   "scripts": {
-    "dev": "expo start --port 5000 --host lan",
+    "dev": "node ../../node_modules/expo/bin/cli start --port 5000 --host lan",
     "build": "echo 'Mobile build requires EAS'",
     "lint": "expo lint",
     "android": "expo start --android",
@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@expo/vector-icons": "^15.1.1",
+    "@react-navigation/core": "^7.17.2",
     "@react-navigation/native": "^7.0.0",
     "@trustvault/shared": "workspace:^",
     "clsx": "^2.1.1",
