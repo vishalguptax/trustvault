@@ -6,13 +6,17 @@ export class LoggingMiddleware implements NestMiddleware {
   private readonly logger = new Logger('HTTP');
 
   use(req: Request, res: Response, next: NextFunction) {
-    const { method, originalUrl } = req;
+    const { method, originalUrl, ip } = req;
+    const userAgent = req.get('user-agent') || '-';
+    const correlationId = req.headers['x-correlation-id'] || '-';
     const startTime = Date.now();
 
     res.on('finish', () => {
       const { statusCode } = res;
+      const contentLength = res.get('content-length') || 0;
       const duration = Date.now() - startTime;
-      const logMessage = `${method} ${originalUrl} ${statusCode} ${duration}ms`;
+
+      const logMessage = `${method} ${originalUrl} ${statusCode} ${contentLength}b ${duration}ms [${correlationId}] ${ip} "${userAgent}"`;
 
       if (statusCode >= 500) {
         this.logger.error(logMessage);

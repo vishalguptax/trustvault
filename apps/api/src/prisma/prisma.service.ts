@@ -1,19 +1,30 @@
-import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new Logger(PrismaService.name);
+  private connected = false;
+
   async onModuleInit() {
     try {
       await this.$connect();
-      console.log('Database connected successfully');
+      this.connected = true;
+      this.logger.log('MongoDB connected successfully');
     } catch (error) {
-      console.warn('Database connection failed — API will start but DB operations will fail.');
-      console.warn('Set DATABASE_URL in .env to connect to MongoDB Atlas.');
+      this.connected = false;
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`MongoDB connection failed: ${message}`);
     }
   }
 
   async onModuleDestroy() {
+    this.logger.log('Disconnecting from MongoDB...');
     await this.$disconnect();
+    this.logger.log('MongoDB disconnected');
+  }
+
+  isConnected(): boolean {
+    return this.connected;
   }
 }

@@ -8,6 +8,7 @@ import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
 export interface ApiResponse<T> {
+  success: boolean;
   statusCode: number;
   data: T;
   timestamp: string;
@@ -23,6 +24,7 @@ export class ResponseInterceptor<T> implements NestInterceptor<T, ApiResponse<T>
 
         if (responseData && typeof responseData === 'object' && 'data' in responseData) {
           return {
+            success: true,
             statusCode,
             ...responseData,
             timestamp: new Date().toISOString(),
@@ -30,6 +32,7 @@ export class ResponseInterceptor<T> implements NestInterceptor<T, ApiResponse<T>
         }
 
         return {
+          success: true,
           statusCode,
           data: responseData,
           timestamp: new Date().toISOString(),

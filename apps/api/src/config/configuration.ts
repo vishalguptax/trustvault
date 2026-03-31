@@ -1,8 +1,11 @@
 export const configuration = () => ({
-  port: parseInt(process.env.PORT || '3000', 10),
+  port: parseInt(process.env.PORT || '8000', 10),
   nodeEnv: process.env.NODE_ENV || 'development',
   database: {
     url: process.env.DATABASE_URL,
+  },
+  cors: {
+    origin: process.env.CORS_ORIGIN || '*',
   },
   did: {
     defaultMethod: process.env.DEFAULT_DID_METHOD || 'key',
@@ -14,6 +17,6 @@ export const configuration = () => ({
   },
   issuer: {
     did: process.env.ISSUER_DID || '',
-    baseUrl: process.env.ISSUER_BASE_URL || 'http://localhost:3000/issuer',
+    baseUrl: process.env.ISSUER_BASE_URL || `http://localhost:${process.env.PORT || '8000'}/issuer`,
   },
 });

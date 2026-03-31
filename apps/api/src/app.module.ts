@@ -1,5 +1,6 @@
 import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { resolve } from 'path';
 import { configuration } from './config/configuration';
 import { PrismaModule } from './prisma/prisma.module';
 import { DidModule } from './modules/did/did.module';
@@ -17,6 +18,10 @@ import { CorrelationIdMiddleware } from './common/middleware/correlation-id.midd
     ConfigModule.forRoot({
       isGlobal: true,
       load: [configuration],
+      envFilePath: [
+        resolve(process.cwd(), '.env'),
+        resolve(process.cwd(), '../../.env'),
+      ],
     }),
     PrismaModule,
     DidModule,
