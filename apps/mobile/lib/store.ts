@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage, type StateStorage } from 'zustand/middleware';
-import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 
 export interface StoredCredential {
   id: string;
@@ -40,20 +40,43 @@ interface CredentialStore {
 const STORAGE_KEY = 'trustvault_credentials';
 
 /**
- * Secure storage adapter backed by expo-secure-store.
- * Data is encrypted at rest on device.
+ * Storage adapter — uses expo-secure-store on native (encrypted),
+ * falls back to in-memory on web where SecureStore is unavailable.
  */
-const secureStorage: StateStorage = {
-  getItem: async (name: string): Promise<string | null> => {
-    return SecureStore.getItemAsync(name);
-  },
-  setItem: async (name: string, value: string): Promise<void> => {
-    await SecureStore.setItemAsync(name, value);
-  },
-  removeItem: async (name: string): Promise<void> => {
-    await SecureStore.deleteItemAsync(name);
-  },
-};
+let secureStorage: StateStorage;
+
+if (Platform.OS === 'web') {
+  // Web fallback: use localStorage
+  secureStorage = {
+    getItem: (name: string) => {
+      const value = typeof window !== 'undefined' ? window.localStorage.getItem(name) : null;
+      return Promise.resolve(value);
+    },
+    setItem: (name: string, value: string) => {
+      if (typeof window !== 'undefined') window.localStorage.setItem(name, value);
+      return Promise.resolve();
+    },
+    removeItem: (name: string) => {
+      if (typeof window !== 'undefined') window.localStorage.removeItem(name);
+      return Promise.resolve();
+    },
+  };
+} else {
+  // Native: encrypted storage
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const SecureStore = require('expo-secure-store');
+  secureStorage = {
+    getItem: (name: string): Promise<string | null> => {
+      return SecureStore.getItemAsync(name);
+    },
+    setItem: (name: string, value: string): Promise<void> => {
+      return SecureStore.setItemAsync(name, value);
+    },
+    removeItem: (name: string): Promise<void> => {
+      return SecureStore.deleteItemAsync(name);
+    },
+  };
+}
 
 export const useCredentialStore = create<CredentialStore>()(
   persist(

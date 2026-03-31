@@ -45,7 +45,8 @@ export function useCredentials(): UseCredentialsReturn {
       const response = await api.get<CredentialApiItem[]>(
         `/wallet/credentials?holderId=${HOLDER_ID}`,
       );
-      const mapped: StoredCredential[] = (response ?? []).map((item) => ({
+      const items = Array.isArray(response) ? response : [];
+      const mapped: StoredCredential[] = items.map((item) => ({
         id: item.id,
         type: item.type,
         typeName: item.typeName,

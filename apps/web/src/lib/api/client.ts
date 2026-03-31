@@ -26,8 +26,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     throw new Error(error.message || `Request failed: ${response.status}`);
   }
 
-  const result: ApiResponse<T> = await response.json();
-  return result.data;
+  const json = await response.json();
+  // Support both { data: T } wrapper and direct T responses
+  if (json && typeof json === 'object' && 'data' in json) {
+    return json.data as T;
+  }
+  return json as T;
 }
 
 export const api = {
