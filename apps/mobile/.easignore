@@ -1,0 +1,44 @@
+# Backend — not needed for mobile build
+apps/api/
+
+# Web app — not needed for mobile build
+apps/web/
+
+# Build outputs
+apps/mobile/android/
+apps/mobile/ios/
+.next/
+dist/
+
+# Dev tools
+.claude/
+.playwright-mcp/
+.turbo/
+tools/
+
+# Docs
+docs/
+*.md
+!README.md
+
+# Tests
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+__tests__/
+
+# IDE
+.idea/
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temp
+*.tmp
+*.swp
