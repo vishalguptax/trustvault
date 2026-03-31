@@ -1,8 +1,10 @@
 import { Controller, Get, Post, Body, Param } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { IsString, IsArray, IsObject, IsOptional } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { VerifierService } from './verifier.service';
+import { Public } from '../auth/decorators/public.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
 
 class CreatePresentationRequestDto {
   @ApiProperty({ example: 'did:key:zVerifier...' })
@@ -60,9 +62,11 @@ export class VerifierController {
   constructor(private readonly verifierService: VerifierService) {}
 
   @Post('presentations/request')
+  @Roles('verifier', 'admin')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Create presentation request (OID4VP)' })
   @ApiResponse({ status: 201, description: 'Presentation request created' })
-  @ApiResponse({ status: 400, description: 'Invalid request data' })
+  @ApiResponse({ status: 403, description: 'Forbidden — requires verifier or admin role' })
   async createRequest(@Body() dto: CreatePresentationRequestDto) {
     return this.verifierService.createPresentationRequest(
       dto.verifierDid,
@@ -73,14 +77,16 @@ export class VerifierController {
   }
 
   @Post('presentations/response')
-  @ApiOperation({ summary: 'Submit presentation response' })
+  @Public()
+  @ApiOperation({ summary: 'Submit presentation response (OID4VP — from wallet)' })
   @ApiResponse({ status: 200, description: 'Verification result' })
-  @ApiResponse({ status: 404, description: 'Verification request not found' })
   async handleResponse(@Body() dto: PresentationResponseDto) {
     return this.verifierService.handlePresentationResponse(dto.vp_token, dto.state);
   }
 
   @Get('presentations/:id')
+  @Roles('verifier', 'admin')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Get presentation/verification result' })
   @ApiResponse({ status: 200, description: 'Verification details' })
   @ApiResponse({ status: 404, description: 'Not found' })
@@ -89,6 +95,8 @@ export class VerifierController {
   }
 
   @Post('policies')
+  @Roles('admin')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Create verifier policy' })
   @ApiResponse({ status: 201, description: 'Policy created' })
   async createPolicy(@Body() dto: CreatePolicyDto) {
@@ -97,10 +105,11 @@ export class VerifierController {
   }
 
   @Get('policies')
+  @Public()
   @ApiOperation({ summary: 'List verifier policies' })
   @ApiResponse({ status: 200, description: 'List of policies' })
   async listPolicies() {
     const policies = await this.verifierService.listPolicies();
-    return { policies };
+    return { data: policies };
   }
 }

@@ -1,8 +1,10 @@
 import { Controller, Get, Post, Body, Param } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { IsString, IsOptional } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { StatusService } from './status.service';
+import { Public } from '../auth/decorators/public.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
 
 class RevokeDto {
   @ApiProperty({ example: '507f1f77bcf86cd799439011' })
@@ -38,32 +40,42 @@ export class StatusController {
   constructor(private readonly statusService: StatusService) {}
 
   @Get('lists/:id')
-  @ApiOperation({ summary: 'Get Bitstring Status List credential' })
-  @ApiResponse({ status: 200, description: 'Status list credential (W3C format)' })
+  @Public()
+  @ApiOperation({ summary: 'Get Bitstring Status List credential (W3C format)' })
+  @ApiResponse({ status: 200, description: 'Status list credential' })
   @ApiResponse({ status: 404, description: 'Status list not found' })
   async getStatusList(@Param('id') id: string) {
     return this.statusService.getStatusList(id);
   }
 
   @Post('revoke')
+  @Roles('issuer', 'admin')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Revoke a credential' })
   @ApiResponse({ status: 200, description: 'Credential revoked' })
+  @ApiResponse({ status: 403, description: 'Forbidden — requires issuer or admin role' })
   @ApiResponse({ status: 404, description: 'Credential not found' })
   async revoke(@Body() dto: RevokeDto) {
     return this.statusService.revokeCredential(dto.credentialId, dto.reason);
   }
 
   @Post('suspend')
+  @Roles('issuer', 'admin')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Suspend a credential' })
   @ApiResponse({ status: 200, description: 'Credential suspended' })
+  @ApiResponse({ status: 403, description: 'Forbidden — requires issuer or admin role' })
   @ApiResponse({ status: 404, description: 'Credential not found' })
   async suspend(@Body() dto: SuspendDto) {
     return this.statusService.suspendCredential(dto.credentialId, dto.reason);
   }
 
   @Post('reinstate')
+  @Roles('issuer', 'admin')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Reinstate a suspended credential' })
   @ApiResponse({ status: 200, description: 'Credential reinstated' })
+  @ApiResponse({ status: 403, description: 'Forbidden — requires issuer or admin role' })
   @ApiResponse({ status: 404, description: 'Credential not found' })
   async reinstate(@Body() dto: ReinstateDto) {
     return this.statusService.reinstateCredential(dto.credentialId);

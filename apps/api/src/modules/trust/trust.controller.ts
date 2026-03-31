@@ -1,8 +1,11 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Query } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { IsString, IsArray, IsOptional } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { TrustService } from './trust.service';
+import { IssuerService } from '../issuer/issuer.service';
+import { Public } from '../auth/decorators/public.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
 
 class RegisterIssuerDto {
   @ApiProperty({ example: 'did:key:z...' })
@@ -43,17 +46,31 @@ class UpdateIssuerDto {
 @ApiTags('Trust Registry')
 @Controller('trust')
 export class TrustController {
-  constructor(private readonly trustService: TrustService) {}
+  constructor(
+    private readonly trustService: TrustService,
+    private readonly issuerService: IssuerService,
+  ) {}
+
+  @Get('schemas')
+  @Public()
+  @ApiOperation({ summary: 'List credential schemas' })
+  @ApiResponse({ status: 200, description: 'List of credential schemas' })
+  async listSchemas() {
+    const schemas = await this.issuerService.listSchemas();
+    return { data: schemas };
+  }
 
   @Get('issuers')
+  @Public()
   @ApiOperation({ summary: 'List trusted issuers' })
   @ApiResponse({ status: 200, description: 'List of trusted issuers' })
   async listIssuers() {
     const issuers = await this.trustService.listIssuers();
-    return { issuers };
+    return { data: issuers };
   }
 
   @Get('issuers/:did')
+  @Public()
   @ApiOperation({ summary: 'Get trusted issuer by DID' })
   @ApiResponse({ status: 200, description: 'Issuer details' })
   async getIssuer(@Param('did') did: string) {
@@ -61,8 +78,11 @@ export class TrustController {
   }
 
   @Post('issuers')
+  @Roles('admin')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Register trusted issuer' })
   @ApiResponse({ status: 201, description: 'Issuer registered' })
+  @ApiResponse({ status: 403, description: 'Forbidden — requires admin role' })
   @ApiResponse({ status: 409, description: 'Issuer already registered' })
   async registerIssuer(@Body() dto: RegisterIssuerDto) {
     const issuer = await this.trustService.registerIssuer(
@@ -75,6 +95,8 @@ export class TrustController {
   }
 
   @Put('issuers/:did')
+  @Roles('admin')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Update trusted issuer' })
   @ApiResponse({ status: 200, description: 'Issuer updated' })
   @ApiResponse({ status: 404, description: 'Issuer not found' })
@@ -83,6 +105,8 @@ export class TrustController {
   }
 
   @Delete('issuers/:did')
+  @Roles('admin')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Remove trusted issuer' })
   @ApiResponse({ status: 200, description: 'Issuer removed' })
   @ApiResponse({ status: 404, description: 'Issuer not found' })
@@ -91,6 +115,7 @@ export class TrustController {
   }
 
   @Get('verify')
+  @Public()
   @ApiOperation({ summary: 'Verify issuer trust for credential type' })
   @ApiQuery({ name: 'issuerDid', required: true })
   @ApiQuery({ name: 'credentialType', required: true })

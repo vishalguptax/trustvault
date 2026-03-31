@@ -7,10 +7,11 @@ import {
   Param,
   Query,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { IsString, IsArray, IsObject, IsBoolean, IsOptional } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { WalletService } from './wallet.service';
+import { Roles } from '../auth/decorators/roles.decorator';
 
 class ReceiveCredentialDto {
   @ApiProperty({ example: 'openid-credential-offer://...' })
@@ -56,7 +57,9 @@ class CreateWalletDidDto {
 }
 
 @ApiTags('Wallet')
+@ApiBearerAuth()
 @Controller('wallet')
+@Roles('holder', 'admin')
 export class WalletController {
   constructor(private readonly walletService: WalletService) {}
 
@@ -121,7 +124,7 @@ export class WalletController {
   @ApiResponse({ status: 200, description: 'Consent records' })
   async getConsentHistory(@Query('holderId') holderId: string) {
     const records = await this.walletService.getConsentHistory(holderId);
-    return { records };
+    return { data: records };
   }
 
   @Post('dids')

@@ -12,6 +12,8 @@ import { StatusModule } from './modules/status/status.module';
 import { TrustModule } from './modules/trust/trust.module';
 import { VerifierModule } from './modules/verifier/verifier.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
+import { RolesGuard } from './modules/auth/guards/roles.guard';
 import { LoggingMiddleware } from './common/middleware/logging.middleware';
 import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware';
 
@@ -36,10 +38,9 @@ import { CorrelationIdMiddleware } from './common/middleware/correlation-id.midd
     AuthModule,
   ],
   providers: [
-    {
-      provide: APP_GUARD,
-      useClass: ThrottlerGuard,
-    },
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
   ],
 })
 export class AppModule implements NestModule {
