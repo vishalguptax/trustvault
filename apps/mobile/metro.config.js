@@ -1,17 +1,25 @@
 const { getDefaultConfig } = require('expo/metro-config');
-const { withNativeWind } = require('nativewind/metro');
+const { withNativewind } = require('nativewind/metro');
 const path = require('path');
 
-const projectRoot = __dirname;
-const monorepoRoot = path.resolve(projectRoot, '../..');
+/** @type {import('expo/metro-config').MetroConfig} */
+const config = getDefaultConfig(__dirname);
 
-const config = getDefaultConfig(projectRoot);
+// Override the server root to be the mobile app directory
+// This fixes expo-router entry resolution in pnpm monorepos
+// where the default server root is set to the monorepo root
+config.server = {
+  ...config.server,
+  experimentalImportBundleSupport: config.server?.experimentalImportBundleSupport,
+};
 
-config.projectRoot = projectRoot;
-config.watchFolders = [monorepoRoot];
-config.resolver.nodeModulesPaths = [
-  path.resolve(projectRoot, 'node_modules'),
-  path.resolve(monorepoRoot, 'node_modules'),
-];
+// Ensure watchFolders includes monorepo root for shared packages
+const monorepoRoot = path.resolve(__dirname, '../..');
+if (!config.watchFolders?.includes(monorepoRoot)) {
+  config.watchFolders = [...(config.watchFolders || []), monorepoRoot];
+}
 
-module.exports = withNativeWind(config, { input: './global.css' });
+module.exports = withNativewind(config, {
+  inlineVariables: false,
+  globalClassNamePolyfill: false,
+});
