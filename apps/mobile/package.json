@@ -11,7 +11,7 @@
     "build:preview:ios": "eas build --profile preview --platform ios",
     "build:prod": "eas build --profile production --platform android",
     "build:prod:ios": "eas build --profile production --platform ios",
-    "build:local": "npx expo prebuild --platform android && cd android && ./gradlew assembleRelease",
+    "build:local": "npx expo prebuild --platform android && cd android && gradlew assembleRelease",
     "build:local:ios": "npx expo prebuild --platform ios && cd ios && pod install && xcodebuild -workspace TrustVaultWallet.xcworkspace -scheme TrustVaultWallet -configuration Release -sdk iphoneos archive",
     "prebuild": "npx expo prebuild --clean",
     "lint": "expo lint",
