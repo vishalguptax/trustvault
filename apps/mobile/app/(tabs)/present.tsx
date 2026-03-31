@@ -18,7 +18,7 @@ import { CREDENTIAL_TYPE_CONFIG } from '@/lib/constants';
 
 type PresentStep = 'loading' | 'select' | 'disclose' | 'consent' | 'submitting' | 'result' | 'error';
 
-const HOLDER_ID = 'demo-holder';
+import { useAuth } from '@/lib/auth/auth-context';
 
 interface VerificationRequest {
   id: string;
@@ -75,6 +75,7 @@ function parseVerificationUri(uri: string): VerificationRequest | null {
 
 export default function PresentScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const { uri } = useLocalSearchParams<{ uri: string }>();
   const credentials = useCredentialStore((state) => state.credentials);
   const addConsentRecord = useCredentialStore((state) => state.addConsentRecord);
@@ -238,7 +239,7 @@ export default function PresentScreen() {
         '/wallet/presentations/create',
         {
           verificationRequestId: verificationRequest?.id ?? '',
-          holderId: HOLDER_ID,
+          holderId: user?.id ?? '',
           selectedCredentials: selectedIds,
           disclosedClaims: disclosedClaimsMap,
           consent: true,
@@ -246,11 +247,11 @@ export default function PresentScreen() {
       );
 
       setResult(response.result);
-      Haptics.notificationAsync(
-        response.result === 'verified'
-          ? Haptics.NotificationFeedbackType.Success
-          : Haptics.NotificationFeedbackType.Error,
-      );
+      if (response.result === 'verified') {
+        notifySuccess();
+      } else {
+        notifyError();
+      }
 
       addConsentRecord({
         id: response.verificationId,

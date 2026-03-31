@@ -19,7 +19,7 @@ export default function RegisterScreen() {
     const trimmedEmail = email.trim();
     if (!trimmedName) { setError('Name is required.'); return; }
     if (!trimmedEmail) { setError('Email is required.'); return; }
-    if (password.length < 6) { setError('Password must be at least 6 characters.'); return; }
+    if (password.length < 8) { setError('Password must be at least 8 characters.'); return; }
 
     setLoading(true);
     setError('');

@@ -30,7 +30,14 @@ async function request<T>(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(url, { ...options, headers });
+  let response: Response;
+  try {
+    response = await fetch(url, { ...options, headers });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Unknown error';
+    console.error(`[API] Network error: ${options.method || 'GET'} ${url} — ${msg}`);
+    throw new Error(`Cannot connect to server (${API_BASE_URL}). Is the backend running?`);
+  }
 
   // Handle 401 — attempt refresh and retry once
   if (response.status === 401 && retry && refreshSessionFn) {

@@ -10,7 +10,7 @@ import { CREDENTIAL_TYPE_CONFIG } from '@/lib/constants';
 
 type ReceiveStep = 'loading' | 'preview' | 'confirming' | 'success' | 'error';
 
-const HOLDER_ID = 'demo-holder';
+import { useAuth } from '@/lib/auth/auth-context';
 
 interface OfferPreview {
   issuerName: string;
@@ -66,6 +66,7 @@ function parseOfferUri(uri: string): OfferPreview | null {
 
 export default function ReceiveScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const { uri } = useLocalSearchParams<{ uri: string }>();
   const addCredential = useCredentialStore((state) => state.addCredential);
   const [step, setStep] = useState<ReceiveStep>('loading');
@@ -115,7 +116,7 @@ export default function ReceiveScreen() {
         '/wallet/credentials/receive',
         {
           credentialOfferUri: uri,
-          holderId: HOLDER_ID,
+          holderId: user?.id ?? '',
         },
       );
 
