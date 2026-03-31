@@ -4,10 +4,13 @@ import { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
+import { GraduationCap, CurrencyDollar, IdentificationCard, Lock, LockOpen, Check } from '@phosphor-icons/react';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { schemaTypeToAccent, getAccentStyles } from '@/lib/credential-styles';
+import { Button } from '@/components/ui/button';
 import { QRDisplay } from '@/components/qr/qr-display';
 
 /* ------------------------------------------------------------------ */
@@ -104,61 +107,12 @@ function buildZodSchema(claims: ClaimDefinition[]) {
 /* Schema type icons                                                   */
 /* ------------------------------------------------------------------ */
 
-function EducationIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" viewBox="0 0 256 256">
-      <path d="M251.76,88.94l-120-64a8,8,0,0,0-7.52,0l-120,64a8,8,0,0,0,0,14.12L32,117.87v48.42a15.91,15.91,0,0,0,4.06,10.65C49.16,191.53,78.51,216,128,216a130,130,0,0,0,48-8.76V130.67l16-8.53v40.58a8,8,0,0,0,16,0V116.53l43.76-23.47A8,8,0,0,0,251.76,88.94Z" />
-    </svg>
-  );
-}
-
-function IncomeIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" viewBox="0 0 256 256">
-      <path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm12,152h-4v8a8,8,0,0,1-16,0v-8H104a8,8,0,0,1,0-16h36a12,12,0,0,0,0-24H116a28,28,0,0,1,0-56h4V72a8,8,0,0,1,16,0v8h16a8,8,0,0,1,0,16H116a12,12,0,0,0,0,24h24a28,28,0,0,1,0,56Z" />
-    </svg>
-  );
-}
-
-function IdentityIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" viewBox="0 0 256 256">
-      <path d="M200,24H56A16,16,0,0,0,40,40V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V40A16,16,0,0,0,200,24ZM96,48h64a8,8,0,0,1,0,16H96a8,8,0,0,1,0-16Zm84,168H76a8,8,0,0,1,0-16H180a8,8,0,0,1,0,16Zm0-48H76a8,8,0,0,1,0-16H180a8,8,0,0,1,0,16Zm0-48H76a8,8,0,0,1,0-16H180a8,8,0,0,1,0,16Z" />
-    </svg>
-  );
-}
-
 const schemaIcons: Record<string, React.ReactNode> = {
-  VerifiableEducationCredential: <EducationIcon />,
-  VerifiableIncomeCredential: <IncomeIcon />,
-  VerifiableIdentityCredential: <IdentityIcon />,
+  VerifiableEducationCredential: <GraduationCap size={32} weight="duotone" />,
+  VerifiableIncomeCredential: <CurrencyDollar size={32} weight="duotone" />,
+  VerifiableIdentityCredential: <IdentificationCard size={32} weight="duotone" />,
 };
 
-const schemaAccents: Record<string, string> = {
-  VerifiableEducationCredential: 'credential-education',
-  VerifiableIncomeCredential: 'credential-income',
-  VerifiableIdentityCredential: 'credential-identity',
-};
-
-/* ------------------------------------------------------------------ */
-/* Lock / Unlock icons                                                 */
-/* ------------------------------------------------------------------ */
-
-function LockIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 256 256" className="text-muted-foreground" aria-label="Always disclosed">
-      <path d="M208,80H176V56a48,48,0,0,0-96,0V80H48A16,16,0,0,0,32,96V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V96A16,16,0,0,0,208,80Zm-80,84a12,12,0,1,1,12-12A12,12,0,0,1,128,164Zm32-84H96V56a32,32,0,0,1,64,0Z" />
-    </svg>
-  );
-}
-
-function UnlockIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 256 256" className="text-primary" aria-label="Selectively disclosable">
-      <path d="M208,80H96V56a32,32,0,0,1,32-32c15.37,0,29.2,11,32.16,25.59a8,8,0,0,0,15.68-3.18C171.32,24.15,151.2,8,128,8A48.05,48.05,0,0,0,80,56V80H48A16,16,0,0,0,32,96V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V96A16,16,0,0,0,208,80Zm-80,84a12,12,0,1,1,12-12A12,12,0,0,1,128,164Z" />
-    </svg>
-  );
-}
 
 /* ------------------------------------------------------------------ */
 /* Main Component                                                      */
@@ -213,12 +167,13 @@ export default function NewOfferPage() {
 
     setSubmitting(true);
     try {
-      const response = await api.post<{ offerUri: string; expiresAt: string }>('/issuer/offers', {
-        schemaType: selectedSchema.type,
+      const response = await api.post<{ offerId: string; credentialOfferUri: string; preAuthorizedCode: string }>('/issuer/offers', {
+        schemaTypeUri: selectedSchema.type,
+        subjectDid: 'did:key:pending',
         claims: values,
       });
-      setOfferUri(response.offerUri);
-      setExpiresAt(new Date(response.expiresAt));
+      setOfferUri(response.credentialOfferUri);
+      setExpiresAt(new Date(Date.now() + 10 * 60 * 1000));
       setStep(3);
       toast.success('Credential offer created');
     } catch (err) {
@@ -242,29 +197,29 @@ export default function NewOfferPage() {
       </p>
 
       {/* Step indicator */}
-      <div className="flex items-center gap-2 mb-8">
+      <div className="flex items-center justify-center gap-0 mb-8">
         {[1, 2, 3].map((s) => (
-          <div key={s} className="flex items-center gap-2">
-            <div
-              className={cn(
-                'w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium transition-all',
-                s === step && 'bg-primary text-primary-foreground',
-                s < step && 'bg-success text-white',
-                s > step && 'bg-muted text-muted-foreground'
-              )}
-            >
-              {s < step ? (
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 256 256">
-                  <path d="M173.66,98.34a8,8,0,0,1,0,11.32l-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35A8,8,0,0,1,173.66,98.34Z" />
-                </svg>
-              ) : (
-                s
-              )}
+          <div key={s} className="flex items-center gap-0">
+            <div className="flex items-center gap-2">
+              <div
+                className={cn(
+                  'w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium transition-all',
+                  s === step && 'bg-primary text-primary-foreground',
+                  s < step && 'bg-success text-white',
+                  s > step && 'bg-muted text-muted-foreground'
+                )}
+              >
+                {s < step ? (
+                  <Check size={14} />
+                ) : (
+                  s
+                )}
+              </div>
+              <span className={cn('text-sm hidden sm:inline', s === step ? 'text-foreground font-medium' : 'text-muted-foreground')}>
+                {s === 1 ? 'Select Schema' : s === 2 ? 'Fill Claims' : 'QR Code'}
+              </span>
             </div>
-            <span className={cn('text-sm hidden sm:inline', s === step ? 'text-foreground' : 'text-muted-foreground')}>
-              {s === 1 ? 'Select Schema' : s === 2 ? 'Fill Claims' : 'QR Code'}
-            </span>
-            {s < 3 && <div className="w-8 h-px bg-border" />}
+            {s < 3 && <div className="w-12 h-px bg-border mx-3" />}
           </div>
         ))}
       </div>
@@ -280,7 +235,8 @@ export default function NewOfferPage() {
             className="space-y-4"
           >
             {schemas.map((schema) => {
-              const accent = schemaAccents[schema.type] ?? 'primary';
+              const accentKey = schemaTypeToAccent[schema.type] ?? 'primary';
+              const styles = getAccentStyles(accentKey);
               const icon = schemaIcons[schema.type];
               const isSelected = selectedSchema?.type === schema.type;
 
@@ -291,19 +247,19 @@ export default function NewOfferPage() {
                   className={cn(
                     'w-full text-left bg-card border rounded-xl p-5 transition-all',
                     isSelected
-                      ? `border-${accent} ring-1 ring-${accent}/30`
+                      ? `${styles.selectedBorder} ring-1 ${styles.selectedRing}`
                       : 'border-border hover:border-muted-foreground/30'
                   )}
                 >
                   <div className="flex items-start gap-4">
-                    <div className={cn('w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0', `bg-${accent}/10 text-${accent}`)}>
+                    <div className={cn('w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0', styles.iconBg)}>
                       {icon}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <h3 className="font-semibold">{schema.name}</h3>
                         {isSelected && (
-                          <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', `bg-${accent}/10 text-${accent}`)}>
+                          <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', styles.badgeBg)}>
                             Selected
                           </span>
                         )}
@@ -313,9 +269,9 @@ export default function NewOfferPage() {
                     </div>
                     <div className={cn(
                       'w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-1',
-                      isSelected ? `border-${accent}` : 'border-muted'
+                      isSelected ? styles.selectedBorder : 'border-muted'
                     )}>
-                      {isSelected && <div className={cn('w-2.5 h-2.5 rounded-full', `bg-${accent}`)} />}
+                      {isSelected && <div className={cn('w-2.5 h-2.5 rounded-full', styles.bar)} />}
                     </div>
                   </div>
                 </button>
@@ -323,7 +279,7 @@ export default function NewOfferPage() {
             })}
 
             <div className="flex justify-end pt-4">
-              <button
+              <Button
                 onClick={() => {
                   if (!selectedSchema) {
                     toast.error('Please select a schema');
@@ -331,10 +287,9 @@ export default function NewOfferPage() {
                   }
                   setStep(2);
                 }}
-                className="bg-primary text-primary-foreground px-6 py-2.5 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
               >
                 Continue
-              </button>
+              </Button>
             </div>
           </motion.div>
         )}
@@ -349,7 +304,7 @@ export default function NewOfferPage() {
           >
             <div className="bg-card border border-border rounded-xl p-6">
               <div className="flex items-center gap-3 mb-6">
-                <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center', `bg-${schemaAccents[selectedSchema.type]}/10 text-${schemaAccents[selectedSchema.type]}`)}>
+                <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center', getAccentStyles(schemaTypeToAccent[selectedSchema.type] ?? 'primary').iconBg)}>
                   {schemaIcons[selectedSchema.type]}
                 </div>
                 <div>
@@ -365,7 +320,7 @@ export default function NewOfferPage() {
                       <span>{claim.label}</span>
                       {claim.required && <span className="text-destructive">*</span>}
                       <span className="ml-auto" title={claim.selectivelyDisclosable ? 'Selectively disclosable' : 'Always disclosed'}>
-                        {claim.selectivelyDisclosable ? <UnlockIcon /> : <LockIcon />}
+                        {claim.selectivelyDisclosable ? <LockOpen size={14} className="text-primary" /> : <Lock size={14} className="text-muted-foreground" />}
                       </span>
                     </label>
                     <input
@@ -387,31 +342,28 @@ export default function NewOfferPage() {
                 ))}
 
                 <div className="flex items-center justify-between pt-4 border-t border-border">
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => setStep(1)}
-                    className="text-muted-foreground text-sm hover:text-foreground transition-colors"
                   >
                     Back
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="submit"
                     disabled={submitting}
-                    className={cn(
-                      'bg-primary text-primary-foreground px-6 py-2.5 rounded-lg text-sm font-medium transition-opacity',
-                      submitting ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'
-                    )}
                   >
                     {submitting ? 'Creating...' : 'Generate Offer'}
-                  </button>
+                  </Button>
                 </div>
               </form>
             </div>
 
             {/* SD Legend */}
             <div className="mt-4 flex items-center gap-4 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1"><LockIcon /> Always disclosed</span>
-              <span className="flex items-center gap-1"><UnlockIcon /> Selectively disclosable</span>
+              <span className="flex items-center gap-1"><Lock size={14} className="text-muted-foreground" /> Always disclosed</span>
+              <span className="flex items-center gap-1"><LockOpen size={14} className="text-primary" /> Selectively disclosable</span>
             </div>
           </motion.div>
         )}
@@ -436,17 +388,17 @@ export default function NewOfferPage() {
             </div>
 
             <div className="mt-6 flex gap-3">
-              <button
+              <Button
+                variant="outline"
                 onClick={() => {
                   setStep(1);
                   setOfferUri(null);
                   setExpiresAt(null);
                   setSelectedSchema(null);
                 }}
-                className="bg-card border border-border text-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-muted transition-colors"
               >
                 Create Another
-              </button>
+              </Button>
             </div>
           </motion.div>
         )}

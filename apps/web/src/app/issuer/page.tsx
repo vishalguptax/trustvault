@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { toast } from 'sonner';
+import { File, CheckCircle, XCircle } from '@phosphor-icons/react';
 import { api } from '@/lib/api/client';
 import { cn, truncateDid, formatDate } from '@/lib/utils';
 import { StatCard, StatCardSkeleton } from '@/components/dashboard/stat-card';
 import { StatusBadge } from '@/components/credential/status-badge';
+import { Button } from '@/components/ui/button';
 
 interface Credential {
   id: string;
@@ -67,12 +69,7 @@ export default function IssuerDashboard() {
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <h2 className="text-2xl font-bold">Issuer Dashboard</h2>
-        <Link
-          href="/issuer/offers/new"
-          className="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity text-center sm:text-left"
-        >
-          New Credential Offer
-        </Link>
+        <Button asChild><Link href="/issuer/offers/new">New Credential Offer</Link></Button>
       </div>
 
       {/* Stats */}
@@ -89,11 +86,7 @@ export default function IssuerDashboard() {
               <StatCard
                 label="Total Issued"
                 value={stats?.total ?? 0}
-                icon={
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 256 256">
-                    <path d="M200,24H56A16,16,0,0,0,40,40V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V40A16,16,0,0,0,200,24ZM96,48h64a8,8,0,0,1,0,16H96a8,8,0,0,1,0-16Zm88,160H72a8,8,0,0,1,0-16H184a8,8,0,0,1,0,16Zm0-48H72a8,8,0,0,1,0-16H184a8,8,0,0,1,0,16Z" />
-                  </svg>
-                }
+                icon={<File size={20} weight="duotone" />}
                 trend={stats ? { data: stats.recentTrend, color: 'hsl(174, 58%, 40%)' } : undefined}
                 accentColor="primary"
               />
@@ -102,11 +95,7 @@ export default function IssuerDashboard() {
               <StatCard
                 label="Active"
                 value={stats?.active ?? 0}
-                icon={
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 256 256">
-                    <path d="M173.66,98.34a8,8,0,0,1,0,11.32l-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35A8,8,0,0,1,173.66,98.34ZM232,128A104,104,0,1,1,128,24,104.11,104.11,0,0,1,232,128Zm-16,0a88,88,0,1,0-88,88A88.1,88.1,0,0,0,216,128Z" />
-                  </svg>
-                }
+                icon={<CheckCircle size={20} weight="duotone" />}
                 trend={stats ? { data: generateMockTrend(stats.active), color: 'hsl(160, 60%, 45%)' } : undefined}
                 accentColor="success"
               />
@@ -115,11 +104,7 @@ export default function IssuerDashboard() {
               <StatCard
                 label="Revoked"
                 value={stats?.revoked ?? 0}
-                icon={
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 256 256">
-                    <path d="M165.66,101.66,139.31,128l26.35,26.34a8,8,0,0,1-11.32,11.32L128,139.31l-26.34,26.35a8,8,0,0,1-11.32-11.32L116.69,128,90.34,101.66a8,8,0,0,1,11.32-11.32L128,116.69l26.34-26.35a8,8,0,0,1,11.32,11.32ZM232,128A104,104,0,1,1,128,24,104.11,104.11,0,0,1,232,128Zm-16,0a88,88,0,1,0-88,88A88.1,88.1,0,0,0,216,128Z" />
-                  </svg>
-                }
+                icon={<XCircle size={20} weight="duotone" />}
                 trend={stats ? { data: generateMockTrend(stats.revoked), color: 'hsl(0, 84%, 60%)' } : undefined}
                 accentColor="destructive"
               />
@@ -135,7 +120,10 @@ export default function IssuerDashboard() {
             <p className="text-warning text-sm font-medium">API Unavailable</p>
             <p className="text-warning/70 text-xs mt-1">{error}. Showing empty state.</p>
           </div>
-          <button
+          <Button
+            variant="link"
+            size="sm"
+            className="text-warning"
             onClick={() => {
               setError(null);
               setLoading(true);
@@ -151,10 +139,9 @@ export default function IssuerDashboard() {
                 setCredentials([]);
               }).finally(() => setLoading(false));
             }}
-            className="text-warning text-xs font-medium hover:underline flex-shrink-0 ml-4"
           >
             Retry
-          </button>
+          </Button>
         </div>
       )}
 
@@ -167,9 +154,7 @@ export default function IssuerDashboard() {
       >
         <div className="px-6 py-4 border-b border-border flex items-center justify-between">
           <h3 className="text-lg font-semibold">Recent Issuances</h3>
-          <Link href="/issuer/credentials" className="text-primary text-sm hover:underline">
-            View all
-          </Link>
+          <Button variant="link" size="sm" asChild><Link href="/issuer/credentials">View all</Link></Button>
         </div>
 
         {loading ? (
@@ -186,12 +171,7 @@ export default function IssuerDashboard() {
         ) : credentials.length === 0 ? (
           <div className="p-12 text-center">
             <p className="text-muted-foreground text-sm">No credentials issued yet.</p>
-            <Link
-              href="/issuer/offers/new"
-              className="text-primary text-sm hover:underline mt-2 inline-block"
-            >
-              Create your first credential offer
-            </Link>
+            <Button variant="link" size="sm" asChild><Link href="/issuer/offers/new">Create your first credential offer</Link></Button>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -222,16 +202,9 @@ export default function IssuerDashboard() {
                     </td>
                     <td className="px-6 py-3">
                       <div className="flex items-center gap-2">
-                        <Link
-                          href={`/issuer/credentials?id=${cred.id}`}
-                          className="text-xs text-primary hover:underline"
-                        >
-                          View
-                        </Link>
+                        <Button variant="ghost" size="sm" className="h-auto p-0 text-xs" asChild><Link href={`/issuer/credentials?id=${cred.id}`}>View</Link></Button>
                         {cred.status === 'active' && (
-                          <span className="text-xs text-destructive hover:underline cursor-pointer">
-                            Revoke
-                          </span>
+                          <Button variant="ghost" size="sm" className="h-auto p-0 text-xs text-destructive hover:text-destructive">Revoke</Button>
                         )}
                       </div>
                     </td>

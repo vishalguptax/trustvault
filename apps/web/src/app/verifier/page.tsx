@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
+import { MagnifyingGlass, CheckCircle, XCircle } from '@phosphor-icons/react';
 import { api } from '@/lib/api/client';
 import { cn, formatDate } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 import { StatCard, StatCardSkeleton } from '@/components/dashboard/stat-card';
 
 interface VerificationResult {
@@ -60,12 +62,7 @@ export default function VerifierDashboard() {
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <h2 className="text-2xl font-bold">Verifier Dashboard</h2>
-        <Link
-          href="/verifier/requests/new"
-          className="bg-info text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity text-center sm:text-left"
-        >
-          New Verification Request
-        </Link>
+        <Button asChild><Link href="/verifier/requests/new">New Verification Request</Link></Button>
       </div>
 
       {/* Stats */}
@@ -82,11 +79,7 @@ export default function VerifierDashboard() {
               <StatCard
                 label="Total Verifications"
                 value={stats?.total ?? 0}
-                icon={
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 256 256">
-                    <path d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z" />
-                  </svg>
-                }
+                icon={<MagnifyingGlass size={20} weight="duotone" />}
                 trend={stats ? { data: generateMockTrend(stats.total), color: 'hsl(217, 91%, 60%)' } : undefined}
                 accentColor="info"
               />
@@ -95,11 +88,7 @@ export default function VerifierDashboard() {
               <StatCard
                 label="Verified"
                 value={stats?.verified ?? 0}
-                icon={
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 256 256">
-                    <path d="M173.66,98.34a8,8,0,0,1,0,11.32l-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35A8,8,0,0,1,173.66,98.34ZM232,128A104,104,0,1,1,128,24,104.11,104.11,0,0,1,232,128Zm-16,0a88,88,0,1,0-88,88A88.1,88.1,0,0,0,216,128Z" />
-                  </svg>
-                }
+                icon={<CheckCircle size={20} weight="duotone" />}
                 trend={stats ? { data: generateMockTrend(stats.verified), color: 'hsl(160, 60%, 45%)' } : undefined}
                 accentColor="success"
               />
@@ -108,11 +97,7 @@ export default function VerifierDashboard() {
               <StatCard
                 label="Rejected"
                 value={stats?.rejected ?? 0}
-                icon={
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 256 256">
-                    <path d="M165.66,101.66,139.31,128l26.35,26.34a8,8,0,0,1-11.32,11.32L128,139.31l-26.34,26.35a8,8,0,0,1-11.32-11.32L116.69,128,90.34,101.66a8,8,0,0,1,11.32-11.32L128,116.69l26.34-26.35a8,8,0,0,1,11.32,11.32ZM232,128A104,104,0,1,1,128,24,104.11,104.11,0,0,1,232,128Zm-16,0a88,88,0,1,0-88,88A88.1,88.1,0,0,0,216,128Z" />
-                  </svg>
-                }
+                icon={<XCircle size={20} weight="duotone" />}
                 trend={stats ? { data: generateMockTrend(stats.rejected), color: 'hsl(0, 84%, 60%)' } : undefined}
                 accentColor="destructive"
               />
@@ -142,7 +127,7 @@ export default function VerifierDashboard() {
                 setResults([]);
               }).finally(() => setLoading(false));
             }}
-            className="text-warning text-xs font-medium hover:underline flex-shrink-0 ml-4"
+            className="text-warning text-xs font-medium flex-shrink-0 ml-4"
           >
             Retry
           </button>
@@ -158,9 +143,7 @@ export default function VerifierDashboard() {
       >
         <div className="px-6 py-4 border-b border-border flex items-center justify-between">
           <h3 className="text-lg font-semibold">Recent Results</h3>
-          <Link href="/verifier/results" className="text-info text-sm hover:underline">
-            View all
-          </Link>
+          <Button variant="link" size="sm" className="text-info" asChild><Link href="/verifier/results">View all</Link></Button>
         </div>
 
         {loading ? (
@@ -177,9 +160,7 @@ export default function VerifierDashboard() {
         ) : results.length === 0 ? (
           <div className="p-12 text-center">
             <p className="text-muted-foreground text-sm">No verification results yet.</p>
-            <Link href="/verifier/requests/new" className="text-info text-sm hover:underline mt-2 inline-block">
-              Create your first verification request
-            </Link>
+            <Button variant="link" size="sm" className="text-info mt-2" asChild><Link href="/verifier/requests/new">Create your first verification request</Link></Button>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -213,9 +194,7 @@ export default function VerifierDashboard() {
                       <span className="text-xs text-muted-foreground">{formatDate(result.createdAt)}</span>
                     </td>
                     <td className="px-6 py-3">
-                      <Link href={`/verifier/results/${result.id}`} className="text-xs text-info hover:underline">
-                        View Detail
-                      </Link>
+                      <Button variant="ghost" size="sm" className="h-auto p-0 text-xs" asChild><Link href={`/verifier/results/${result.id}`}>View Detail</Link></Button>
                     </td>
                   </tr>
                 ))}

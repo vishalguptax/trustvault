@@ -1,11 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
+import { ArrowClockwise } from '@phosphor-icons/react';
 import { api } from '@/lib/api/client';
 import { cn, truncateDid, formatDate } from '@/lib/utils';
 import { StatusBadge } from '@/components/credential/status-badge';
+import { Button } from '@/components/ui/button';
 import { trapFocus } from '@/lib/focus-trap';
 
 interface Credential {
@@ -49,7 +51,7 @@ export default function IssuedCredentialsPage() {
     if (!revokeTarget) return;
     setRevoking(true);
     try {
-      await api.post(`/issuer/credentials/${revokeTarget.id}/revoke`, {});
+      await api.post('/status/revoke', { credentialId: revokeTarget.id, reason: 'Revoked by issuer' });
       toast.success(`Credential ${revokeTarget.id.slice(0, 8)} revoked`);
       setCredentials((prev) =>
         prev.map((c) => (c.id === revokeTarget.id ? { ...c, status: 'revoked' as const } : c))
@@ -67,12 +69,10 @@ export default function IssuedCredentialsPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold">Issued Credentials</h2>
-        <button
-          onClick={fetchCredentials}
-          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
+        <Button variant="ghost" size="sm" onClick={fetchCredentials}>
+          <ArrowClockwise size={16} weight="duotone" />
           Refresh
-        </button>
+        </Button>
       </div>
 
       {error && (
@@ -81,12 +81,9 @@ export default function IssuedCredentialsPage() {
             <p className="text-warning text-sm font-medium">API Unavailable</p>
             <p className="text-warning/70 text-xs mt-1">{error}</p>
           </div>
-          <button
-            onClick={fetchCredentials}
-            className="text-warning text-xs font-medium hover:underline flex-shrink-0 ml-4"
-          >
+          <Button variant="link" size="sm" className="text-warning" onClick={fetchCredentials}>
             Retry
-          </button>
+          </Button>
         </div>
       )}
 
@@ -145,19 +142,23 @@ export default function IssuedCredentialsPage() {
                     </td>
                     <td className="px-6 py-3">
                       <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                        <button
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-auto p-0 text-xs"
                           onClick={() => setExpandedId(expandedId === cred.id ? null : cred.id)}
-                          className="text-xs text-primary hover:underline"
                         >
                           {expandedId === cred.id ? 'Hide' : 'View'}
-                        </button>
+                        </Button>
                         {cred.status === 'active' && (
-                          <button
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-auto p-0 text-xs text-destructive hover:text-destructive"
                             onClick={() => setRevokeTarget(cred)}
-                            className="text-xs text-destructive hover:underline"
                           >
                             Revoke
-                          </button>
+                          </Button>
                         )}
                       </div>
                     </td>
@@ -206,23 +207,20 @@ export default function IssuedCredentialsPage() {
                 <p className="text-sm">{revokeTarget.type}</p>
               </div>
               <div className="flex items-center justify-end gap-3">
-                <button
+                <Button
+                  variant="ghost"
                   onClick={() => setRevokeTarget(null)}
                   disabled={revoking}
-                  className="text-sm text-muted-foreground hover:text-foreground transition-colors px-4 py-2 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none rounded-lg"
                 >
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="destructive"
                   onClick={handleRevoke}
                   disabled={revoking}
-                  className={cn(
-                    'bg-destructive text-destructive-foreground px-4 py-2 rounded-lg text-sm font-medium transition-opacity focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
-                    revoking ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'
-                  )}
                 >
                   {revoking ? 'Revoking...' : 'Confirm Revoke'}
-                </button>
+                </Button>
               </div>
             </motion.div>
           </motion.div>

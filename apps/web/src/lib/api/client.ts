@@ -1,33 +1,62 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-interface ApiResponse<T> {
-  data: T;
-  message?: string;
-}
-
 interface ApiError {
   error: string;
   statusCode: number;
   message: string;
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+let getTokenFn: (() => string | null) | null = null;
+let refreshFn: (() => Promise<boolean>) | null = null;
+let onUnauthorizedFn: (() => void) | null = null;
+
+/** Called by auth-store to wire token access into the API client. */
+export function setAuthHelpers(
+  getToken: () => string | null,
+  tryRefresh: () => Promise<boolean>,
+  onUnauthorized: () => void,
+) {
+  getTokenFn = getToken;
+  refreshFn = tryRefresh;
+  onUnauthorizedFn = onUnauthorized;
+}
+
+async function request<T>(path: string, options: RequestInit = {}, isRetry = false): Promise<T> {
   const url = `${API_BASE_URL}${path}`;
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-  });
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options.headers as Record<string, string>),
+  };
+
+  const token = getTokenFn?.();
+  if (token && !headers['Authorization']) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(url, { ...options, headers });
+
+  // On 401, try refreshing the token once before giving up
+  if (response.status === 401 && !isRetry && refreshFn) {
+    const refreshed = await refreshFn();
+    if (refreshed) {
+      return request<T>(path, options, true);
+    }
+    onUnauthorizedFn?.();
+    throw new Error('Session expired. Please log in again.');
+  }
 
   if (!response.ok) {
-    const error: ApiError = await response.json();
-    throw new Error(error.message || `Request failed: ${response.status}`);
+    let message = `Request failed: ${response.status}`;
+    try {
+      const error: ApiError = await response.json();
+      message = error.message || message;
+    } catch {
+      // Response body was not JSON
+    }
+    throw new Error(message);
   }
 
   const json = await response.json();
-  // Support both { data: T } wrapper and direct T responses
   if (json && typeof json === 'object' && 'data' in json) {
     return json.data as T;
   }

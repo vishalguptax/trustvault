@@ -4,11 +4,15 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
+import { Copy, Check, PencilSimple, Trash } from '@phosphor-icons/react';
 import { api } from '@/lib/api/client';
 import { cn, truncateDid, formatDate } from '@/lib/utils';
 import { trapFocus } from '@/lib/focus-trap';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 interface TrustedIssuer {
   did: string;
@@ -35,6 +39,12 @@ const CREDENTIAL_TYPE_OPTIONS = [
   { value: 'VerifiableIncomeCredential', label: 'Income', accent: 'credential-income' },
   { value: 'VerifiableIdentityCredential', label: 'Identity', accent: 'credential-identity' },
 ];
+
+const accentClasses: Record<string, { bg: string; border: string; text: string; selectedBg: string; selectedBorder: string }> = {
+  'credential-education': { bg: 'bg-credential-education/5', border: 'border-credential-education/50', text: 'text-credential-education', selectedBg: 'bg-credential-education', selectedBorder: 'border-credential-education' },
+  'credential-income': { bg: 'bg-credential-income/5', border: 'border-credential-income/50', text: 'text-credential-income', selectedBg: 'bg-credential-income', selectedBorder: 'border-credential-income' },
+  'credential-identity': { bg: 'bg-credential-identity/5', border: 'border-credential-identity/50', text: 'text-credential-identity', selectedBg: 'bg-credential-identity', selectedBorder: 'border-credential-identity' },
+};
 
 export default function TrustedIssuersPage() {
   const [issuers, setIssuers] = useState<TrustedIssuer[]>([]);
@@ -79,8 +89,9 @@ export default function TrustedIssuersPage() {
     setRegistering(true);
     try {
       await api.post('/trust/issuers', {
-        ...values,
-        website: values.website || undefined,
+        did: values.did,
+        name: values.name,
+        credentialTypes: values.credentialTypes,
         description: values.description || undefined,
       });
       toast.success(`Issuer "${values.name}" registered`);
@@ -124,12 +135,12 @@ export default function TrustedIssuersPage() {
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <h2 className="text-2xl font-bold">Trusted Issuers</h2>
-        <button
+        <Button
           onClick={() => setShowRegisterDialog(true)}
-          className="bg-warning text-background px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+          className="bg-warning text-background hover:bg-warning/90"
         >
           Register New Issuer
-        </button>
+        </Button>
       </div>
 
       {error && (
@@ -138,12 +149,14 @@ export default function TrustedIssuersPage() {
             <p className="text-warning text-sm font-medium">API Unavailable</p>
             <p className="text-warning/70 text-xs mt-1">{error}</p>
           </div>
-          <button
+          <Button
+            variant="link"
+            size="sm"
             onClick={fetchIssuers}
-            className="text-warning text-xs font-medium hover:underline flex-shrink-0 ml-4"
+            className="text-warning flex-shrink-0 ml-4"
           >
             Retry
-          </button>
+          </Button>
         </div>
       )}
 
@@ -163,12 +176,14 @@ export default function TrustedIssuersPage() {
         ) : issuers.length === 0 ? (
           <div className="p-12 text-center">
             <p className="text-muted-foreground text-sm">No trusted issuers registered yet.</p>
-            <button
+            <Button
+              variant="link"
+              size="sm"
               onClick={() => setShowRegisterDialog(true)}
-              className="text-warning text-sm hover:underline mt-2"
+              className="text-warning mt-2"
             >
               Register the first issuer
-            </button>
+            </Button>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -202,9 +217,7 @@ export default function TrustedIssuersPage() {
                         title="Click to copy"
                       >
                         <span className="font-mono text-xs text-muted-foreground">{truncateDid(issuer.did)}</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 256 256" className="text-muted-foreground/50 group-hover:text-foreground transition-colors">
-                          <path d="M216,32H88a8,8,0,0,0-8,8V80H40a8,8,0,0,0-8,8V216a8,8,0,0,0,8,8H168a8,8,0,0,0,8-8V176h40a8,8,0,0,0,8-8V40A8,8,0,0,0,216,32ZM160,208H48V96H160Zm48-48H176V88a8,8,0,0,0-8-8H96V48H208Z" />
-                        </svg>
+                        <Copy size={14} className="text-muted-foreground/50 group-hover:text-foreground transition-colors" />
                       </button>
                     </td>
                     <td className="px-6 py-3">
@@ -247,13 +260,15 @@ export default function TrustedIssuersPage() {
                     </td>
                     <td className="px-6 py-3">
                       <div className="flex items-center gap-2">
-                        <button className="text-xs text-warning hover:underline">Edit</button>
-                        <button
+                        <Button variant="ghost" size="sm" className="h-auto p-0 text-xs text-warning">Edit</Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={() => setRemoveTarget(issuer)}
-                          className="text-xs text-destructive hover:underline"
+                          className="h-auto p-0 text-xs text-destructive"
                         >
                           Remove
-                        </button>
+                        </Button>
                       </div>
                     </td>
                   </motion.tr>
@@ -296,15 +311,15 @@ export default function TrustedIssuersPage() {
 
               <form onSubmit={form.handleSubmit(handleRegister)} className="space-y-4">
                 <div>
-                  <label htmlFor="register-name" className="text-sm font-medium mb-1.5 block">
+                  <Label htmlFor="register-name">
                     Name <span className="text-destructive">*</span>
-                  </label>
-                  <input
+                  </Label>
+                  <Input
                     id="register-name"
                     {...form.register('name')}
                     className={cn(
-                      'w-full bg-background border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-warning/50 focus:border-warning transition-all',
-                      form.formState.errors.name ? 'border-destructive' : 'border-border'
+                      'mt-1.5',
+                      form.formState.errors.name && 'border-destructive'
                     )}
                     placeholder="e.g., Delhi University"
                   />
@@ -314,15 +329,15 @@ export default function TrustedIssuersPage() {
                 </div>
 
                 <div>
-                  <label htmlFor="register-did" className="text-sm font-medium mb-1.5 block">
+                  <Label htmlFor="register-did">
                     DID <span className="text-destructive">*</span>
-                  </label>
-                  <input
+                  </Label>
+                  <Input
                     id="register-did"
                     {...form.register('did')}
                     className={cn(
-                      'w-full bg-background border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-warning/50 focus:border-warning transition-all',
-                      form.formState.errors.did ? 'border-destructive' : 'border-border'
+                      'mt-1.5 font-mono',
+                      form.formState.errors.did && 'border-destructive'
                     )}
                     placeholder="did:key:z..."
                   />
@@ -332,24 +347,25 @@ export default function TrustedIssuersPage() {
                 </div>
 
                 <div>
-                  <label htmlFor="register-description" className="text-sm font-medium mb-1.5 block">Description</label>
+                  <Label htmlFor="register-description">Description</Label>
                   <textarea
                     id="register-description"
                     {...form.register('description')}
                     rows={2}
-                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-warning/50 focus:border-warning transition-all resize-none"
+                    className="mt-1.5 flex w-full rounded-md border border-border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
                     placeholder="Brief description of the issuer"
                   />
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium mb-1.5 block">
+                  <Label>
                     Credential Types <span className="text-destructive">*</span>
-                  </label>
-                  <div className="space-y-2">
+                  </Label>
+                  <div className="space-y-2 mt-1.5">
                     {CREDENTIAL_TYPE_OPTIONS.map((opt) => {
                       const currentTypes = form.watch('credentialTypes');
                       const isSelected = currentTypes.includes(opt.value);
+                      const styles = accentClasses[opt.accent];
                       return (
                         <button
                           key={opt.value}
@@ -364,17 +380,15 @@ export default function TrustedIssuersPage() {
                           }}
                           className={cn(
                             'w-full flex items-center gap-2 px-3 py-2 rounded-lg border text-sm text-left transition-all',
-                            isSelected ? `border-${opt.accent}/50 bg-${opt.accent}/5` : 'border-border hover:border-muted-foreground/30'
+                            isSelected && styles ? `${styles.border} ${styles.bg}` : 'border-border hover:border-muted-foreground/30'
                           )}
                         >
-                          <div className={cn('w-4 h-4 rounded border flex items-center justify-center', isSelected ? `border-${opt.accent} bg-${opt.accent}` : 'border-muted')}>
+                          <div className={cn('w-4 h-4 rounded border flex items-center justify-center', isSelected && styles ? `${styles.selectedBorder} ${styles.selectedBg}` : 'border-muted')}>
                             {isSelected && (
-                              <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" fill="white" viewBox="0 0 256 256">
-                                <path d="M173.66,98.34a8,8,0,0,1,0,11.32l-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35A8,8,0,0,1,173.66,98.34Z" />
-                              </svg>
+                              <Check size={10} color="white" />
                             )}
                           </div>
-                          <span className={cn(`text-${opt.accent}`)}>{opt.label}</span>
+                          <span className={cn(styles?.text)}>{opt.label}</span>
                         </button>
                       );
                     })}
@@ -385,13 +399,13 @@ export default function TrustedIssuersPage() {
                 </div>
 
                 <div>
-                  <label htmlFor="register-website" className="text-sm font-medium mb-1.5 block">Website</label>
-                  <input
+                  <Label htmlFor="register-website">Website</Label>
+                  <Input
                     id="register-website"
                     {...form.register('website')}
                     className={cn(
-                      'w-full bg-background border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-warning/50 focus:border-warning transition-all',
-                      form.formState.errors.website ? 'border-destructive' : 'border-border'
+                      'mt-1.5',
+                      form.formState.errors.website && 'border-destructive'
                     )}
                     placeholder="https://example.com"
                   />
@@ -401,27 +415,24 @@ export default function TrustedIssuersPage() {
                 </div>
 
                 <div className="flex items-center justify-end gap-3 pt-2 border-t border-border">
-                  <button
+                  <Button
                     type="button"
+                    variant="outline"
                     onClick={() => {
                       setShowRegisterDialog(false);
                       form.reset();
                     }}
                     disabled={registering}
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors px-4 py-2"
                   >
                     Cancel
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="submit"
                     disabled={registering}
-                    className={cn(
-                      'bg-warning text-background px-4 py-2 rounded-lg text-sm font-medium transition-opacity',
-                      registering ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'
-                    )}
+                    className="bg-warning text-background hover:bg-warning/90"
                   >
                     {registering ? 'Registering...' : 'Register Issuer'}
-                  </button>
+                  </Button>
                 </div>
               </form>
             </motion.div>
@@ -466,23 +477,20 @@ export default function TrustedIssuersPage() {
                 <p className="text-sm font-mono text-xs">{removeTarget.did}</p>
               </div>
               <div className="flex items-center justify-end gap-3">
-                <button
+                <Button
+                  variant="outline"
                   onClick={() => setRemoveTarget(null)}
                   disabled={removing}
-                  className="text-sm text-muted-foreground hover:text-foreground transition-colors px-4 py-2 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none rounded-lg"
                 >
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="destructive"
                   onClick={handleRemove}
                   disabled={removing}
-                  className={cn(
-                    'bg-destructive text-destructive-foreground px-4 py-2 rounded-lg text-sm font-medium transition-opacity focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
-                    removing ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'
-                  )}
                 >
                   {removing ? 'Removing...' : 'Confirm Remove'}
-                </button>
+                </Button>
               </div>
             </motion.div>
           </motion.div>

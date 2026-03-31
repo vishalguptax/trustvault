@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { api } from '@/lib/api/client';
 import { cn, formatDate } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
 interface VerificationResult {
   id: string;
@@ -44,7 +45,10 @@ export default function VerificationResultsPage() {
             <p className="text-warning text-sm font-medium">API Unavailable</p>
             <p className="text-warning/70 text-xs mt-1">{error}</p>
           </div>
-          <button
+          <Button
+            variant="link"
+            size="sm"
+            className="text-warning"
             onClick={() => {
               setError(null);
               setLoading(true);
@@ -57,10 +61,9 @@ export default function VerificationResultsPage() {
                 setResults([]);
               }).finally(() => setLoading(false));
             }}
-            className="text-warning text-xs font-medium hover:underline flex-shrink-0 ml-4"
           >
             Retry
-          </button>
+          </Button>
         </div>
       )}
 
@@ -79,9 +82,9 @@ export default function VerificationResultsPage() {
         ) : results.length === 0 ? (
           <div className="p-12 text-center">
             <p className="text-muted-foreground text-sm">No verification results yet.</p>
-            <Link href="/verifier/requests/new" className="text-info text-sm hover:underline mt-2 inline-block">
-              Create a verification request
-            </Link>
+            <Button variant="link" size="sm" className="text-info mt-2" asChild>
+              <Link href="/verifier/requests/new">Create a verification request</Link>
+            </Button>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -146,9 +149,9 @@ export default function VerificationResultsPage() {
                       <span className="text-xs text-muted-foreground">{formatDate(result.createdAt)}</span>
                     </td>
                     <td className="px-6 py-3">
-                      <Link href={`/verifier/results/${result.id}`} className="text-xs text-info hover:underline">
-                        View Detail
-                      </Link>
+                      <Button variant="ghost" size="sm" className="h-auto p-0 text-xs" asChild>
+                        <Link href={`/verifier/results/${result.id}`}>View Detail</Link>
+                      </Button>
                     </td>
                   </motion.tr>
                 ))}

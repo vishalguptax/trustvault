@@ -1,10 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api/client';
+import { Check } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { schemaTypeToAccent, getAccentStyles } from '@/lib/credential-styles';
 import { QRDisplay } from '@/components/qr/qr-display';
 
 interface SchemaDefinition {
@@ -68,12 +71,6 @@ const FALLBACK_POLICIES: PolicyDefinition[] = [
   { id: 'require-non-expired', name: 'Require Non-Expired', description: 'Verify the credential has not passed its expiration date.' },
 ];
 
-const schemaAccents: Record<string, string> = {
-  education: 'credential-education',
-  income: 'credential-income',
-  identity: 'credential-identity',
-};
-
 export default function NewVerificationRequestPage() {
   const [step, setStep] = useState(1);
   const [schemas, setSchemas] = useState<SchemaDefinition[]>(FALLBACK_SCHEMAS);
@@ -126,6 +123,7 @@ export default function NewVerificationRequestPage() {
     setSubmitting(true);
     try {
       const response = await api.post<{ requestUri: string }>('/verifier/presentations/request', {
+        verifierDid: 'did:key:pending',
         credentialTypes: selectedTypes,
         requiredClaims: selectedClaims,
         policies: selectedPolicies,
@@ -155,31 +153,31 @@ export default function NewVerificationRequestPage() {
       </p>
 
       {/* Step indicator */}
-      <div className="flex items-center gap-2 mb-8">
+      <div className="flex items-center justify-center gap-0 mb-8">
         {stepLabels.map((label, i) => {
           const s = i + 1;
           return (
-            <div key={s} className="flex items-center gap-2">
-              <div
-                className={cn(
-                  'w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium transition-all',
-                  s === step && 'bg-info text-white',
-                  s < step && 'bg-success text-white',
-                  s > step && 'bg-muted text-muted-foreground'
-                )}
-              >
-                {s < step ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 256 256">
-                    <path d="M173.66,98.34a8,8,0,0,1,0,11.32l-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35A8,8,0,0,1,173.66,98.34Z" />
-                  </svg>
-                ) : (
-                  s
-                )}
+            <div key={s} className="flex items-center gap-0">
+              <div className="flex items-center gap-2">
+                <div
+                  className={cn(
+                    'w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium transition-all',
+                    s === step && 'bg-info text-white',
+                    s < step && 'bg-success text-white',
+                    s > step && 'bg-muted text-muted-foreground'
+                  )}
+                >
+                  {s < step ? (
+                    <Check size={14} />
+                  ) : (
+                    s
+                  )}
+                </div>
+                <span className={cn('text-sm hidden sm:inline', s === step ? 'text-foreground font-medium' : 'text-muted-foreground')}>
+                  {label}
+                </span>
               </div>
-              <span className={cn('text-sm hidden sm:inline', s === step ? 'text-foreground' : 'text-muted-foreground')}>
-                {label}
-              </span>
-              {i < stepLabels.length - 1 && <div className="w-6 h-px bg-border" />}
+              {i < stepLabels.length - 1 && <div className="w-10 h-px bg-border mx-2" />}
             </div>
           );
         })}
@@ -190,7 +188,8 @@ export default function NewVerificationRequestPage() {
         {step === 1 && (
           <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
             {schemas.map((schema) => {
-              const accent = schemaAccents[schema.id] ?? 'primary';
+              const accentKey = schemaTypeToAccent[schema.type] ?? 'primary';
+              const styles = getAccentStyles(accentKey);
               const isSelected = selectedTypes.includes(schema.type);
               return (
                 <button
@@ -198,15 +197,13 @@ export default function NewVerificationRequestPage() {
                   onClick={() => toggleType(schema.type)}
                   className={cn(
                     'w-full text-left bg-card border rounded-xl p-5 transition-all',
-                    isSelected ? `border-${accent} ring-1 ring-${accent}/30` : 'border-border hover:border-muted-foreground/30'
+                    isSelected ? `${styles.selectedBorder} ring-1 ${styles.selectedRing}` : 'border-border hover:border-muted-foreground/30'
                   )}
                 >
                   <div className="flex items-center gap-4">
-                    <div className={cn('w-5 h-5 rounded border-2 flex items-center justify-center', isSelected ? `border-${accent} bg-${accent}` : 'border-muted')}>
+                    <div className={cn('w-5 h-5 rounded border-2 flex items-center justify-center', isSelected ? styles.checkboxOn : 'border-muted')}>
                       {isSelected && (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="white" viewBox="0 0 256 256">
-                          <path d="M173.66,98.34a8,8,0,0,1,0,11.32l-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35A8,8,0,0,1,173.66,98.34Z" />
-                        </svg>
+                        <Check size={12} color="white" />
                       )}
                     </div>
                     <div>
@@ -218,7 +215,7 @@ export default function NewVerificationRequestPage() {
               );
             })}
             <div className="flex justify-end pt-4">
-              <button
+              <Button
                 onClick={() => {
                   if (selectedTypes.length === 0) {
                     toast.error('Select at least one credential type');
@@ -229,7 +226,7 @@ export default function NewVerificationRequestPage() {
                 className="bg-info text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
               >
                 Continue
-              </button>
+              </Button>
             </div>
           </motion.div>
         )}
@@ -240,11 +237,12 @@ export default function NewVerificationRequestPage() {
             {schemas
               .filter((s) => selectedTypes.includes(s.type))
               .map((schema) => {
-                const accent = schemaAccents[schema.id] ?? 'primary';
+                const accentKey = schemaTypeToAccent[schema.type] ?? 'primary';
+                const styles = getAccentStyles(accentKey);
                 const currentClaims = selectedClaims[schema.type] ?? [];
                 return (
                   <div key={schema.id} className="bg-card border border-border rounded-xl p-6">
-                    <h3 className={cn('font-semibold mb-4', `text-${accent}`)}>{schema.name}</h3>
+                    <h3 className={cn('font-semibold mb-4', styles.text)}>{schema.name}</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {schema.claims.map((claim) => {
                         const isSelected = currentClaims.includes(claim.key);
@@ -254,14 +252,12 @@ export default function NewVerificationRequestPage() {
                             onClick={() => toggleClaim(schema.type, claim.key)}
                             className={cn(
                               'flex items-center gap-2 px-3 py-2 rounded-lg border text-sm text-left transition-all',
-                              isSelected ? `border-${accent}/50 bg-${accent}/5` : 'border-border hover:border-muted-foreground/30'
+                              isSelected ? styles.claimOn : 'border-border hover:border-muted-foreground/30'
                             )}
                           >
-                            <div className={cn('w-4 h-4 rounded border flex items-center justify-center flex-shrink-0', isSelected ? `border-${accent} bg-${accent}` : 'border-muted')}>
+                            <div className={cn('w-4 h-4 rounded border flex items-center justify-center flex-shrink-0', isSelected ? styles.checkboxOn : 'border-muted')}>
                               {isSelected && (
-                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" fill="white" viewBox="0 0 256 256">
-                                  <path d="M173.66,98.34a8,8,0,0,1,0,11.32l-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35A8,8,0,0,1,173.66,98.34Z" />
-                                </svg>
+                                <Check size={10} color="white" />
                               )}
                             </div>
                             {claim.label}
@@ -273,15 +269,15 @@ export default function NewVerificationRequestPage() {
                 );
               })}
             <div className="flex items-center justify-between pt-4">
-              <button onClick={() => setStep(1)} className="text-muted-foreground text-sm hover:text-foreground transition-colors">
+              <Button variant="ghost" size="sm" onClick={() => setStep(1)}>
                 Back
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => setStep(3)}
                 className="bg-info text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
               >
                 Continue
-              </button>
+              </Button>
             </div>
           </motion.div>
         )}
@@ -304,9 +300,7 @@ export default function NewVerificationRequestPage() {
                   <div className="flex items-center gap-4">
                     <div className={cn('w-5 h-5 rounded border-2 flex items-center justify-center', isSelected ? 'border-info bg-info' : 'border-muted')}>
                       {isSelected && (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="white" viewBox="0 0 256 256">
-                          <path d="M173.66,98.34a8,8,0,0,1,0,11.32l-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35A8,8,0,0,1,173.66,98.34Z" />
-                        </svg>
+                        <Check size={12} color="white" />
                       )}
                     </div>
                     <div>
@@ -318,10 +312,10 @@ export default function NewVerificationRequestPage() {
               );
             })}
             <div className="flex items-center justify-between pt-4">
-              <button onClick={() => setStep(2)} className="text-muted-foreground text-sm hover:text-foreground transition-colors">
+              <Button variant="ghost" size="sm" onClick={() => setStep(2)}>
                 Back
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={handleSubmit}
                 disabled={submitting}
                 className={cn(
@@ -330,7 +324,7 @@ export default function NewVerificationRequestPage() {
                 )}
               >
                 {submitting ? 'Creating...' : 'Generate Request'}
-              </button>
+              </Button>
             </div>
           </motion.div>
         )}
@@ -346,7 +340,8 @@ export default function NewVerificationRequestPage() {
               <QRDisplay value={requestUri} size={280} waiting />
             </div>
             <div className="mt-6 flex gap-3">
-              <button
+              <Button
+                variant="outline"
                 onClick={() => {
                   setStep(1);
                   setRequestUri(null);
@@ -354,10 +349,9 @@ export default function NewVerificationRequestPage() {
                   setSelectedClaims({});
                   setSelectedPolicies(['require-trusted-issuer', 'require-active-status', 'require-non-expired']);
                 }}
-                className="bg-card border border-border text-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-muted transition-colors"
               >
                 Create Another
-              </button>
+              </Button>
             </div>
           </motion.div>
         )}

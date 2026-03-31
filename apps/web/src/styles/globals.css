@@ -1,46 +1,145 @@
 @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  --color-success: hsl(var(--success));
+  --color-warning: hsl(var(--warning));
+  --color-info: hsl(var(--info));
+
+  --color-credential-education: hsl(var(--credential-education));
+  --color-credential-income: hsl(var(--credential-income));
+  --color-credential-identity: hsl(var(--credential-identity));
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  --font-sans: 'Instrument Sans', system-ui, sans-serif;
+  --font-body: 'Satoshi', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+}
+
+@keyframes accordion-down {
+  from { height: 0; }
+  to { height: var(--radix-accordion-content-height); }
+}
+
+@keyframes accordion-up {
+  from { height: var(--radix-accordion-content-height); }
+  to { height: 0; }
+}
 
 @layer base {
+  /* Light Mode — clean, professional, high-contrast */
   :root {
-    /* TrustVault Dark Mode — "Digital Vault" aesthetic */
-    --background: 222 47% 6%;       /* #0B1120 deep navy */
-    --foreground: 210 20% 98%;      /* #F9FAFB */
+    --background: 210 20% 98%;       /* #F9FAFB slate-50 */
+    --foreground: 222 47% 11%;       /* #1E293B slate-800 */
 
-    --card: 220 26% 9%;             /* #111827 surface */
+    --card: 0 0% 100%;               /* #FFFFFF white */
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 174 58% 39%;          /* #0D9488 teal-600 */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 40% 96%;        /* #F1F5F9 slate-100 */
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%; /* #64748B slate-500 */
+
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 84% 60%;        /* #EF4444 red-500 */
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 32% 91%;           /* #E2E8F0 slate-200 */
+    --input: 214 32% 91%;
+    --ring: 174 58% 39%;
+
+    --radius: 0.5rem;
+
+    /* Status colors */
+    --success: 160 60% 40%;          /* #059669 emerald-600 */
+    --warning: 38 92% 45%;           /* #D97706 amber-600 */
+    --info: 217 91% 55%;             /* #2563EB blue-600 */
+
+    /* Credential type accents */
+    --credential-education: 263 70% 50%;  /* #7C3AED purple-600 */
+    --credential-income: 174 58% 39%;     /* #0D9488 teal-600 */
+    --credential-identity: 38 92% 45%;    /* #D97706 amber-600 */
+  }
+
+  /* Dark Mode — "Digital Vault" aesthetic */
+  .dark {
+    --background: 222 47% 6%;        /* #0B1120 deep navy */
+    --foreground: 210 20% 98%;       /* #F9FAFB */
+
+    --card: 220 26% 9%;              /* #111827 surface */
     --card-foreground: 210 20% 98%;
 
     --popover: 220 26% 9%;
     --popover-foreground: 210 20% 98%;
 
-    --primary: 174 58% 40%;         /* #14B8A6 teal */
+    --primary: 174 58% 40%;          /* #14B8A6 teal */
     --primary-foreground: 222 47% 6%;
 
-    --secondary: 217 19% 17%;       /* #1F2937 muted surface */
+    --secondary: 217 19% 17%;        /* #1F2937 muted surface */
     --secondary-foreground: 210 20% 98%;
 
-    --muted: 217 19% 17%;           /* #1F2937 */
+    --muted: 217 19% 17%;
     --muted-foreground: 218 11% 50%; /* #6B7280 */
 
     --accent: 217 19% 17%;
     --accent-foreground: 210 20% 98%;
 
-    --destructive: 0 84% 60%;       /* #EF4444 red */
+    --destructive: 0 84% 60%;        /* #EF4444 red */
     --destructive-foreground: 210 20% 98%;
 
     --border: 217 19% 17%;
     --input: 217 19% 17%;
     --ring: 174 58% 40%;
 
-    --radius: 0.5rem;
-
     /* Status colors */
-    --success: 160 60% 45%;         /* #10B981 emerald */
-    --warning: 38 92% 50%;          /* #F59E0B amber */
-    --info: 217 91% 60%;            /* #3B82F6 blue */
+    --success: 160 60% 45%;          /* #10B981 emerald */
+    --warning: 38 92% 50%;           /* #F59E0B amber */
+    --info: 217 91% 60%;             /* #3B82F6 blue */
 
     /* Credential type accents */
     --credential-education: 263 70% 58%;  /* #7C3AED purple */
@@ -51,11 +150,27 @@
 
 @layer base {
   * {
-    @apply border-border;
+    border-color: hsl(var(--border));
+  }
+
+  /* Tailwind v4 removed default cursor:pointer on interactive elements — restore it */
+  button,
+  [role="button"],
+  a,
+  select,
+  summary,
+  [type="button"],
+  [type="submit"],
+  [type="reset"] {
+    cursor: pointer;
   }
 
   body {
-    @apply bg-background text-foreground font-body antialiased;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   h1, h2, h3, h4, h5, h6 {

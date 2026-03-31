@@ -3,10 +3,13 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
+import { Check, X, ArrowLeft } from '@phosphor-icons/react';
 import { api } from '@/lib/api/client';
 import { cn, truncateDid, formatDate } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 import { VerificationPipeline } from '@/components/verification/pipeline';
+import { schemaTypeToAccent, getAccentStyles } from '@/lib/credential-styles';
 
 interface PipelineCheck {
   name: string;
@@ -111,9 +114,9 @@ export default function VerificationResultDetailPage() {
     return (
       <div className="text-center py-12">
         <p className="text-muted-foreground">Result not found.</p>
-        <Link href="/verifier/results" className="text-info text-sm hover:underline mt-2 inline-block">
-          Back to results
-        </Link>
+        <Button variant="link" size="sm" className="text-info mt-2" asChild>
+          <Link href="/verifier/results">Back to results</Link>
+        </Button>
       </div>
     );
   }
@@ -123,17 +126,20 @@ export default function VerificationResultDetailPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       {/* Back link */}
-      <Link href="/verifier/results" className="text-sm text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1">
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 256 256">
-          <path d="M224,128a8,8,0,0,1-8,8H59.31l58.35,58.34a8,8,0,0,1-11.32,11.32l-72-72a8,8,0,0,1,0-11.32l72-72a8,8,0,0,1,11.32,11.32L59.31,120H216A8,8,0,0,1,224,128Z" />
-        </svg>
-        Back to Results
-      </Link>
+      <Button variant="ghost" size="sm" className="h-auto p-0 text-sm text-muted-foreground hover:text-foreground" asChild>
+        <Link href="/verifier/results" className="inline-flex items-center gap-1">
+          <ArrowLeft size={14} />
+          Back to Results
+        </Link>
+      </Button>
 
       {error && (
         <div className="bg-warning/10 border border-warning/20 rounded-xl p-3 flex items-center justify-between">
           <p className="text-warning text-xs">{error}. Showing demo data.</p>
-          <button
+          <Button
+            variant="link"
+            size="sm"
+            className="text-warning"
             onClick={() => {
               setError(null);
               setLoading(true);
@@ -146,10 +152,9 @@ export default function VerificationResultDetailPage() {
                 setDetail({ ...FALLBACK_DETAIL, id });
               }).finally(() => setLoading(false));
             }}
-            className="text-warning text-xs font-medium hover:underline flex-shrink-0 ml-4"
           >
             Retry
-          </button>
+          </Button>
         </div>
       )}
 
@@ -170,13 +175,9 @@ export default function VerificationResultDetailPage() {
           transition={{ type: 'spring', stiffness: 300, delay: 0.3 }}
         >
           {isVerified ? (
-            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="hsl(160 60% 45%)" viewBox="0 0 256 256">
-              <path d="M173.66,98.34a8,8,0,0,1,0,11.32l-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35A8,8,0,0,1,173.66,98.34Z" />
-            </svg>
+            <Check size={48} weight="bold" className="text-success" />
           ) : (
-            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="hsl(0 84% 60%)" viewBox="0 0 256 256">
-              <path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z" />
-            </svg>
+            <X size={48} weight="bold" className="text-destructive" />
           )}
         </motion.div>
 
@@ -218,9 +219,8 @@ export default function VerificationResultDetailPage() {
       >
         <h3 className="text-lg font-semibold">Disclosed Credentials</h3>
         {detail.credentials.map((cred, i) => {
-          const isEducation = cred.type.includes('Education');
-          const isIncome = cred.type.includes('Income');
-          const accent = isEducation ? 'credential-education' : isIncome ? 'credential-income' : 'credential-identity';
+          const accentKey = schemaTypeToAccent[cred.type] ?? 'credential-identity';
+          const styles = getAccentStyles(accentKey);
           const displayType = cred.type.replace('Verifiable', '').replace('Credential', ' Credential').trim();
 
           return (
@@ -231,16 +231,16 @@ export default function VerificationResultDetailPage() {
               transition={{ delay: 0.8 + i * 0.1 }}
               className="bg-card border border-border rounded-xl overflow-hidden"
             >
-              <div className={cn('h-1', `bg-${accent}`)} />
+              <div className={cn('h-1', styles.bar)} />
               <div className="p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h4 className={cn('font-semibold', `text-${accent}`)}>{displayType}</h4>
+                    <h4 className={cn('font-semibold', styles.text)}>{displayType}</h4>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       Issuer: <span className="font-mono">{truncateDid(cred.issuerDid)}</span>
                     </p>
                   </div>
-                  <span className={cn('text-xs px-2.5 py-1 rounded-full font-medium', `bg-${accent}/10 text-${accent}`)}>
+                  <span className={cn('text-xs px-2.5 py-1 rounded-full font-medium', styles.badgeBg)}>
                     {cred.disclosedClaims.length} claims disclosed
                   </span>
                 </div>

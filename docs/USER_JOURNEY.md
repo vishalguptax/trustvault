@@ -448,7 +448,49 @@ OVERALL RESULT: NOT VERIFIED
 
 The credential still exists in Sandhya's wallet, but it can no longer pass verification anywhere.
 
-## 11. Security & Privacy Features
+## 11. Where Are the Documents? (No File Uploads)
+
+A common question: "Where do I upload my diploma PDF?" The answer is: **you do not.** TrustVault does not use file uploads, scanned documents, or PDFs. This is intentional and is how all modern verifiable credential systems work.
+
+### Why No Files?
+
+In the traditional world, you scan a diploma, upload the PDF, and a verifier looks at it. The problem is that **anyone can edit a PDF** — fake diplomas are trivially easy to create. A scanned document proves nothing.
+
+TrustVault replaces the document with **cryptographically signed data**. Instead of a PDF of your diploma, the university digitally signs the facts (your name, degree, GPA, graduation date) with their private key. This signature is mathematically impossible to forge. The signed data IS the proof — no physical or digital document is needed.
+
+### How It Compares
+
+| Traditional | TrustVault |
+|-------------|-----------|
+| University prints diploma on paper | University signs data digitally |
+| You scan it to a PDF | You receive a signed token (SD-JWT-VC) |
+| You upload the PDF to a website | You share the token via QR code |
+| Verifier looks at the image (can be faked) | Verifier checks the cryptographic signature (cannot be faked) |
+| Takes days to confirm by calling the university | Takes under 1 second to verify mathematically |
+
+### How to View a Credential
+
+Even though there is no "document file," you can still see all the information:
+
+**In the Mobile Wallet:**
+- Your home screen shows each credential as a colored card (blue for education, green for income, purple for identity)
+- Tap any card to see every field: institution name, degree, GPA, graduation date, etc.
+- The card also shows the issuer name, issue date, expiry date, and current status (active/revoked/suspended)
+
+**In the Verifier Dashboard:**
+- After verification, the verifier sees a structured report showing only the fields the holder chose to share
+- Each field is labeled clearly (for example: "Annual Income: 1,200,000 INR")
+- The verification checks (trusted issuer, valid signature, not expired, not revoked) are shown alongside the data
+
+**In the Issuer Dashboard:**
+- The issuer can see a list of all credentials they have issued, with the holder identifier, credential type, issue date, and status
+
+**In Swagger (API):**
+- Any credential can be decoded by calling the appropriate endpoint — the response shows the full JSON payload with all claims
+
+The credential data is always **structured and readable** — it is just not a file. Think of it as the difference between a photograph of a bank statement and the actual bank's digital confirmation of your balance. The digital confirmation is more trustworthy, more private (you can share just the balance without showing every transaction), and instantly verifiable.
+
+## 12. Security & Privacy Features
 
 ### On-Device Storage
 

@@ -8,10 +8,27 @@ import { ConfigService } from '@nestjs/config';
 import { randomBytes, createHash } from 'crypto';
 import type { JWK } from 'jose';
 import * as jose from 'jose';
+import type { CredentialSchema } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { DidService } from '../did/did.service';
 import { SdJwtService } from '../crypto/sd-jwt.service';
 import { SIGNING_ALGORITHM } from '../../common/constants';
+
+interface ClaimDefinitionDto {
+  key: string;
+  label: string;
+  type: string;
+  required: boolean;
+  selectivelyDisclosable: boolean;
+}
+
+export interface SchemaDto {
+  id: string;
+  type: string;
+  name: string;
+  description: string;
+  claims: ClaimDefinitionDto[];
+}
 
 @Injectable()
 export class IssuerService {
@@ -273,16 +290,42 @@ export class IssuerService {
     };
   }
 
-  async listSchemas() {
-    return this.prisma.credentialSchema.findMany({ where: { active: true } });
+  toSchemaDto(schema: CredentialSchema): SchemaDto {
+    const schemaJson = schema.schema as Record<
+      string,
+      { type?: string; label?: string; required?: boolean }
+    >;
+    const claims: ClaimDefinitionDto[] = Object.entries(schemaJson).map(
+      ([key, def]) => ({
+        key,
+        label: def.label || key,
+        type: def.type || 'string',
+        required: def.required ?? true,
+        selectivelyDisclosable: schema.sdClaims.includes(key),
+      }),
+    );
+    return {
+      id: schema.id,
+      type: schema.typeUri,
+      name: schema.name,
+      description: schema.description || '',
+      claims,
+    };
   }
 
-  async getSchema(id: string) {
+  async listSchemas(): Promise<SchemaDto[]> {
+    const schemas = await this.prisma.credentialSchema.findMany({
+      where: { active: true },
+    });
+    return schemas.map((s) => this.toSchemaDto(s));
+  }
+
+  async getSchema(id: string): Promise<SchemaDto> {
     const schema = await this.prisma.credentialSchema.findUnique({ where: { id } });
     if (!schema) {
       throw new NotFoundException(`Schema not found: ${id}`);
     }
-    return schema;
+    return this.toSchemaDto(schema);
   }
 
   async listIssuedCredentials() {
