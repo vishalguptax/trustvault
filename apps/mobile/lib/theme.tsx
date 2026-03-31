@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { useColorScheme, type ColorSchemeName } from 'react-native';
+import { useColorScheme, Platform } from 'react-native';
 
 type Theme = 'light' | 'dark';
 
@@ -57,6 +57,33 @@ const light: ThemeColors = {
   placeholder: '#94A3B8',
 };
 
+const THEME_KEY = 'trustvault_theme';
+
+async function loadSavedTheme(): Promise<Theme | null> {
+  try {
+    if (Platform.OS === 'web') {
+      const val = typeof window !== 'undefined' ? window.localStorage.getItem(THEME_KEY) : null;
+      return val === 'light' || val === 'dark' ? val : null;
+    }
+    const SecureStore = require('expo-secure-store');
+    const val = await SecureStore.getItemAsync(THEME_KEY);
+    return val === 'light' || val === 'dark' ? val : null;
+  } catch {
+    return null;
+  }
+}
+
+async function saveTheme(theme: Theme): Promise<void> {
+  try {
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined') window.localStorage.setItem(THEME_KEY, theme);
+      return;
+    }
+    const SecureStore = require('expo-secure-store');
+    await SecureStore.setItemAsync(THEME_KEY, theme);
+  } catch { /* ignore */ }
+}
+
 interface ThemeState {
   theme: Theme;
   colors: ThemeColors;
@@ -69,14 +96,22 @@ const ThemeContext = createContext<ThemeState | null>(null);
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const systemScheme = useColorScheme();
   const [theme, setTheme] = useState<Theme>(systemScheme === 'light' ? 'light' : 'dark');
+  const [loaded, setLoaded] = useState(false);
 
-  // Follow system changes
+  // Load saved theme on mount
   useEffect(() => {
-    if (systemScheme) setTheme(systemScheme === 'light' ? 'light' : 'dark');
-  }, [systemScheme]);
+    loadSavedTheme().then((saved) => {
+      if (saved) setTheme(saved);
+      setLoaded(true);
+    });
+  }, []);
 
   const toggleTheme = useCallback(() => {
-    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+    setTheme((prev) => {
+      const next = prev === 'dark' ? 'light' : 'dark';
+      saveTheme(next);
+      return next;
+    });
   }, []);
 
   const colors = theme === 'dark' ? dark : light;

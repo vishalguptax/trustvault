@@ -109,8 +109,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('[Auth] Session refreshed for', data.user.email);
       return true;
     } catch (err) {
-      console.warn('[Auth] Refresh failed:', err instanceof Error ? err.message : err);
-      await clearSession();
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn('[Auth] Refresh failed:', msg);
+      // Only clear session on auth errors (invalid token), NOT on network errors
+      // Network errors mean the server is unreachable — keep the session so user
+      // sees the lock screen instead of being forced to re-login
+      const isNetworkError = msg.includes('Unable to connect') || msg.includes('Network request failed');
+      if (!isNetworkError) {
+        console.log('[Auth] Clearing session (auth error, not network)');
+        await clearSession();
+      } else {
+        console.log('[Auth] Keeping session (network error — will retry later)');
+      }
       return false;
     }
   }, [clearSession]);
