@@ -1,0 +1,16 @@
+node_modules
+.git
+.turbo
+dist
+.next
+.expo
+*.png
+*.jpg
+*.md
+!README.md
+.env
+apps/web
+apps/mobile
+.claude
+.playwright-mcp
+screenshots
