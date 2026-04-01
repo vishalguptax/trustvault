@@ -61,7 +61,7 @@ export default function RegisterScreen() {
             alignItems: 'center', justifyContent: 'center', marginBottom: 20,
           }}>
             <View style={{ width: 48, height: 48, borderRadius: 12, backgroundColor: 'rgba(20,184,166,0.15)', alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ fontSize: 22 }} accessibilityElementsHidden>🛡️</Text>
+              <Ionicons name="shield-checkmark" size={22} color={colors.primary} />
             </View>
           </View>
           <Text style={{ color: colors.foreground, fontSize: 26, fontWeight: '700', letterSpacing: -0.3 }}>Create Account</Text>
@@ -146,7 +146,7 @@ export default function RegisterScreen() {
             accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
             accessibilityRole="button"
           >
-            <Text style={{ fontSize: 18 }}>{showPassword ? '🙈' : '👁️'}</Text>
+            <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={colors.mutedText} />
           </Pressable>
         </View>
 

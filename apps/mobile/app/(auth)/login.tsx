@@ -56,7 +56,7 @@ export default function LoginScreen() {
             alignItems: 'center', justifyContent: 'center', marginBottom: 20,
           }}>
             <View style={{ width: 48, height: 48, borderRadius: 12, backgroundColor: 'rgba(20,184,166,0.15)', alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ fontSize: 24 }} accessibilityElementsHidden>🔐</Text>
+              <Ionicons name="lock-closed" size={24} color={colors.primary} />
             </View>
           </View>
           <Text style={{ color: colors.foreground, fontSize: 26, fontWeight: '700', letterSpacing: -0.3 }}>Welcome Back</Text>
