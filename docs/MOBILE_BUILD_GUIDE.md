@@ -8,8 +8,7 @@
 | pnpm | `pnpm --version` | |
 | EAS CLI | `eas --version` | Install: `npm install -g eas-cli` |
 | Expo account | `eas whoami` | Create free at [expo.dev](https://expo.dev) |
-| Apple Developer account | — | Required for iOS builds ($99/year) |
-| Android — no account needed for APK | — | Play Store requires Google Play Console ($25 one-time) |
+| Apple Developer account | — | iOS builds only ($99/year) |
 
 ## Login
 
@@ -17,64 +16,57 @@
 eas login
 ```
 
-Enter your Expo account credentials. This is required for all EAS builds.
+Required for all EAS builds (cloud and local).
 
 ---
 
 ## Build Profiles
 
-| Profile | Purpose | Output | Metro needed? | Install method |
-|---------|---------|--------|---------------|----------------|
-| `development` | Dev/debug with hot reload | APK (Android) / Simulator (iOS) | Yes | Sideload APK / Xcode |
-| `preview` | Internal testing, demo | APK (Android) / IPA via TestFlight | No | Sideload APK / TestFlight |
-| `production` | Store release | AAB (Android) / IPA (iOS) | No | Play Store / App Store |
-| `local` | Build on your machine | APK or IPA | No | Manual |
+| Profile | Purpose | Output | Install method |
+|---------|---------|--------|----------------|
+| `development` | Dev/debug with hot reload | APK / Simulator build | Sideload / Xcode |
+| `preview` | Internal testing, demo | APK / IPA | Sideload / TestFlight |
+| `production` | Store release | AAB / IPA | Play Store / App Store |
 
 ---
 
-## Option 1: Development Build
+## Environment Variables
 
-Custom dev client — replaces Expo Go with your own app that includes all native modules. Connects to Metro for hot reload.
+### Development (Expo Go / dev client)
 
-### Android
+The API URL is **auto-detected** from the Metro bundler host in dev mode. No configuration needed.
+
+To override, uncomment the line in `apps/mobile/.env`:
 
 ```bash
-# From monorepo root
-pnpm build:mobile:dev
-
-# Or from apps/mobile
-cd apps/mobile
-eas build --profile development --platform android
+EXPO_PUBLIC_API_URL=http://localhost:8000
 ```
 
-**Output:** APK file (~50MB)
-**Install:** Download the APK link from the terminal, install on your phone.
-**Usage:** Start Metro (`pnpm dev:mobile`), open the dev client app, it connects automatically.
+### EAS Builds (preview / production)
 
-### iOS
+Set the API URL as an EAS secret. This is secure and not committed to the repository:
 
 ```bash
 cd apps/mobile
-
-# For simulator
-eas build --profile development --platform ios
-
-# For physical device (requires Apple Developer account)
-eas build --profile development --platform ios --device
+eas secret:create --name EXPO_PUBLIC_API_URL --value https://your-api-server.com
 ```
 
-**Output:** `.app` (simulator) or IPA (device)
-**Install:**
-- Simulator: `eas build:run` after build completes
-- Device: Register your device first with `eas device:create`, then build
+EAS injects secrets as environment variables during the build. The value is baked into the APK/IPA.
+
+To verify or update secrets:
+
+```bash
+eas secret:list
+eas secret:delete --name EXPO_PUBLIC_API_URL
+```
 
 ---
 
-## Option 2: Preview Build (Recommended for testing)
+## Cloud Builds (Recommended)
 
-Standalone app with JS bundle embedded. No Metro server needed. Works offline.
+All commands run from `apps/mobile/` or monorepo root.
 
-### Android
+### Preview APK (Android)
 
 ```bash
 # From monorepo root
@@ -85,175 +77,118 @@ cd apps/mobile
 eas build --profile preview --platform android
 ```
 
-**Output:** APK file (~30MB)
-**Install:** Download APK link from terminal → transfer to phone → install.
-**Important:** The `EXPO_PUBLIC_API_URL` is baked in at build time. Update it in `apps/mobile/eas.json` before building:
+Download the APK link from the terminal output. Transfer to phone and install.
 
-```json
-{
-  "build": {
-    "preview": {
-      "env": {
-        "EXPO_PUBLIC_API_URL": "https://your-api-server.com"
-      }
-    }
-  }
-}
-```
-
-For local network testing, use your LAN IP (e.g., `http://192.168.0.145:8000`).
-
-### iOS
+### Preview IPA (iOS)
 
 ```bash
 cd apps/mobile
-
-# Internal distribution (no App Store review)
 eas build --profile preview --platform ios
 ```
 
-**Output:** IPA file
-**Install:** Via TestFlight (requires Apple Developer account) or ad-hoc distribution.
+Install via TestFlight:
+1. Run `eas submit --platform ios` after build completes
+2. Add testers in App Store Connect
+3. Testers install via TestFlight app
 
-**For TestFlight:**
-1. Build completes → EAS gives you a link
-2. Run `eas submit --platform ios` to upload to App Store Connect
-3. Add testers in TestFlight
-4. Testers install via TestFlight app
+### Development Build
 
-**For ad-hoc (no TestFlight):**
-1. Register test devices first: `eas device:create`
-2. Add provisioning profile: `eas credentials`
-3. Build with `--distribution internal`
-
----
-
-## Option 3: Production Build
-
-For Play Store / App Store submission.
-
-### Android
+Custom dev client with all native modules. Connects to Metro for hot reload.
 
 ```bash
-# From monorepo root
+# Android
+pnpm build:mobile:dev
+
+# iOS (simulator)
+cd apps/mobile && eas build --profile development --platform ios
+
+# iOS (physical device — register first with eas device:create)
+cd apps/mobile && eas build --profile development --platform ios --device
+```
+
+### Production Build
+
+```bash
+# Android AAB (Play Store)
 pnpm build:mobile:prod
 
-# Or from apps/mobile
-cd apps/mobile
-eas build --profile production --platform android
+# iOS IPA (App Store)
+cd apps/mobile && eas build --profile production --platform ios
 ```
 
-**Output:** AAB (Android App Bundle) — required by Play Store
-**Submit to Play Store:**
-```bash
-eas submit --platform android
-```
-Requires a Google Play Console account and service account key. See [EAS Submit docs](https://docs.expo.dev/submit/android/).
-
-### iOS
+Submit to stores:
 
 ```bash
-cd apps/mobile
-eas build --profile production --platform ios
+eas submit --platform android   # Play Store
+eas submit --platform ios        # App Store
 ```
-
-**Output:** IPA file
-**Submit to App Store:**
-```bash
-eas submit --platform ios
-```
-Requires Apple Developer account with App Store Connect API key.
 
 ---
 
-## Option 4: Local Build (No EAS account)
+## Local Builds
 
-Build on your machine. Requires native toolchains installed.
+Local builds run the EAS pipeline on your machine. No queue wait, no cloud.
 
-### Android (requires Java 17 + Android SDK)
-
-```bash
-cd apps/mobile
-
-# Generate native android/ directory
-npx expo prebuild --platform android
-
-# Build release APK
-cd android
-./gradlew assembleRelease
-```
-
-**Output:** `android/app/build/outputs/apk/release/app-release.apk`
-
-**Prerequisites:**
-- Java 17: `java --version`
-- Android SDK: Set `ANDROID_HOME` environment variable
-- Accept licenses: `sdkmanager --licenses`
-
-### iOS (requires macOS + Xcode)
+**Supported on macOS and Linux only.** Windows users can use WSL (see below).
 
 ```bash
 cd apps/mobile
 
-# Generate native ios/ directory
-npx expo prebuild --platform ios
+# Android APK
+eas build --profile preview --platform android --local
 
-# Open in Xcode
-open ios/TrustVaultWallet.xcworkspace
-
-# Or build from command line
-cd ios
-pod install
-xcodebuild -workspace TrustVaultWallet.xcworkspace -scheme TrustVaultWallet -configuration Release -sdk iphoneos archive
+# iOS IPA
+eas build --profile preview --platform ios --local
 ```
 
-**Prerequisites:**
-- macOS only
-- Xcode 15+: `xcode-select --version`
-- CocoaPods: `pod --version` (install: `sudo gem install cocoapods`)
-- Apple Developer certificate and provisioning profile
+### Local Builds on Windows (via WSL)
 
----
+1. Install WSL (Admin PowerShell, one-time):
 
-## Environment Variables
+   ```powershell
+   wsl --install
+   ```
 
-| Variable | Where to set | Purpose |
-|----------|-------------|---------|
-| `EXPO_PUBLIC_API_URL` | `apps/mobile/.env` (dev) or `eas.json` (builds) | Backend API base URL |
-| `EXPO_NO_METRO_WORKSPACE_ROOT` | `apps/mobile/.env` | Fix for pnpm monorepo Metro resolution |
+2. Restart PC. Open Ubuntu from Start menu.
 
-### For development (Expo Go / dev client):
-```bash
-# apps/mobile/.env
-EXPO_PUBLIC_API_URL=http://192.168.0.145:8000
-```
+3. Run the setup script:
 
-### For preview/production builds:
-Set in `apps/mobile/eas.json` under each profile's `env` block. These are baked into the APK/IPA at build time.
+   ```bash
+   bash /mnt/c/Users/001ch/OneDrive/Desktop/projects/sandhya/scripts/wsl-setup.sh
+   ```
+
+4. Build:
+
+   ```bash
+   cd /mnt/c/Users/001ch/OneDrive/Desktop/projects/sandhya/apps/mobile
+   eas login
+   eas build --profile preview --platform android --local
+   ```
 
 ---
 
 ## Quick Reference
 
 ```bash
-# Development (hot reload, connects to Metro)
-pnpm build:mobile:dev           # Android APK
-cd apps/mobile && eas build --profile development --platform ios  # iOS
+# Cloud builds
+pnpm build:mobile:dev             # Android dev client APK
+pnpm build:mobile:preview         # Android preview APK
+pnpm build:mobile:prod            # Android production AAB
 
-# Preview (standalone APK/IPA for testing)
-pnpm build:mobile:preview       # Android APK
-cd apps/mobile && eas build --profile preview --platform ios      # iOS
+# iOS (from apps/mobile)
+eas build --profile preview --platform ios
+eas build --profile production --platform ios
 
-# Production (store submission)
-pnpm build:mobile:prod           # Android AAB
-cd apps/mobile && eas build --profile production --platform ios   # iOS
+# Local builds (macOS/Linux/WSL)
+eas build --profile preview --platform android --local
+eas build --profile preview --platform ios --local
 
-# Local build (no EAS)
-cd apps/mobile && pnpm build:local   # Android APK (requires Android SDK)
+# Store submission
+eas submit --platform android
+eas submit --platform ios
 
-# Submit to stores
-cd apps/mobile && eas submit --platform android   # Play Store
-cd apps/mobile && eas submit --platform ios        # App Store
+# Set API URL for builds
+eas secret:create --name EXPO_PUBLIC_API_URL --value https://your-api.com
 ```
 
 ---
@@ -261,34 +196,47 @@ cd apps/mobile && eas submit --platform ios        # App Store
 ## Troubleshooting
 
 ### "Expo account not found"
+
 ```bash
 eas login
 ```
 
-### "No development build for this device"
-Register your device:
+### API URL is wrong in the build
+
+Set it as an EAS secret:
+
+```bash
+eas secret:create --name EXPO_PUBLIC_API_URL --value https://your-api.com
+```
+
+Then rebuild.
+
+### "No development build for this device" (iOS)
+
+Register your device, then rebuild:
+
 ```bash
 eas device:create
+eas build --profile development --platform ios --device
 ```
-Then rebuild with `--device` flag.
 
-### "EXPO_PUBLIC_API_URL is localhost in the build"
-Update the URL in `eas.json` under the correct profile's `env` block. Rebuild after changing.
+### Build fails with native module error
 
-### "Build fails with native module error"
-Run prebuild to regenerate native directories:
+Clean and regenerate:
+
 ```bash
 cd apps/mobile
 npx expo prebuild --clean --platform android
 ```
 
-### "iOS build requires provisioning profile"
-Set up credentials:
+### iOS build requires provisioning profile
+
 ```bash
 eas credentials --platform ios
 ```
-EAS can manage certificates automatically if you have an Apple Developer account.
+
+EAS manages certificates automatically with an Apple Developer account.
 
 ---
 
-*Document Version: 1.0 | Updated: 2026-04-01 | Expo SDK 55 | EAS CLI 15+*
+*Updated: 2026-04-01 | Expo SDK 55 | EAS CLI 15+*
