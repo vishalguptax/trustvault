@@ -20,7 +20,6 @@
     "build:mobile:prod": "pnpm --filter @trustvault/mobile build:prod"
   },
   "devDependencies": {
-    "@babel/highlight": "^7.25.9",
     "@swc/core": "^1.15.21",
     "tsx": "^4.21.0",
     "turbo": "^2.0.0",
