@@ -1,29 +1,25 @@
 import Constants from 'expo-constants';
 
-function getApiUrl(): string {
-  // 1. Explicit env var takes priority
-  if (process.env.EXPO_PUBLIC_API_URL) {
-    return process.env.EXPO_PUBLIC_API_URL;
-  }
+const API_PORT = 8000;
 
-  // 2. In dev mode, use the debugger host IP (same machine running Metro)
-  const debuggerHost = Constants.expoConfig?.hostUri ?? Constants.experienceUrl;
-  if (__DEV__ && debuggerHost) {
-    const host = debuggerHost.split(':')[0];
-    if (host && host !== 'localhost' && host !== '127.0.0.1') {
-      return `http://${host}:8000`;
+function resolveApiBaseUrl(): string {
+  const envUrl = process.env.EXPO_PUBLIC_API_URL;
+  if (envUrl) return envUrl;
+
+  if (__DEV__) {
+    const hostUri = Constants.expoConfig?.hostUri;
+    if (hostUri) {
+      const ip = hostUri.split(':')[0];
+      return `http://${ip}:${API_PORT}`;
     }
   }
 
-  // 3. Fallback
-  return 'http://localhost:8000';
+  return `http://localhost:${API_PORT}`;
 }
 
-export const API_BASE_URL = getApiUrl();
+export const API_BASE_URL = resolveApiBaseUrl();
 
-console.log('[Config] API_BASE_URL:', API_BASE_URL);
-
-export const CREDENTIAL_TYPE_CONFIG = {
+export const CREDENTIAL_TYPE_CONFIG: Record<string, CredentialTypeStyle> = {
   VerifiableEducationCredential: {
     name: 'Education Credential',
     accent: '#7C3AED',
@@ -42,4 +38,11 @@ export const CREDENTIAL_TYPE_CONFIG = {
     gradientStart: '#F59E0B',
     gradientEnd: '#F97316',
   },
-} as const;
+};
+
+interface CredentialTypeStyle {
+  name: string;
+  accent: string;
+  gradientStart: string;
+  gradientEnd: string;
+}
