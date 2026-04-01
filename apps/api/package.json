@@ -5,7 +5,7 @@
   "scripts": {
     "prisma:generate": "prisma generate --schema=prisma/schema.prisma",
     "prisma:push": "prisma db push --schema=prisma/schema.prisma",
-    "postinstall": "prisma generate --schema=prisma/schema.prisma",
+    "postinstall": "prisma generate --schema=./prisma/schema.prisma 2>/dev/null || true",
     "dev": "nest start --watch",
     "build": "nest build",
     "start": "node dist/main.js",
