@@ -18,9 +18,6 @@
       },
       "ios": {
         "simulator": true
-      },
-      "env": {
-        "EXPO_PUBLIC_API_URL": "http://192.168.0.145:8000"
       }
     },
     "preview": {
@@ -28,10 +25,6 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
-      },
-      "env": {
-        "EXPO_PUBLIC_API_URL": "http://192.168.0.145:8000",
-        "EAS_SKIP_AUTO_FINGERPRINT": "1"
       }
     },
     "production": {
