@@ -7,7 +7,7 @@
     "icon": "./assets/icon.png",
     "scheme": "trustvault",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "splash": {
       "backgroundColor": "#0B1120"
     },
