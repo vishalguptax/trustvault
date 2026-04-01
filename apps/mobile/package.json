@@ -11,6 +11,7 @@
     "build:preview:ios": "eas build --profile preview --platform ios",
     "build:prod": "eas build --profile production --platform android",
     "build:prod:ios": "eas build --profile production --platform ios",
+    "build:local": "node scripts/build-local-apk.js",
     "build:local:mac": "eas build --profile preview --platform android --local",
     "build:local:mac:ios": "eas build --profile preview --platform ios --local",
     "prebuild": "npx expo prebuild --clean",
