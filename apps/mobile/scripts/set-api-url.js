@@ -42,7 +42,7 @@ console.log(`.env updated: ${url}`);
 
 if (setEas) {
   try {
-    execSync(`eas secret:create --name EXPO_PUBLIC_API_URL --value "${url}" --force`, {
+    execSync(`eas env:create --name EXPO_PUBLIC_API_URL --value "${url}" --visibility plaintext --environment preview --force`, {
       cwd: path.resolve(__dirname, '..'),
       stdio: 'inherit',
     });
