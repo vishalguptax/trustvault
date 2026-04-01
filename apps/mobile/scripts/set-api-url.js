@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 /**
- * Sets EXPO_PUBLIC_API_URL in .env and optionally as an EAS secret.
+ * Sets EXPO_PUBLIC_API_URL in .env and optionally as an EAS env variable.
  *
  * Usage:
- *   node scripts/set-api-url.js           # auto-detect LAN IP
- *   node scripts/set-api-url.js 10.0.0.5  # use specific IP
- *   node scripts/set-api-url.js --eas     # also set as EAS secret
+ *   node scripts/set-api-url.js                          # auto-detect LAN IP, port 8000
+ *   node scripts/set-api-url.js 10.0.0.5                 # specific IP, port 8000
+ *   node scripts/set-api-url.js https://api.example.com  # full URL
+ *   node scripts/set-api-url.js --eas                    # also set as EAS env variable
  */
 const { execSync } = require('child_process');
 const fs = require('fs');
@@ -14,7 +15,7 @@ const os = require('os');
 
 const args = process.argv.slice(2);
 const setEas = args.includes('--eas');
-const manualIp = args.find((a) => !a.startsWith('--'));
+const input = args.find((a) => !a.startsWith('--'));
 
 function getLanIp() {
   const interfaces = os.networkInterfaces();
@@ -28,17 +29,26 @@ function getLanIp() {
   return null;
 }
 
-const ip = manualIp || getLanIp();
-if (!ip) {
-  console.error('Could not detect LAN IP. Pass it manually: node scripts/set-api-url.js 192.168.x.x');
-  process.exit(1);
+function resolveUrl(value) {
+  if (!value) {
+    const ip = getLanIp();
+    if (!ip) {
+      console.error('Could not detect LAN IP. Pass an IP or URL manually.');
+      process.exit(1);
+    }
+    return `http://${ip}:8000`;
+  }
+  if (value.startsWith('http://') || value.startsWith('https://')) {
+    return value;
+  }
+  return `http://${value}:8000`;
 }
 
-const url = `http://${ip}:8000`;
+const url = resolveUrl(input);
 const envPath = path.resolve(__dirname, '..', '.env');
 
 fs.writeFileSync(envPath, `EXPO_PUBLIC_API_URL=${url}\n`);
-console.log(`.env updated: ${url}`);
+console.log(`.env → ${url}`);
 
 if (setEas) {
   try {
@@ -46,8 +56,8 @@ if (setEas) {
       cwd: path.resolve(__dirname, '..'),
       stdio: 'inherit',
     });
-    console.log(`EAS secret updated: ${url}`);
+    console.log(`EAS  → ${url}`);
   } catch {
-    console.error('Failed to set EAS secret. Run "eas login" first.');
+    console.error('Failed to set EAS env. Run "eas login" first.');
   }
 }
