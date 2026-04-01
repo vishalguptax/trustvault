@@ -1,25 +1,4 @@
-import Constants from 'expo-constants';
-
-const API_PORT = 8000;
-
-function resolveApiBaseUrl(): string {
-  const envUrl = process.env.EXPO_PUBLIC_API_URL;
-  if (envUrl) return envUrl;
-
-  if (__DEV__) {
-    const host =
-      Constants.expoConfig?.hostUri?.split(':')[0] ??
-      Constants.expoGoConfig?.debuggerHost?.split(':')[0];
-
-    if (host) {
-      return `http://${host}:${API_PORT}`;
-    }
-  }
-
-  return `http://localhost:${API_PORT}`;
-}
-
-export const API_BASE_URL = resolveApiBaseUrl();
+export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8000';
 
 export const CREDENTIAL_TYPE_CONFIG: Record<string, CredentialTypeStyle> = {
   VerifiableEducationCredential: {
