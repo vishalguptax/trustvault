@@ -7,10 +7,12 @@ function resolveApiBaseUrl(): string {
   if (envUrl) return envUrl;
 
   if (__DEV__) {
-    const hostUri = Constants.expoConfig?.hostUri;
-    if (hostUri) {
-      const ip = hostUri.split(':')[0];
-      return `http://${ip}:${API_PORT}`;
+    const host =
+      Constants.expoConfig?.hostUri?.split(':')[0] ??
+      Constants.expoGoConfig?.debuggerHost?.split(':')[0];
+
+    if (host) {
+      return `http://${host}:${API_PORT}`;
     }
   }
 

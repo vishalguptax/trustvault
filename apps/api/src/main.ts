@@ -77,7 +77,7 @@ async function bootstrap() {
   app.enableShutdownHooks();
 
   // --- Start ---
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
 
   logger.log('===========================================');
   logger.log(`  TrustVault API v0.1.0`);
