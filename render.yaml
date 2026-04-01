@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: trustvault-api
+    runtime: docker
+    dockerfilePath: apps/api/Dockerfile
+    dockerContext: .
+    plan: free
+    envVars:
+      - key: PORT
+        value: "8000"
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_ACCESS_EXPIRY
+        value: "15m"
+      - key: JWT_REFRESH_EXPIRY
+        value: "7d"
+      - key: CORS_ORIGIN
+        value: "*"
+      - key: DEFAULT_DID_METHOD
+        value: key
+      - key: DEFAULT_CREDENTIAL_FORMAT
+        value: sd-jwt-vc
