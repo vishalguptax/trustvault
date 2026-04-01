@@ -61,7 +61,7 @@ Set the API URL as an EAS secret. This is not committed to the repository:
 
 ```bash
 cd apps/mobile
-eas secret:create --name EXPO_PUBLIC_API_URL --value https://your-api-server.com
+eas env:create --name EXPO_PUBLIC_API_URL --value https://your-api.com --visibility plaintext --environment preview
 ```
 
 EAS injects secrets as environment variables during the build. The value is baked into the APK/IPA.
@@ -69,8 +69,8 @@ EAS injects secrets as environment variables during the build. The value is bake
 To verify or update secrets:
 
 ```bash
-eas secret:list
-eas secret:delete --name EXPO_PUBLIC_API_URL
+eas env:list
+eas env:delete --name EXPO_PUBLIC_API_URL --environment preview
 ```
 
 ---
@@ -201,7 +201,7 @@ eas submit --platform android
 eas submit --platform ios
 
 # Set API URL for builds
-eas secret:create --name EXPO_PUBLIC_API_URL --value https://your-api.com
+eas env:create --name EXPO_PUBLIC_API_URL --value https://your-api.com --visibility plaintext --environment preview
 ```
 
 ---
@@ -219,7 +219,7 @@ eas login
 Set it as an EAS secret:
 
 ```bash
-eas secret:create --name EXPO_PUBLIC_API_URL --value https://your-api.com
+eas env:create --name EXPO_PUBLIC_API_URL --value https://your-api.com --visibility plaintext --environment preview
 ```
 
 Then rebuild.
