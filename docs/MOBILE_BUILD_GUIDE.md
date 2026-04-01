@@ -34,17 +34,30 @@ Required for all EAS builds (cloud and local).
 
 ### Development (Expo Go / dev client)
 
-The API URL is **auto-detected** from the Metro bundler host in dev mode. No configuration needed.
-
-To override, uncomment the line in `apps/mobile/.env`:
+The phone must reach the API server running on your computer. Set your LAN IP in `apps/mobile/.env`:
 
 ```bash
-EXPO_PUBLIC_API_URL=http://localhost:8000
+EXPO_PUBLIC_API_URL=http://192.168.x.x:8000
 ```
+
+To find your IP:
+
+```bash
+# Windows
+ipconfig
+# Look for WiFi adapter → IPv4 Address (e.g. 192.168.0.145)
+
+# macOS/Linux
+ifconfig | grep "inet "
+```
+
+When you switch WiFi networks, your IP may change. Update `.env` and restart Metro.
+
+The API server must also be running and listening on `0.0.0.0` (not just localhost). This is already configured in `apps/api/src/main.ts`.
 
 ### EAS Builds (preview / production)
 
-Set the API URL as an EAS secret. This is secure and not committed to the repository:
+Set the API URL as an EAS secret. This is not committed to the repository:
 
 ```bash
 cd apps/mobile
