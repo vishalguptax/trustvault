@@ -1,10 +1,12 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef } from '@nestjs/common';
 import type { JWK } from 'jose';
 import { PrismaService } from '../../prisma/prisma.service';
 import { DidService } from '../did/did.service';
 import { SdJwtService } from '../crypto/sd-jwt.service';
 import { Oid4vciClientService } from './oid4vci-client.service';
 import { ConsentService } from './consent.service';
+import { VerifierService } from '../verifier/verifier.service';
+import { MailService } from '../mail/mail.service';
 
 @Injectable()
 export class WalletService {
@@ -14,6 +16,9 @@ export class WalletService {
     private readonly sdJwtService: SdJwtService,
     private readonly oid4vciClient: Oid4vciClientService,
     private readonly consentService: ConsentService,
+    @Inject(forwardRef(() => VerifierService))
+    private readonly verifierService: VerifierService,
+    private readonly mailService: MailService,
   ) {}
 
   async createHolderDid(holderId: string, method: string = 'key') {
@@ -57,13 +62,7 @@ export class WalletService {
   async receiveCredential(
     credentialOfferUri: string,
     holderId: string,
-  ): Promise<{
-    credentialId: string;
-    type: string;
-    issuerDid: string;
-    claims: Record<string, unknown>;
-    issuedAt: Date;
-  }> {
+  ) {
     const offer = this.oid4vciClient.parseOfferUri(credentialOfferUri);
     const preAuthCode = offer.grants['urn:ietf:params:oauth:grant-type:pre-authorized_code']['pre-authorized_code'];
     const credentialType = offer.credential_configuration_ids[0];
@@ -90,10 +89,30 @@ export class WalletService {
     );
 
     const decoded = this.sdJwtService.decode(credentialResponse.credential);
-    const claims = decoded.payload as Record<string, unknown>;
+    const payload = decoded.payload as Record<string, unknown>;
 
-    const issuedAt = claims.iat ? new Date((claims.iat as number) * 1000) : new Date();
-    const expiresAt = claims.exp ? new Date((claims.exp as number) * 1000) : undefined;
+    // Decode disclosures to extract actual selective disclosure claim values
+    const sdClaimNames: string[] = [];
+    const disclosedValues: Record<string, unknown> = {};
+    for (const d of decoded.disclosures) {
+      try {
+        const parsed = JSON.parse(Buffer.from(d, 'base64url').toString());
+        const claimName = parsed[1] as string;
+        const claimValue = parsed[2];
+        sdClaimNames.push(claimName);
+        if (claimValue !== undefined) {
+          disclosedValues[claimName] = claimValue;
+        }
+      } catch {
+        sdClaimNames.push(d);
+      }
+    }
+
+    // Merge payload with decoded disclosure values so all claims are stored
+    const claims = { ...payload, ...disclosedValues };
+
+    const issuedAt = payload.iat ? new Date((payload.iat as number) * 1000) : new Date();
+    const expiresAt = payload.exp ? new Date((payload.exp as number) * 1000) : undefined;
 
     const walletCred = await this.prisma.walletCredential.create({
       data: {
@@ -101,27 +120,44 @@ export class WalletService {
         rawCredential: credentialResponse.credential,
         format: 'sd-jwt-vc',
         credentialType,
-        issuerDid: claims.iss as string,
+        issuerDid: payload.iss as string,
         claims: JSON.parse(JSON.stringify(claims)),
-        sdClaims: decoded.disclosures.map((d) => {
-          try {
-            const parsed = JSON.parse(Buffer.from(d, 'base64url').toString());
-            return parsed[1] as string;
-          } catch {
-            return d;
-          }
-        }),
+        sdClaims: sdClaimNames,
         issuedAt,
         expiresAt,
       },
     });
 
+    const schema = await this.prisma.credentialSchema.findUnique({
+      where: { typeUri: credentialType },
+    });
+    const trustedIssuer = await this.prisma.trustedIssuer.findFirst({
+      where: { did: payload.iss as string },
+    });
+
+    const typeName = schema?.name || credentialType;
+    const issuerName = trustedIssuer?.name || (payload.iss as string);
+
+    const holderUser = await this.prisma.user.findUnique({ where: { id: holderId } });
+    if (holderUser) {
+      this.mailService
+        .sendCredentialIssued(holderUser.email, holderUser.name, typeName, issuerName)
+        .catch(() => {});
+    }
+
     return {
       credentialId: walletCred.id,
       type: credentialType,
-      issuerDid: claims.iss as string,
+      typeName,
+      issuerDid: payload.iss as string,
+      issuerName: trustedIssuer?.name || null,
+      subjectDid: (payload.sub as string) || null,
       claims,
+      sdClaims: walletCred.sdClaims,
+      rawCredential: walletCred.rawCredential,
+      status: 'active',
       issuedAt,
+      expiresAt: expiresAt || null,
     };
   }
 
@@ -130,7 +166,27 @@ export class WalletService {
       where: { holderId },
       orderBy: { createdAt: 'desc' },
     });
-    return { credentials, total: credentials.length };
+
+    const schemas = await this.prisma.credentialSchema.findMany({ where: { active: true } });
+    const schemaMap = new Map(schemas.map((s) => [s.typeUri, s.name]));
+
+    const issuerDids = [...new Set(credentials.map((c) => c.issuerDid))];
+    const trustedIssuers = await this.prisma.trustedIssuer.findMany({
+      where: { did: { in: issuerDids } },
+    });
+    const issuerMap = new Map(trustedIssuers.map((i) => [i.did, i.name]));
+
+    const enriched = credentials.map((c) => {
+      const storedClaims = c.claims as Record<string, unknown> || {};
+      return {
+        ...c,
+        subjectDid: (storedClaims.sub as string) || '',
+        typeName: schemaMap.get(c.credentialType) || c.credentialType,
+        issuerName: issuerMap.get(c.issuerDid) || null,
+      };
+    });
+
+    return { credentials: enriched, total: enriched.length };
   }
 
   async getCredential(id: string) {
@@ -143,14 +199,37 @@ export class WalletService {
 
   async getCredentialClaims(id: string) {
     const credential = await this.getCredential(id);
-    const allClaims = credential.claims as Record<string, unknown>;
-    const disclosed = Object.entries(allClaims)
-      .filter(([key]) => !key.startsWith('_') && !['iss', 'sub', 'iat', 'exp', 'vct', 'cnf', 'status'].includes(key))
-      .map(([key, value]) => ({ key, value, selectable: credential.sdClaims.includes(key) }));
+    const decoded = this.sdJwtService.decode(credential.rawCredential);
+    const payloadClaims = decoded.payload as Record<string, unknown>;
+    
+    const claims: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(payloadClaims)) {
+      if (!key.startsWith('_') && !['iss', 'sub', 'iat', 'exp', 'vct', 'cnf', 'status'].includes(key)) {
+        claims[key] = value;
+      }
+    }
+
+    for (const disclosure of decoded.disclosures) {
+      try {
+        const parsed = JSON.parse(Buffer.from(disclosure, 'base64url').toString());
+        const claimKey = parsed[1] as string;
+        const claimValue = parsed[2];
+        if (claimKey && claimValue !== undefined) {
+          claims[claimKey] = claimValue;
+        }
+      } catch {
+      }
+    }
+
+    const disclosed = Object.entries(claims).map(([key, value]) => ({
+      key,
+      value,
+      selectable: credential.sdClaims.includes(key),
+    }));
 
     return {
-      disclosed: disclosed.filter((c) => !c.selectable),
-      undisclosed: disclosed.filter((c) => c.selectable),
+      fixedClaims: disclosed.filter((c) => !c.selectable),
+      selectiveClaims: disclosed.filter((c) => c.selectable),
     };
   }
 
@@ -166,7 +245,13 @@ export class WalletService {
     selectedCredentials: string[],
     disclosedClaims: Record<string, string[]>,
     consent: boolean,
-  ): Promise<{ presentationId: string; vpToken: string; status: string }> {
+  ): Promise<{
+    presentationId: string;
+    vpToken: string;
+    verificationId: string;
+    result: string;
+    checks: Record<string, unknown>;
+  }> {
     if (!consent) {
       throw new BadRequestException('Consent is required to create a presentation');
     }
@@ -207,15 +292,17 @@ export class WalletService {
       'verification',
     );
 
-    await this.prisma.verificationRequest.update({
-      where: { id: verificationRequestId },
-      data: { status: 'received' },
-    });
+    const verificationResult = await this.verifierService.handlePresentationResponse(
+      vpToken,
+      verificationRequest.state,
+    );
 
     return {
       presentationId: verificationRequestId,
       vpToken,
-      status: 'submitted',
+      verificationId: verificationResult.verificationId,
+      result: verificationResult.status,
+      checks: verificationResult.result as unknown as Record<string, unknown>,
     };
   }
 

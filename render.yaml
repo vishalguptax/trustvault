@@ -18,8 +18,14 @@ services:
         value: "15m"
       - key: JWT_REFRESH_EXPIRY
         value: "7d"
+      - key: API_BASE_URL
+        sync: false
       - key: CORS_ORIGIN
         value: "*"
+      - key: WEB_APP_URL
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
       - key: DEFAULT_DID_METHOD
         value: key
       - key: DEFAULT_CREDENTIAL_FORMAT

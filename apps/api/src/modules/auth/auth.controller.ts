@@ -2,7 +2,11 @@ import {
   Controller,
   Post,
   Get,
+  Put,
+  Delete,
   Body,
+  Param,
+  Query,
   UseGuards,
   HttpCode,
   HttpStatus,
@@ -17,6 +21,8 @@ import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { Roles } from './decorators/roles.decorator';
@@ -87,6 +93,31 @@ export class AuthController {
     return { data: user };
   }
 
+  @Post('forgot-password')
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Request a password reset OTP' })
+  @ApiResponse({ status: 200, description: 'Reset code sent if account exists' })
+  async forgotPassword(@Body() dto: ForgotPasswordDto) {
+    const result = await this.authService.forgotPassword(dto.email);
+    return { data: result };
+  }
+
+  @Post('reset-password')
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reset password using OTP' })
+  @ApiResponse({ status: 200, description: 'Password reset successful' })
+  @ApiResponse({ status: 401, description: 'Invalid or expired OTP' })
+  async resetPassword(@Body() dto: ResetPasswordDto) {
+    const result = await this.authService.resetPassword(
+      dto.email,
+      dto.otp,
+      dto.newPassword,
+    );
+    return { data: result };
+  }
+
   @Post('api-keys')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
@@ -104,5 +135,40 @@ export class AuthController {
       data: result,
       message: 'API key generated. Store it securely — it will not be shown again.',
     };
+  }
+
+  @Get('users')
+  @Roles('admin')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List all users (admin only)' })
+  @ApiResponse({ status: 200, description: 'List of users' })
+  async listUsers(@Query('role') role?: string) {
+    const users = await this.authService.listUsers(role);
+    return { data: users };
+  }
+
+  @Put('users/:id')
+  @Roles('admin')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update user (admin only)' })
+  @ApiResponse({ status: 200, description: 'User updated' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async updateUser(
+    @Param('id') id: string,
+    @Body() body: { name?: string; role?: string; active?: boolean },
+  ) {
+    const user = await this.authService.updateUser(id, body);
+    return { data: user };
+  }
+
+  @Delete('users/:id')
+  @Roles('admin')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Delete user (admin only)' })
+  @ApiResponse({ status: 200, description: 'User deleted' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async deleteUser(@Param('id') id: string) {
+    const result = await this.authService.deleteUser(id);
+    return { data: result };
   }
 }

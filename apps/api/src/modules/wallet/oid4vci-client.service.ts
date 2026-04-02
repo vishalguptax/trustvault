@@ -41,6 +41,17 @@ export class Oid4vciClientService {
     }
   }
 
+  /**
+   * Unwrap the global response interceptor's { data: ... } wrapper.
+   * Internal API calls hit the same server, so responses arrive wrapped.
+   */
+  private unwrap<T>(json: unknown): T {
+    if (json && typeof json === 'object' && 'data' in json) {
+      return (json as Record<string, unknown>).data as T;
+    }
+    return json as T;
+  }
+
   async exchangeCodeForToken(
     tokenEndpoint: string,
     preAuthorizedCode: string,
@@ -69,7 +80,8 @@ export class Oid4vciClientService {
       throw new BadRequestException(`Token exchange failed: ${error}`);
     }
 
-    return response.json() as Promise<{ access_token: string; c_nonce: string; c_nonce_expires_in: number }>;
+    const json = await response.json();
+    return this.unwrap<{ access_token: string; c_nonce: string; c_nonce_expires_in: number }>(json);
   }
 
   async createHolderProof(
@@ -129,6 +141,7 @@ export class Oid4vciClientService {
       throw new BadRequestException(`Credential request failed: ${error}`);
     }
 
-    return response.json() as Promise<{ credential: string; c_nonce?: string }>;
+    const json = await response.json();
+    return this.unwrap<{ credential: string; c_nonce?: string }>(json);
   }
 }

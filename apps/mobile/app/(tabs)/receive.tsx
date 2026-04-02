@@ -6,8 +6,9 @@ import { StepIndicator } from '@/components/step-indicator';
 import { AnimatedCheck } from '@/components/animated-check';
 import { useCredentialStore, StoredCredential } from '@/lib/store';
 import { api } from '@/lib/api';
-import { CREDENTIAL_TYPE_CONFIG } from '@/lib/constants';
-import { useTheme } from '@/lib/theme';
+import { CREDENTIAL_TYPE_CONFIG, getClaimLabel } from '@/lib/constants';
+import { useTheme, cardShadow, cardShadowDark } from '@/lib/theme';
+import { TABS, API } from '@/lib/routes';
 
 type ReceiveStep = 'loading' | 'preview' | 'confirming' | 'success' | 'error';
 
@@ -21,53 +22,96 @@ interface OfferPreview {
   claims: string[];
 }
 
-interface ReceivedCredential {
-  id: string;
+/** Backend response from POST /wallet/credentials/receive */
+interface ReceivedCredentialApi {
+  credentialId: string;
   type: string;
-  typeName: string;
   issuerDid: string;
-  issuerName: string;
-  subjectDid: string;
-  status: 'active' | 'revoked' | 'suspended' | 'expired';
   claims: Record<string, unknown>;
-  sdClaims: string[];
   issuedAt: string;
+  typeName?: string;
+  issuerName?: string;
+  subjectDid?: string;
+  status?: string;
+  sdClaims?: string[];
   expiresAt?: string;
-  rawSdJwt?: string;
+  rawCredential?: string;
 }
 
-function parseOfferUri(uri: string): OfferPreview | null {
+interface ParsedOffer {
+  credentialIssuer: string;
+  credentialType: string;
+}
+
+function parseOfferUri(uri: string): ParsedOffer | null {
   try {
     const url = new URL(uri);
-    const issuerName = url.searchParams.get('issuer_name') ?? 'Unknown Issuer';
-    const issuerDid = url.searchParams.get('issuer_did') ?? '';
-    const credentialType =
-      url.searchParams.get('credential_type') ?? 'VerifiableCredential';
+    const offerParam = url.searchParams.get('credential_offer');
+    if (!offerParam) return null;
 
-    const typeConfig =
-      CREDENTIAL_TYPE_CONFIG[
-        credentialType as keyof typeof CREDENTIAL_TYPE_CONFIG
-      ];
-    const credentialTypeName = typeConfig?.name ?? credentialType;
-
-    const claimsParam = url.searchParams.get('claims');
-    const claims = claimsParam ? claimsParam.split(',') : [];
+    const offer = JSON.parse(offerParam) as {
+      credential_issuer: string;
+      credential_configuration_ids: string[];
+    };
 
     return {
-      issuerName,
-      issuerDid,
-      credentialType,
-      credentialTypeName,
-      claims,
+      credentialIssuer: offer.credential_issuer,
+      credentialType: offer.credential_configuration_ids[0],
     };
   } catch {
     return null;
   }
 }
 
+async function fetchIssuerMetadata(credentialIssuer: string): Promise<{ issuerName: string; issuerDid: string }> {
+  // The credential_issuer URL from the offer is something like http://host:8000/issuer
+  // The metadata lives at {credential_issuer}/.well-known/openid-credential-issuer
+  // which maps to our API path /issuer/.well-known/openid-credential-issuer
+  const url = new URL(`${credentialIssuer}/.well-known/openid-credential-issuer`);
+  const relativePath = url.pathname; // e.g., /issuer/.well-known/openid-credential-issuer
+
+  const data = await api.get<{
+    display?: Array<{ name: string }>;
+    issuer_did?: string;
+  }>(relativePath);
+
+  const issuerName = data.display?.[0]?.name ?? credentialIssuer;
+  const issuerDid = data.issuer_did ?? '';
+
+  return { issuerName, issuerDid };
+}
+
+async function resolveOfferPreview(uri: string): Promise<OfferPreview | null> {
+  const parsed = parseOfferUri(uri);
+  if (!parsed) return null;
+
+  const typeConfig =
+    CREDENTIAL_TYPE_CONFIG[parsed.credentialType as keyof typeof CREDENTIAL_TYPE_CONFIG];
+
+  let issuerName = parsed.credentialIssuer;
+  let issuerDid = '';
+
+  try {
+    const meta = await fetchIssuerMetadata(parsed.credentialIssuer);
+    issuerName = meta.issuerName;
+    issuerDid = meta.issuerDid;
+  } catch {
+    // Metadata fetch failed — use credential_issuer URL as fallback
+  }
+
+  return {
+    issuerName,
+    issuerDid,
+    credentialType: parsed.credentialType,
+    credentialTypeName: typeConfig?.name ?? parsed.credentialType,
+    claims: [],
+  };
+}
+
 export default function ReceiveScreen() {
   const router = useRouter();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
+  const shadow = isDark ? cardShadowDark : cardShadow;
   const { user } = useAuth();
   const { uri } = useLocalSearchParams<{ uri: string }>();
   const addCredential = useCredentialStore((state) => state.addCredential);
@@ -91,22 +135,19 @@ export default function ReceiveScreen() {
       return;
     }
 
-    // Attempt to parse the URI for a preview
-    const parsed = parseOfferUri(uri);
-    if (parsed) {
-      setOffer(parsed);
-      setStep('preview');
-    } else {
-      // If the URI is not parseable locally, show a generic preview
-      setOffer({
-        issuerName: 'Credential Issuer',
-        issuerDid: '',
-        credentialType: 'VerifiableCredential',
-        credentialTypeName: 'Verifiable Credential',
-        claims: [],
-      });
-      setStep('preview');
-    }
+    let cancelled = false;
+    (async () => {
+      const preview = await resolveOfferPreview(uri);
+      if (cancelled) return;
+      if (preview) {
+        setOffer(preview);
+        setStep('preview');
+      } else {
+        setErrorMessage('Invalid credential offer URI.');
+        setStep('error');
+      }
+    })();
+    return () => { cancelled = true; };
   }, [uri]);
 
   const handleAccept = useCallback(async () => {
@@ -114,27 +155,32 @@ export default function ReceiveScreen() {
     setStep('confirming');
 
     try {
-      const result = await api.post<ReceivedCredential>(
-        '/wallet/credentials/receive',
+      const result = await api.post<ReceivedCredentialApi>(
+        API.WALLET.RECEIVE,
         {
           credentialOfferUri: uri,
           holderId: user?.id ?? '',
         },
       );
 
+      // Map backend response to StoredCredential, filling in missing fields
+      const credType = result.type ?? offer?.credentialType ?? 'VerifiableCredential';
+      const typeConfig =
+        CREDENTIAL_TYPE_CONFIG[credType as keyof typeof CREDENTIAL_TYPE_CONFIG];
+
       const stored: StoredCredential = {
-        id: result.id,
-        type: result.type,
-        typeName: result.typeName,
-        issuerDid: result.issuerDid,
-        issuerName: result.issuerName,
-        subjectDid: result.subjectDid,
-        status: result.status,
-        claims: result.claims,
-        sdClaims: result.sdClaims,
-        issuedAt: result.issuedAt,
+        id: result.credentialId ?? (result as unknown as Record<string, string>).id ?? '',
+        type: credType,
+        typeName: result.typeName ?? typeConfig?.name ?? credType,
+        issuerDid: result.issuerDid ?? '',
+        issuerName: result.issuerName ?? offer?.issuerName ?? null,
+        subjectDid: result.subjectDid ?? (result.claims?.sub as string) ?? '',
+        status: (result.status as StoredCredential['status']) ?? 'active',
+        claims: result.claims ?? {},
+        sdClaims: result.sdClaims ?? [],
+        issuedAt: result.issuedAt ?? new Date().toISOString(),
         expiresAt: result.expiresAt,
-        rawSdJwt: result.rawSdJwt,
+        rawSdJwt: result.rawCredential,
       };
 
       addCredential(stored);
@@ -147,7 +193,7 @@ export default function ReceiveScreen() {
       notifyError();
       setStep('error');
     }
-  }, [uri, addCredential]);
+  }, [uri, user, offer, addCredential]);
 
   const accentColor =
     offer?.credentialType &&
@@ -179,9 +225,10 @@ export default function ReceiveScreen() {
           <View
             style={{
               backgroundColor: colors.surface,
-              borderRadius: 16,
-              padding: 16,
-              marginBottom: 16,
+              borderRadius: 18,
+              padding: 18,
+              marginBottom: 18,
+              ...shadow,
             }}
           >
             <Text
@@ -324,10 +371,9 @@ export default function ReceiveScreen() {
                       style={{
                         color: colors.foreground,
                         fontSize: 14,
-                        textTransform: 'capitalize',
                       }}
                     >
-                      {claim}
+                      {getClaimLabel(claim)}
                     </Text>
                   </View>
                 ))}
@@ -344,9 +390,9 @@ export default function ReceiveScreen() {
                 backgroundColor: colors.muted,
                 opacity: pressed ? 0.85 : 1,
                 paddingVertical: 14,
-                borderRadius: 12,
+                borderRadius: 16,
                 alignItems: 'center',
-                minHeight: 44,
+                minHeight: 48,
               })}
               accessibilityLabel="Decline credential offer"
               accessibilityRole="button"
@@ -363,9 +409,9 @@ export default function ReceiveScreen() {
                 backgroundColor: colors.primary,
                 opacity: pressed ? 0.85 : 1,
                 paddingVertical: 14,
-                borderRadius: 12,
+                borderRadius: 16,
                 alignItems: 'center',
-                minHeight: 44,
+                minHeight: 48,
               })}
               accessibilityLabel="Accept credential offer"
               accessibilityRole="button"
@@ -400,7 +446,7 @@ export default function ReceiveScreen() {
 
       {step === 'success' && (
         <View style={{ marginTop: 48, alignItems: 'center' }}>
-          <AnimatedCheck variant="success" size={80} />
+          <AnimatedCheck type="success" size={80} />
           <Text
             style={{
               color: colors.foreground,
@@ -424,7 +470,7 @@ export default function ReceiveScreen() {
             The credential has been securely stored in your wallet.
           </Text>
           <Pressable
-            onPress={() => router.replace('/')}
+            onPress={() => router.replace(TABS.HOME)}
             style={({ pressed }) => ({
               backgroundColor: colors.primary,
               opacity: pressed ? 0.85 : 1,
@@ -445,7 +491,7 @@ export default function ReceiveScreen() {
 
       {step === 'error' && (
         <View style={{ marginTop: 48, alignItems: 'center' }}>
-          <AnimatedCheck variant="rejection" size={80} />
+          <AnimatedCheck type="error" size={80} />
           <Text
             style={{
               color: colors.foreground,
@@ -470,7 +516,7 @@ export default function ReceiveScreen() {
           </Text>
           <View style={{ flexDirection: 'row', gap: 12 }}>
             <Pressable
-              onPress={() => router.replace('/')}
+              onPress={() => router.replace(TABS.HOME)}
               style={({ pressed }) => ({
                 backgroundColor: colors.muted,
                 opacity: pressed ? 0.85 : 1,
@@ -487,22 +533,17 @@ export default function ReceiveScreen() {
               </Text>
             </Pressable>
             <Pressable
-              onPress={() => {
+              onPress={async () => {
+                if (!uri) return;
                 setStep('loading');
                 setErrorMessage('');
-                const parsed = uri ? parseOfferUri(uri) : null;
-                if (parsed) {
-                  setOffer(parsed);
+                const preview = await resolveOfferPreview(uri);
+                if (preview) {
+                  setOffer(preview);
                   setStep('preview');
                 } else {
-                  setOffer({
-                    issuerName: 'Credential Issuer',
-                    issuerDid: '',
-                    credentialType: 'VerifiableCredential',
-                    credentialTypeName: 'Verifiable Credential',
-                    claims: [],
-                  });
-                  setStep('preview');
+                  setErrorMessage('Invalid credential offer URI.');
+                  setStep('error');
                 }
               }}
               style={({ pressed }) => ({

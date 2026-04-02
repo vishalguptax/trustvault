@@ -20,8 +20,13 @@ export const configuration = () => ({
     accessExpiry: process.env.JWT_ACCESS_EXPIRY || '15m',
     refreshExpiry: process.env.JWT_REFRESH_EXPIRY || '7d',
   },
+  apiBaseUrl: process.env.API_BASE_URL || `http://localhost:${process.env.PORT || '8000'}`,
   issuer: {
     did: process.env.ISSUER_DID || '',
-    baseUrl: process.env.ISSUER_BASE_URL || `http://localhost:${process.env.PORT || '8000'}/issuer`,
+    baseUrl: process.env.ISSUER_BASE_URL || `${process.env.API_BASE_URL || `http://localhost:${process.env.PORT || '8000'}`}/issuer`,
+  },
+  webAppUrl: process.env.WEB_APP_URL || 'http://localhost:3000',
+  resend: {
+    apiKey: process.env.RESEND_API_KEY || '',
   },
 });

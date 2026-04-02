@@ -7,7 +7,7 @@ export interface StoredCredential {
   type: string;
   typeName: string;
   issuerDid: string;
-  issuerName: string;
+  issuerName: string | null;
   subjectDid: string;
   status: 'active' | 'revoked' | 'suspended' | 'expired';
   claims: Record<string, unknown>;
@@ -85,14 +85,32 @@ export const useCredentialStore = create<CredentialStore>()(
       consentHistory: [],
       _hasHydrated: false,
       addCredential: (credential) =>
-        set((state) => ({ credentials: [...state.credentials, credential] })),
+        set((state) => ({
+          credentials: [
+            ...state.credentials.filter((c) => c.id !== credential.id),
+            credential,
+          ],
+        })),
       removeCredential: (id) =>
         set((state) => ({
           credentials: state.credentials.filter((c) => c.id !== id),
         })),
       addConsentRecord: (record) =>
-        set((state) => ({ consentHistory: [record, ...state.consentHistory] })),
-      setCredentials: (credentials) => set({ credentials }),
+        set((state) => ({
+          consentHistory: [
+            record,
+            ...state.consentHistory.filter((r) => r.id !== record.id),
+          ],
+        })),
+      setCredentials: (credentials) => {
+        const seen = new Set<string>();
+        const deduped = credentials.filter((c) => {
+          if (seen.has(c.id)) return false;
+          seen.add(c.id);
+          return true;
+        });
+        set({ credentials: deduped });
+      },
     }),
     {
       name: STORAGE_KEY,

@@ -60,6 +60,21 @@ export class TrustService {
     return { removed: true };
   }
 
+  /** Link a user account to a trusted issuer entry */
+  async linkUserToIssuer(email: string, trustedIssuerId: string) {
+    await this.prisma.user.update({
+      where: { email },
+      data: { trustedIssuerId },
+    });
+  }
+
+  /** Get the trusted issuer entry for a user by their trustedIssuerId */
+  async getIssuerForUser(trustedIssuerId: string) {
+    return this.prisma.trustedIssuer.findUnique({
+      where: { id: trustedIssuerId },
+    });
+  }
+
   async verifyTrust(issuerDid: string, credentialType: string): Promise<{ trusted: boolean; reason?: string }> {
     const issuer = await this.prisma.trustedIssuer.findUnique({ where: { did: issuerDid } });
 

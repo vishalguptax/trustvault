@@ -56,12 +56,12 @@ export function QRDisplay({ value, size = 256, label, waiting = false, className
           size={size}
           level="M"
           bgColor="#FFFFFF"
-          fgColor="#0B1120"
+          fgColor="#1A2B1A"
         />
       </motion.div>
 
       <div className="flex items-center gap-2 max-w-sm w-full">
-        <div className="flex-1 bg-muted/50 border border-border rounded-lg px-3 py-2 font-mono text-xs text-muted-foreground truncate">
+        <div className="flex-1 bg-muted/50 rounded-xl px-3 py-2 font-mono text-xs text-muted-foreground truncate">
           {value}
         </div>
         <button

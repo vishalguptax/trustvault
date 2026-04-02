@@ -19,42 +19,64 @@ interface ThemeColors {
   border: string;
   inputBg: string;
   placeholder: string;
+  qrBg: string;
+  qrFg: string;
 }
 
 const dark: ThemeColors = {
-  bg: '#0B1120',
-  surface: '#111827',
-  muted: '#1F2937',
-  mutedText: '#6B7280',
-  foreground: '#F9FAFB',
-  primary: '#14B8A6',
-  primaryFg: '#0B1120',
+  bg: '#111916',
+  surface: '#1A2420',
+  muted: '#243028',
+  mutedText: '#8A9B88',
+  foreground: '#F2F4F0',
+  primary: '#3DBF86',
+  primaryFg: '#111916',
   success: '#10B981',
   warning: '#F59E0B',
   danger: '#EF4444',
   dangerLight: 'rgba(239,68,68,0.08)',
   info: '#3B82F6',
-  border: '#1F2937',
-  inputBg: '#111827',
-  placeholder: '#6B7280',
+  border: '#2D3B32',
+  inputBg: '#1A2420',
+  placeholder: '#6B7F6B',
+  qrBg: '#FFFFFF',
+  qrFg: '#111916',
 };
 
 const light: ThemeColors = {
-  bg: '#F8FAFC',
+  bg: '#F2F4F0',
   surface: '#FFFFFF',
-  muted: '#F1F5F9',
-  mutedText: '#64748B',
-  foreground: '#0F172A',
-  primary: '#0D9488',
+  muted: '#E8ECE6',
+  mutedText: '#7C8B7A',
+  foreground: '#1A2B1A',
+  primary: '#2D9F73',
   primaryFg: '#FFFFFF',
   success: '#059669',
   warning: '#D97706',
   danger: '#DC2626',
   dangerLight: 'rgba(220,38,38,0.06)',
   info: '#2563EB',
-  border: '#E2E8F0',
+  border: '#DDE3D9',
   inputBg: '#FFFFFF',
-  placeholder: '#94A3B8',
+  placeholder: '#94A39A',
+  qrBg: '#FFFFFF',
+  qrFg: '#1A2B1A',
+};
+
+export const cardShadow = {
+  shadowColor: '#1A2B1A',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.06,
+  shadowRadius: 12,
+  elevation: 3,
+};
+
+export const cardShadowDark = {
+  shadowColor: '#000000',
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.2,
+  shadowRadius: 16,
+  elevation: 6,
 };
 
 const THEME_KEY = 'trustvault_theme';
@@ -95,7 +117,7 @@ const ThemeContext = createContext<ThemeState | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const systemScheme = useColorScheme();
-  const [theme, setTheme] = useState<Theme>(systemScheme === 'light' ? 'light' : 'dark');
+  const [theme, setTheme] = useState<Theme>('light');
   const [loaded, setLoaded] = useState(false);
 
   // Load saved theme on mount

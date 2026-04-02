@@ -137,7 +137,7 @@ export default function PoliciesPage() {
       {loading ? (
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="bg-card border border-border rounded-xl p-5 animate-pulse">
+            <div key={i} className="bg-card rounded-2xl shadow-[var(--shadow-card)] p-5 animate-pulse">
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 bg-muted rounded-lg" />
                 <div className="flex-1 space-y-2">
@@ -157,7 +157,7 @@ export default function PoliciesPage() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
-              className="bg-card border border-border rounded-xl p-5 hover:border-muted-foreground/30 transition-all"
+              className="bg-card rounded-2xl shadow-[var(--shadow-card)] p-5 hover:shadow-lg transition-all"
             >
               <div className="flex items-center gap-4">
                 <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center', policy.enabled ? 'bg-info/10 text-info' : 'bg-muted text-muted-foreground')}>
@@ -174,7 +174,7 @@ export default function PoliciesPage() {
                 <button
                   onClick={() => togglePolicy(policy.id)}
                   className={cn(
-                    'relative w-12 h-6 rounded-full transition-colors flex-shrink-0 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none',
+                    'relative w-12 h-6 rounded-full transition-colors flex-shrink-0 cursor-pointer focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none',
                     policy.enabled ? 'bg-info' : 'bg-muted'
                   )}
                   role="switch"

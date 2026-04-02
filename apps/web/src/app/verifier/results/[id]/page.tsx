@@ -207,7 +207,7 @@ export default function VerificationResultDetailPage() {
         className="bg-card border border-border rounded-xl p-8"
       >
         <h3 className="text-lg font-semibold text-center mb-6">Verification Pipeline</h3>
-        <VerificationPipeline checks={detail.checks} />
+        <VerificationPipeline checks={detail.checks ?? []} />
       </motion.div>
 
       {/* Credential Data */}
@@ -218,10 +218,11 @@ export default function VerificationResultDetailPage() {
         className="space-y-4"
       >
         <h3 className="text-lg font-semibold">Disclosed Credentials</h3>
-        {detail.credentials.map((cred, i) => {
-          const accentKey = schemaTypeToAccent[cred.type] ?? 'credential-identity';
+        {(detail.credentials ?? []).map((cred, i) => {
+          const safeType = cred.type ?? '';
+          const accentKey = schemaTypeToAccent[safeType] ?? 'credential-identity';
           const styles = getAccentStyles(accentKey);
-          const displayType = cred.type.replace('Verifiable', '').replace('Credential', ' Credential').trim();
+          const displayType = safeType.replace('Verifiable', '').replace('Credential', ' Credential').trim() || 'Unknown Credential';
 
           return (
             <motion.div
@@ -241,12 +242,12 @@ export default function VerificationResultDetailPage() {
                     </p>
                   </div>
                   <span className={cn('text-xs px-2.5 py-1 rounded-full font-medium', styles.badgeBg)}>
-                    {cred.disclosedClaims.length} claims disclosed
+                    {(cred.disclosedClaims ?? []).length} claims disclosed
                   </span>
                 </div>
 
                 <div className="space-y-2">
-                  {cred.disclosedClaims.map((claim) => (
+                  {(cred.disclosedClaims ?? []).map((claim) => (
                     <div key={claim.key} className="flex items-center justify-between bg-muted/30 rounded-lg px-4 py-2.5">
                       <span className="text-sm text-muted-foreground">{claim.label}</span>
                       <span className="text-sm font-medium text-foreground">{claim.value}</span>
@@ -269,12 +270,12 @@ export default function VerificationResultDetailPage() {
         <h3 className="text-lg font-semibold mb-4">Verification Metadata</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <MetadataItem label="Verifier DID" value={truncateDid(detail.verifierDid)} mono />
-          <MetadataItem label="Nonce" value={detail.nonce.slice(0, 24) + '...'} mono />
-          <MetadataItem label="Timestamp" value={formatDate(detail.timestamp)} />
+          <MetadataItem label="Nonce" value={detail.nonce ? detail.nonce.slice(0, 24) + '...' : 'N/A'} mono />
+          <MetadataItem label="Timestamp" value={detail.timestamp ? formatDate(detail.timestamp) : 'N/A'} />
           <div>
             <p className="text-xs text-muted-foreground mb-1">Policies Applied</p>
             <div className="flex flex-wrap gap-1">
-              {detail.policies.map((p) => (
+              {(detail.policies ?? []).map((p) => (
                 <span key={p} className="text-xs bg-info/10 text-info px-2 py-0.5 rounded-full">
                   {p}
                 </span>

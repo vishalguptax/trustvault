@@ -63,6 +63,16 @@ async function request<T>(path: string, options: RequestInit = {}, isRetry = fal
   return json as T;
 }
 
+/** Fire-and-forget health check to wake the API on cold start */
+export async function wakeUpApi(): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/health`, { method: 'GET' });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 export const api = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body: unknown) =>

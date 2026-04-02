@@ -1,9 +1,12 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, Req } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { IsString, IsArray, IsOptional } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { TrustService } from './trust.service';
 import { IssuerService } from '../issuer/issuer.service';
+import { AuthService } from '../auth/auth.service';
+import { DidService } from '../did/did.service';
 import { Public } from '../auth/decorators/public.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 
@@ -21,6 +24,30 @@ class RegisterIssuerDto {
   credentialTypes!: string[];
 
   @ApiPropertyOptional({ example: 'Licensed bank for income verification' })
+  @IsOptional()
+  @IsString()
+  description?: string;
+}
+
+class OnboardUserDto {
+  @ApiProperty({ example: 'Sandhya Sharma' })
+  @IsString()
+  name!: string;
+
+  @ApiProperty({ example: 'sandhya@example.com' })
+  @IsString()
+  email!: string;
+
+  @ApiProperty({ example: 'issuer' })
+  @IsString()
+  role!: string;
+
+  @ApiPropertyOptional({ example: ['VerifiableEducationCredential'] })
+  @IsOptional()
+  @IsArray()
+  credentialTypes?: string[];
+
+  @ApiPropertyOptional({ example: 'University issuing education credentials' })
   @IsOptional()
   @IsString()
   description?: string;
@@ -49,6 +76,9 @@ export class TrustController {
   constructor(
     private readonly trustService: TrustService,
     private readonly issuerService: IssuerService,
+    private readonly authService: AuthService,
+    private readonly didService: DidService,
+    private readonly configService: ConfigService,
   ) {}
 
   @Get('schemas')
@@ -69,12 +99,36 @@ export class TrustController {
     return { data: issuers };
   }
 
+  @Get('issuers/me')
+  @ApiBearerAuth()
+  @Roles('issuer', 'admin')
+  @ApiOperation({ summary: 'Get the current user\'s trusted issuer entry and authorized credential types' })
+  @ApiResponse({ status: 200, description: 'Issuer authorization details' })
+  async getMyIssuer(@Req() req: { user?: { id: string; role: string; trustedIssuerId?: string | null } }) {
+    const user = req.user;
+    if (!user?.trustedIssuerId) {
+      return { data: { authorized: false, credentialTypes: [], issuer: null } };
+    }
+    const issuer = await this.trustService.getIssuerForUser(user.trustedIssuerId);
+    if (!issuer) {
+      return { data: { authorized: false, credentialTypes: [], issuer: null } };
+    }
+    return {
+      data: {
+        authorized: issuer.status === 'active',
+        credentialTypes: issuer.credentialTypes,
+        issuer: { did: issuer.did, name: issuer.name, description: issuer.description },
+      },
+    };
+  }
+
   @Get('issuers/:did')
   @Public()
   @ApiOperation({ summary: 'Get trusted issuer by DID' })
   @ApiResponse({ status: 200, description: 'Issuer details' })
   async getIssuer(@Param('did') did: string) {
-    return this.trustService.getIssuer(decodeURIComponent(did));
+    const issuer = await this.trustService.getIssuer(decodeURIComponent(did));
+    return { data: issuer };
   }
 
   @Post('issuers')
@@ -101,7 +155,8 @@ export class TrustController {
   @ApiResponse({ status: 200, description: 'Issuer updated' })
   @ApiResponse({ status: 404, description: 'Issuer not found' })
   async updateIssuer(@Param('did') did: string, @Body() dto: UpdateIssuerDto) {
-    return this.trustService.updateIssuer(decodeURIComponent(did), dto);
+    const result = await this.trustService.updateIssuer(decodeURIComponent(did), dto);
+    return { data: result };
   }
 
   @Delete('issuers/:did')
@@ -111,7 +166,53 @@ export class TrustController {
   @ApiResponse({ status: 200, description: 'Issuer removed' })
   @ApiResponse({ status: 404, description: 'Issuer not found' })
   async removeIssuer(@Param('did') did: string) {
-    return this.trustService.removeIssuer(decodeURIComponent(did));
+    const result = await this.trustService.removeIssuer(decodeURIComponent(did));
+    return { data: result };
+  }
+
+  @Post('onboard')
+  @Roles('admin')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Onboard a new issuer or verifier (creates user account + trust registry entry + sends credentials via email)' })
+  @ApiResponse({ status: 201, description: 'User onboarded successfully' })
+  @ApiResponse({ status: 409, description: 'Email or DID already exists' })
+  async onboardUser(@Body() dto: OnboardUserDto) {
+    const webAppUrl = this.configService.get<string>('webAppUrl');
+    const loginUrl = `${webAppUrl}/login`;
+
+    // Create user account with temporary password
+    const userResult = await this.authService.createUser(
+      dto.email,
+      dto.name,
+      dto.role,
+      loginUrl,
+    );
+
+    // For issuers, auto-generate a DID and register in trust registry
+    let issuer = null;
+    let generatedDid: string | null = null;
+    if (dto.role === 'issuer' && dto.credentialTypes && dto.credentialTypes.length > 0) {
+      const didResult = await this.didService.createDid('key');
+      generatedDid = didResult.did;
+      issuer = await this.trustService.registerIssuer(
+        didResult.did,
+        dto.name,
+        dto.credentialTypes,
+        dto.description,
+      );
+
+      // Link the user account to the trusted issuer entry
+      await this.trustService.linkUserToIssuer(userResult.email, issuer.id);
+    }
+
+    return {
+      data: {
+        user: { email: userResult.email, name: userResult.name, role: userResult.role },
+        temporaryPassword: userResult.temporaryPassword,
+        did: generatedDid,
+        issuer,
+      },
+    };
   }
 
   @Get('verify')
@@ -124,6 +225,7 @@ export class TrustController {
     @Query('issuerDid') issuerDid: string,
     @Query('credentialType') credentialType: string,
   ) {
-    return this.trustService.verifyTrust(issuerDid, credentialType);
+    const result = await this.trustService.verifyTrust(issuerDid, credentialType);
+    return { data: result };
   }
 }

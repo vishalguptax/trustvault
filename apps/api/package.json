@@ -39,6 +39,7 @@
     "jose": "^5.0.0",
     "pako": "^2.1.0",
     "reflect-metadata": "^0.2.0",
+    "resend": "^6.10.0",
     "rxjs": "^7.8.1"
   },
   "devDependencies": {

@@ -41,6 +41,10 @@ describe('AuthService', () => {
     createdAt: new Date('2025-01-01'),
   };
 
+  const mockMailService = {
+    sendWelcome: vi.fn().mockResolvedValue(undefined),
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
 
@@ -48,6 +52,7 @@ describe('AuthService', () => {
       mockPrisma as any,
       mockJwtService as any,
       mockConfigService as any,
+      mockMailService as any,
     );
 
     mockJwtService.signAsync.mockImplementation(async (payload: { type: string }) => {

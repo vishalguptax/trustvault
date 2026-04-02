@@ -3,6 +3,7 @@ import { AppState, type AppStateStatus } from 'react-native';
 import { API_BASE_URL } from '../constants';
 import { getRefreshToken, setRefreshToken, clearRefreshToken } from './token-store';
 import { setAuthHelpers } from '../api';
+import { API } from '../routes';
 
 export interface User {
   id: string;
@@ -98,15 +99,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     try {
       console.log('[Auth] Refreshing session...');
-      const data = await authFetch<TokenResponse>('/auth/refresh', {
+      const data = await authFetch<TokenResponse>(API.AUTH.REFRESH, {
         method: 'POST',
         body: JSON.stringify({ refresh_token: token }),
       });
       setAccessToken(data.access_token);
       accessTokenRef.current = data.access_token;
-      setUser(data.user);
+      if (data.user) {
+        setUser(data.user);
+      }
       await setRefreshToken(data.refresh_token);
-      console.log('[Auth] Session refreshed for', data.user.email);
+      console.log('[Auth] Session refreshed for', data.user?.email ?? 'unknown');
       return true;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -159,7 +162,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(async (email: string, password: string) => {
     console.log('[Auth] Login attempt for', email);
-    const data = await authFetch<TokenResponse>('/auth/login', {
+    const data = await authFetch<TokenResponse>(API.AUTH.LOGIN, {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
@@ -172,7 +175,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const register = useCallback(async (email: string, password: string, name: string) => {
     console.log('[Auth] Register attempt for', email);
-    await authFetch('/auth/register', {
+    await authFetch(API.AUTH.REGISTER, {
       method: 'POST',
       body: JSON.stringify({ email, password, name, role: 'holder' }),
     });
@@ -184,7 +187,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     console.log('[Auth] Logging out...');
     if (accessTokenRef.current) {
       try {
-        await authFetch('/auth/logout', {
+        await authFetch(API.AUTH.LOGOUT, {
           method: 'POST',
           headers: { Authorization: `Bearer ${accessTokenRef.current}` },
         });

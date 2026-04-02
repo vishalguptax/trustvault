@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { GraduationCap, CurrencyDollar, IdentificationCard, Lock, LockOpen, Check } from '@phosphor-icons/react';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { useAuthStore } from '@/lib/auth/auth-store';
 import { schemaTypeToAccent, getAccentStyles } from '@/lib/credential-styles';
 import { Button } from '@/components/ui/button';
 import { QRDisplay } from '@/components/qr/qr-display';
@@ -40,7 +41,8 @@ const FALLBACK_SCHEMAS: SchemaDefinition[] = [
     name: 'Education Credential',
     description: 'Issue academic credentials such as degrees, diplomas, and certificates.',
     claims: [
-      { key: 'institutionName', label: 'Institution Name', type: 'string', required: true, selectivelyDisclosable: false },
+      { key: 'documentName', label: 'Document Name', type: 'string', required: true, selectivelyDisclosable: false },
+      { key: 'institutionName', label: 'Issuing Organization', type: 'string', required: true, selectivelyDisclosable: false },
       { key: 'degree', label: 'Degree', type: 'string', required: true, selectivelyDisclosable: false },
       { key: 'fieldOfStudy', label: 'Field of Study', type: 'string', required: true, selectivelyDisclosable: true },
       { key: 'graduationDate', label: 'Graduation Date', type: 'date', required: true, selectivelyDisclosable: true },
@@ -54,7 +56,8 @@ const FALLBACK_SCHEMAS: SchemaDefinition[] = [
     name: 'Income Credential',
     description: 'Issue income and employment verification credentials.',
     claims: [
-      { key: 'employerName', label: 'Employer Name', type: 'string', required: true, selectivelyDisclosable: false },
+      { key: 'documentName', label: 'Document Name', type: 'string', required: true, selectivelyDisclosable: false },
+      { key: 'employerName', label: 'Issuing Organization', type: 'string', required: true, selectivelyDisclosable: false },
       { key: 'jobTitle', label: 'Job Title', type: 'string', required: true, selectivelyDisclosable: true },
       { key: 'annualIncome', label: 'Annual Income', type: 'number', required: true, selectivelyDisclosable: true },
       { key: 'currency', label: 'Currency', type: 'string', required: true, selectivelyDisclosable: false },
@@ -68,6 +71,7 @@ const FALLBACK_SCHEMAS: SchemaDefinition[] = [
     name: 'Identity Credential',
     description: 'Issue government-backed identity verification credentials.',
     claims: [
+      { key: 'documentName', label: 'Document Name', type: 'string', required: true, selectivelyDisclosable: false },
       { key: 'fullName', label: 'Full Name', type: 'string', required: true, selectivelyDisclosable: false },
       { key: 'dateOfBirth', label: 'Date of Birth', type: 'date', required: true, selectivelyDisclosable: true },
       { key: 'nationality', label: 'Nationality', type: 'string', required: true, selectivelyDisclosable: true },
@@ -125,6 +129,8 @@ export default function NewOfferPage() {
   const [offerUri, setOfferUri] = useState<string | null>(null);
   const [expiresAt, setExpiresAt] = useState<Date | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [authorizedTypes, setAuthorizedTypes] = useState<string[]>([]);
+  const user = useAuthStore((s) => s.user);
 
   useEffect(() => {
     async function fetchSchemas() {
@@ -139,6 +145,24 @@ export default function NewOfferPage() {
     }
     fetchSchemas();
   }, []);
+
+  useEffect(() => {
+    async function fetchAuthorization() {
+      try {
+        const result = await api.get<{ authorized: boolean; credentialTypes: string[]; issuer: { did: string; name: string } | null }>('/trust/issuers/me');
+        if (result.authorized && result.credentialTypes.length > 0) {
+          setAuthorizedTypes(result.credentialTypes);
+        }
+      } catch {
+        // If fetch fails (admin user or no link), show all schemas
+      }
+    }
+    fetchAuthorization();
+  }, []);
+
+  const displaySchemas = authorizedTypes.length > 0
+    ? schemas.filter((s) => authorizedTypes.includes(s.type))
+    : schemas;
 
   const currentClaims = selectedSchema?.claims ?? [];
   const zodSchema = buildZodSchema(currentClaims);
@@ -169,7 +193,7 @@ export default function NewOfferPage() {
     try {
       const response = await api.post<{ offerId: string; credentialOfferUri: string; preAuthorizedCode: string }>('/issuer/offers', {
         schemaTypeUri: selectedSchema.type,
-        subjectDid: 'did:key:pending',
+        // subjectDid is omitted — the holder DID is resolved server-side during the OID4VCI flow
         claims: values,
       });
       setOfferUri(response.credentialOfferUri);
@@ -179,11 +203,6 @@ export default function NewOfferPage() {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to create offer';
       toast.error(message);
-      // Demo fallback: generate a mock offer URI
-      const mockUri = `openid-credential-offer://?credential_issuer=https://trustvault.dev&credential_type=${selectedSchema.type}&pre-authorized_code=${crypto.randomUUID()}`;
-      setOfferUri(mockUri);
-      setExpiresAt(new Date(Date.now() + 5 * 60 * 1000));
-      setStep(3);
     } finally {
       setSubmitting(false);
     }
@@ -234,7 +253,14 @@ export default function NewOfferPage() {
             exit={{ opacity: 0, x: -20 }}
             className="space-y-4"
           >
-            {schemas.map((schema) => {
+            {authorizedTypes.length > 0 && (
+              <div className="bg-primary/5 border border-primary/10 rounded-xl p-3 mb-4">
+                <p className="text-xs text-primary font-medium">
+                  You are authorized to issue {authorizedTypes.length} credential type{authorizedTypes.length !== 1 ? 's' : ''}
+                </p>
+              </div>
+            )}
+            {displaySchemas.map((schema) => {
               const accentKey = schemaTypeToAccent[schema.type] ?? 'primary';
               const styles = getAccentStyles(accentKey);
               const icon = schemaIcons[schema.type];
@@ -245,7 +271,7 @@ export default function NewOfferPage() {
                   key={schema.id}
                   onClick={() => handleSchemaSelect(schema)}
                   className={cn(
-                    'w-full text-left bg-card border rounded-xl p-5 transition-all',
+                    'w-full text-left bg-card border rounded-2xl p-5 transition-all',
                     isSelected
                       ? `${styles.selectedBorder} ring-1 ${styles.selectedRing}`
                       : 'border-border hover:border-muted-foreground/30'
@@ -302,7 +328,7 @@ export default function NewOfferPage() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
           >
-            <div className="bg-card border border-border rounded-xl p-6">
+            <div className="bg-card rounded-2xl shadow-[var(--shadow-card)] p-6">
               <div className="flex items-center gap-3 mb-6">
                 <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center', getAccentStyles(schemaTypeToAccent[selectedSchema.type] ?? 'primary').iconBg)}>
                   {schemaIcons[selectedSchema.type]}
@@ -341,7 +367,7 @@ export default function NewOfferPage() {
                   </div>
                 ))}
 
-                <div className="flex items-center justify-between pt-4 border-t border-border">
+                <div className="flex items-center justify-between pt-4 border-t border-border/50">
                   <Button
                     type="button"
                     variant="ghost"
@@ -376,7 +402,7 @@ export default function NewOfferPage() {
             animate={{ opacity: 1, scale: 1 }}
             className="flex flex-col items-center"
           >
-            <div className="bg-card border border-border rounded-xl p-8 w-full max-w-md mx-auto">
+            <div className="bg-card rounded-2xl shadow-[var(--shadow-card)] p-8 w-full max-w-md mx-auto">
               <h3 className="text-lg font-semibold text-center mb-2">Scan to Receive Credential</h3>
               <p className="text-sm text-muted-foreground text-center mb-6">
                 Open TrustVault Wallet and scan this QR code

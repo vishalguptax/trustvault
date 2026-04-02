@@ -17,6 +17,34 @@ export function formatDate(date: string | Date): string {
   }).format(new Date(date));
 }
 
+export const CLAIM_LABELS: Record<string, string> = {
+  institutionName: 'Institution Name',
+  degree: 'Degree',
+  fieldOfStudy: 'Field of Study',
+  graduationDate: 'Graduation Date',
+  gpa: 'GPA',
+  studentId: 'Student ID',
+  employerName: 'Employer Name',
+  jobTitle: 'Job Title',
+  annualIncome: 'Annual Income',
+  currency: 'Currency',
+  employmentStartDate: 'Employment Start Date',
+  employeeId: 'Employee ID',
+  fullName: 'Full Name',
+  dateOfBirth: 'Date of Birth',
+  nationality: 'Nationality',
+  documentNumber: 'Document Number',
+  address: 'Address',
+  gender: 'Gender',
+  iss: 'Issuer',
+  sub: 'Subject',
+  vct: 'Credential Type',
+};
+
+export function getClaimLabel(key: string): string {
+  return CLAIM_LABELS[key] ?? key.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 export function getCredentialAccentClass(type: string): string {
   if (type.includes('Education')) return 'credential-education';
   if (type.includes('Income')) return 'credential-income';

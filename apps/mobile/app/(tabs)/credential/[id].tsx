@@ -1,19 +1,14 @@
 import { View, Text, ScrollView, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
 import { useCredentialStore } from '@/lib/store';
 import { StatusBadge } from '@/components/status-badge';
 import { ClaimsList } from '@/components/claims-list';
 import { IssuerBadge } from '@/components/issuer-badge';
 import { QrDisplay } from '@/components/qr-display';
 import { CREDENTIAL_TYPE_CONFIG } from '@/lib/constants';
-import { api } from '@/lib/api';
+import { formatDate, truncateDid } from '@/lib/format';
+import { useCredentialClaims } from '@/hooks/use-credentials';
 import { useTheme } from '@/lib/theme';
-
-interface ClaimsApiResponse {
-  claims: Record<string, unknown>;
-  sdClaims: string[];
-}
 
 export default function CredentialDetail() {
   const { colors } = useTheme();
@@ -22,63 +17,24 @@ export default function CredentialDetail() {
     state.credentials.find((c) => c.id === id),
   );
 
-  const [claims, setClaims] = useState<Record<string, unknown> | null>(null);
-  const [sdClaims, setSdClaims] = useState<string[] | null>(null);
-  const [loadingClaims, setLoadingClaims] = useState(false);
-  const [claimsError, setClaimsError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!id) return;
-
-    let cancelled = false;
-    setLoadingClaims(true);
-
-    api
-      .get<ClaimsApiResponse>(`/wallet/credentials/${id}/claims`)
-      .then((response) => {
-        if (cancelled) return;
-        setClaims(response.claims);
-        setSdClaims(response.sdClaims);
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        const message =
-          err instanceof Error ? err.message : 'Failed to load claims';
-        setClaimsError(message);
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingClaims(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [id]);
+  const { data: claimsData, isLoading: loadingClaims, error: claimsError } = useCredentialClaims(id ?? '');
 
   if (!credential) {
     return (
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: colors.bg,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
+      <View style={{ flex: 1, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center' }}>
         <Text style={{ color: colors.mutedText }}>Credential not found</Text>
       </View>
     );
   }
 
   const typeConfig =
-    CREDENTIAL_TYPE_CONFIG[
-      credential.type as keyof typeof CREDENTIAL_TYPE_CONFIG
-    ];
+    CREDENTIAL_TYPE_CONFIG[credential.type as keyof typeof CREDENTIAL_TYPE_CONFIG];
   const accentColor = typeConfig?.accent ?? colors.primary;
 
-  // Use API claims if available, fall back to store claims
-  const displayClaims = claims ?? credential.claims;
-  const displaySdClaims = sdClaims ?? credential.sdClaims;
+  const displayClaims = claimsData?.claims ?? credential.claims;
+  const displaySdClaims = claimsData?.sdClaims ?? credential.sdClaims;
+  
+  const subjectDid = credential.subjectDid || (credential.claims?.sub as string) || '';
 
   return (
     <ScrollView
@@ -89,44 +45,38 @@ export default function CredentialDetail() {
       <View
         style={{
           backgroundColor: colors.surface,
-          borderRadius: 16,
-          padding: 16,
+          borderRadius: 18,
+          borderWidth: 1,
+          borderColor: colors.border,
+          overflow: 'hidden',
           marginBottom: 16,
-          borderLeftWidth: 4,
-          borderLeftColor: accentColor,
         }}
       >
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: 12,
-          }}
-        >
-          <Text
-            style={{ color: colors.foreground, fontSize: 20, fontWeight: '700', flex: 1 }}
-            numberOfLines={2}
-          >
-            {credential.typeName}
-          </Text>
-          <StatusBadge status={credential.status} />
-        </View>
-
-        <IssuerBadge
-          issuerDid={credential.issuerDid}
-          issuerName={credential.issuerName}
-        />
-
-        <View style={{ marginTop: 12 }}>
-          <Text style={{ color: colors.mutedText, fontSize: 12 }}>
-            Issued: {new Date(credential.issuedAt).toLocaleDateString()}
-          </Text>
-          {credential.expiresAt ? (
-            <Text style={{ color: colors.mutedText, fontSize: 12, marginTop: 2 }}>
-              Expires: {new Date(credential.expiresAt).toLocaleDateString()}
+        {/* Accent bar */}
+        <View style={{ height: 4, backgroundColor: accentColor }} />
+        <View style={{ padding: 16 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <Text
+              style={{ color: colors.foreground, fontSize: 20, fontWeight: '700', flex: 1 }}
+              numberOfLines={2}
+            >
+              {credential.typeName}
             </Text>
-          ) : null}
+            <StatusBadge status={credential.status} />
+          </View>
+
+          <IssuerBadge issuerDid={credential.issuerDid} issuerName={credential.issuerName ?? ''} />
+
+          <View style={{ marginTop: 12 }}>
+            <Text style={{ color: colors.mutedText, fontSize: 12 }}>
+              Issued: {formatDate(credential.issuedAt)}
+            </Text>
+            {credential.expiresAt ? (
+              <Text style={{ color: colors.mutedText, fontSize: 12, marginTop: 2 }}>
+                Expires: {formatDate(credential.expiresAt)}
+              </Text>
+            ) : null}
+          </View>
         </View>
       </View>
 
@@ -135,32 +85,27 @@ export default function CredentialDetail() {
         style={{
           backgroundColor: colors.surface,
           borderRadius: 16,
+          borderWidth: 1,
+          borderColor: colors.border,
           padding: 16,
           marginBottom: 16,
         }}
       >
-        <Text
-          style={{
-            color: colors.foreground,
-            fontSize: 17,
-            fontWeight: '600',
-            marginBottom: 12,
-          }}
-        >
+        <Text style={{ color: colors.foreground, fontSize: 17, fontWeight: '600', marginBottom: 12 }}>
           Claims
         </Text>
 
-        {loadingClaims && !claims ? (
+        {loadingClaims && !claimsData ? (
           <View style={{ alignItems: 'center', paddingVertical: 16 }}>
             <ActivityIndicator size="small" color={colors.primary} />
             <Text style={{ color: colors.mutedText, fontSize: 12, marginTop: 8 }}>
               Loading claims from server...
             </Text>
           </View>
-        ) : claimsError && !claims ? (
+        ) : claimsError && !claimsData ? (
           <View>
             <Text style={{ color: colors.mutedText, fontSize: 12, marginBottom: 8 }}>
-              Could not load latest claims: {claimsError}
+              Could not load latest claims. Showing cached data.
             </Text>
             <ClaimsList claims={displayClaims} sdClaims={displaySdClaims} />
           </View>
@@ -170,41 +115,27 @@ export default function CredentialDetail() {
       </View>
 
       {/* QR display for sharing the credential subject DID */}
-      {credential.subjectDid ? (
+      {subjectDid && subjectDid !== 'unknown' ? (
         <View
           style={{
             backgroundColor: colors.surface,
-            borderRadius: 16,
-            padding: 16,
+            borderRadius: 18,
+            borderWidth: 1,
+            borderColor: colors.border,
+            padding: 18,
             marginBottom: 16,
           }}
         >
-          <Text
-            style={{
-              color: colors.foreground,
-              fontSize: 17,
-              fontWeight: '600',
-              marginBottom: 4,
-            }}
-          >
+          <Text style={{ color: colors.foreground, fontSize: 17, fontWeight: '600', marginBottom: 4 }}>
             Holder DID
           </Text>
           <Text
-            style={{
-              color: colors.mutedText,
-              fontSize: 12,
-              marginBottom: 8,
-              fontFamily: 'monospace',
-            }}
+            style={{ color: colors.mutedText, fontSize: 12, marginBottom: 8, fontFamily: 'monospace' }}
             numberOfLines={2}
           >
-            {credential.subjectDid}
+            {subjectDid}
           </Text>
-          <QrDisplay
-            value={credential.subjectDid}
-            size={160}
-            label="Scan to obtain this holder DID"
-          />
+          <QrDisplay value={subjectDid} size={160} label="Scan to obtain this holder DID" />
         </View>
       ) : null}
     </ScrollView>

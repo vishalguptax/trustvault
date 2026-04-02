@@ -23,6 +23,34 @@ export const STATUS_PURPOSES = {
 
 export const DEFAULT_STATUS_LIST_SIZE = 131072;
 
+export const CLAIM_LABELS: Record<string, string> = {
+  // Education
+  institutionName: 'Institution Name',
+  degree: 'Degree',
+  fieldOfStudy: 'Field of Study',
+  graduationDate: 'Graduation Date',
+  gpa: 'GPA',
+  studentId: 'Student ID',
+  // Income
+  employerName: 'Employer Name',
+  jobTitle: 'Job Title',
+  annualIncome: 'Annual Income',
+  currency: 'Currency',
+  employmentStartDate: 'Employment Start Date',
+  employeeId: 'Employee ID',
+  // Identity
+  fullName: 'Full Name',
+  dateOfBirth: 'Date of Birth',
+  nationality: 'Nationality',
+  documentNumber: 'Document Number',
+  address: 'Address',
+  gender: 'Gender',
+  // Standard JWT claims
+  iss: 'Issuer',
+  sub: 'Subject',
+  vct: 'Credential Type',
+};
+
 export const TRUST_POLICIES = {
   REQUIRE_TRUSTED_ISSUER: 'require-trusted-issuer',
   REQUIRE_ACTIVE_STATUS: 'require-active-status',

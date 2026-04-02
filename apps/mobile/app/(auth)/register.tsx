@@ -3,12 +3,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, Link } from 'expo-router';
 import { useState, useCallback, useRef } from 'react';
 import { useAuth } from '@/lib/auth/auth-context';
-import { useTheme } from '@/lib/theme';
+import { useTheme, cardShadow, cardShadowDark } from '@/lib/theme';
+import { TABS } from '@/lib/routes';
 
 export default function RegisterScreen() {
   const router = useRouter();
   const { register } = useAuth();
-  const { colors, isDark, toggleTheme } = useTheme();
+  const { colors, isDark } = useTheme();
+  const shadow = isDark ? cardShadowDark : cardShadow;
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -29,7 +31,7 @@ export default function RegisterScreen() {
     setError('');
     try {
       await register(trimmedEmail, password, trimmedName);
-      router.replace('/(tabs)');
+      router.replace(TABS.HOME);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed.');
     } finally {
@@ -42,30 +44,17 @@ export default function RegisterScreen() {
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24, paddingBottom: 48 }} keyboardShouldPersistTaps="handled">
-        {/* Theme toggle */}
-        <Pressable
-          onPress={toggleTheme}
-          style={{ position: 'absolute', top: 16, right: 0, width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
-          accessibilityLabel={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-          accessibilityRole="button"
-        >
-          <Ionicons name={isDark ? 'sunny-outline' : 'moon-outline'} size={20} color={colors.mutedText} />
-        </Pressable>
-
         {/* Brand */}
-        <View style={{ alignItems: 'center', marginBottom: 36 }}>
+        <View style={{ alignItems: 'center', marginBottom: 40 }}>
           <View style={{
-            width: 72, height: 72, borderRadius: 20,
-            backgroundColor: 'rgba(20,184,166,0.12)',
-            borderWidth: 1, borderColor: 'rgba(20,184,166,0.2)',
-            alignItems: 'center', justifyContent: 'center', marginBottom: 20,
+            width: 80, height: 80, borderRadius: 40,
+            backgroundColor: `${colors.primary}14`,
+            alignItems: 'center', justifyContent: 'center', marginBottom: 24,
           }}>
-            <View style={{ width: 48, height: 48, borderRadius: 12, backgroundColor: 'rgba(20,184,166,0.15)', alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name="shield-checkmark" size={22} color={colors.primary} />
-            </View>
+            <Ionicons name="shield-checkmark" size={32} color={colors.primary} />
           </View>
-          <Text style={{ color: colors.foreground, fontSize: 26, fontWeight: '700', letterSpacing: -0.3 }}>Create Account</Text>
-          <Text style={{ color: colors.mutedText, fontSize: 15, marginTop: 6 }}>Set up your TrustVault wallet</Text>
+          <Text style={{ color: colors.foreground, fontSize: 30, fontWeight: '800', letterSpacing: -0.5 }}>Create Account</Text>
+          <Text style={{ color: colors.mutedText, fontSize: 15, marginTop: 8, lineHeight: 22 }}>Set up your TrustVault wallet</Text>
         </View>
 
         {/* Error */}
@@ -80,12 +69,12 @@ export default function RegisterScreen() {
         ) : null}
 
         {/* Name */}
-        <Text style={{ color: colors.mutedText, fontSize: 13, fontWeight: '500', marginBottom: 6, marginLeft: 2 }}>Full Name</Text>
+        <Text style={{ color: colors.mutedText, fontSize: 13, fontWeight: '500', marginBottom: 8, marginLeft: 4 }}>Full Name</Text>
         <TextInput
           style={{
-            backgroundColor: colors.inputBg, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14,
-            color: colors.foreground, fontSize: 16, marginBottom: 18,
-            borderWidth: 1, borderColor: colors.border,
+            backgroundColor: colors.inputBg, borderRadius: 16, paddingHorizontal: 18, paddingVertical: 15,
+            color: colors.foreground, fontSize: 16, marginBottom: 20,
+            ...shadow,
           }}
           value={name}
           onChangeText={(t) => { setName(t); clearError(); }}
@@ -98,13 +87,13 @@ export default function RegisterScreen() {
         />
 
         {/* Email */}
-        <Text style={{ color: colors.mutedText, fontSize: 13, fontWeight: '500', marginBottom: 6, marginLeft: 2 }}>Email</Text>
+        <Text style={{ color: colors.mutedText, fontSize: 13, fontWeight: '500', marginBottom: 8, marginLeft: 4 }}>Email</Text>
         <TextInput
           ref={emailRef}
           style={{
-            backgroundColor: colors.inputBg, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14,
-            color: colors.foreground, fontSize: 16, marginBottom: 18,
-            borderWidth: 1, borderColor: colors.border,
+            backgroundColor: colors.inputBg, borderRadius: 16, paddingHorizontal: 18, paddingVertical: 15,
+            color: colors.foreground, fontSize: 16, marginBottom: 20,
+            ...shadow,
           }}
           value={email}
           onChangeText={(t) => { setEmail(t); clearError(); }}
@@ -119,14 +108,14 @@ export default function RegisterScreen() {
         />
 
         {/* Password */}
-        <Text style={{ color: colors.mutedText, fontSize: 13, fontWeight: '500', marginBottom: 6, marginLeft: 2 }}>Password</Text>
+        <Text style={{ color: colors.mutedText, fontSize: 13, fontWeight: '500', marginBottom: 8, marginLeft: 4 }}>Password</Text>
         <View style={{ position: 'relative', marginBottom: 18 }}>
           <TextInput
             ref={passwordRef}
             style={{
-              backgroundColor: colors.inputBg, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14,
+              backgroundColor: colors.inputBg, borderRadius: 16, paddingHorizontal: 18, paddingVertical: 15,
               paddingRight: 50, color: colors.foreground, fontSize: 16,
-              borderWidth: 1, borderColor: colors.border,
+              ...shadow,
             }}
             value={password}
             onChangeText={(t) => { setPassword(t); clearError(); }}
@@ -159,10 +148,11 @@ export default function RegisterScreen() {
           onPress={handleRegister}
           disabled={loading}
           style={({ pressed }) => ({
-            backgroundColor: (pressed || loading) ? '#0D9488' : colors.primary,
-            borderRadius: 14, paddingVertical: 16,
+            backgroundColor: colors.primary,
+            borderRadius: 16, paddingVertical: 16,
             alignItems: 'center', marginTop: 4, minHeight: 52,
-            opacity: loading ? 0.8 : 1,
+            opacity: (pressed || loading) ? 0.9 : 1,
+            ...shadow,
           })}
           accessibilityRole="button"
           accessibilityLabel="Create account"

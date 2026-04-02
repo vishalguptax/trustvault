@@ -32,7 +32,8 @@ const FALLBACK_SCHEMAS: Schema[] = [
     name: 'Education Credential',
     description: 'Academic credentials such as degrees, diplomas, and certificates. Used by educational institutions to issue verifiable proof of academic achievement.',
     claims: [
-      { key: 'institutionName', label: 'Institution Name', type: 'string', required: true, selectivelyDisclosable: false },
+      { key: 'documentName', label: 'Document Name', type: 'string', required: true, selectivelyDisclosable: false },
+      { key: 'institutionName', label: 'Issuing Organization', type: 'string', required: true, selectivelyDisclosable: false },
       { key: 'degree', label: 'Degree', type: 'string', required: true, selectivelyDisclosable: false },
       { key: 'fieldOfStudy', label: 'Field of Study', type: 'string', required: true, selectivelyDisclosable: true },
       { key: 'graduationDate', label: 'Graduation Date', type: 'date', required: true, selectivelyDisclosable: true },
@@ -46,7 +47,8 @@ const FALLBACK_SCHEMAS: Schema[] = [
     name: 'Income Credential',
     description: 'Employment and income verification credentials. Used by employers and financial institutions to certify employment status and earnings.',
     claims: [
-      { key: 'employerName', label: 'Employer Name', type: 'string', required: true, selectivelyDisclosable: false },
+      { key: 'documentName', label: 'Document Name', type: 'string', required: true, selectivelyDisclosable: false },
+      { key: 'employerName', label: 'Issuing Organization', type: 'string', required: true, selectivelyDisclosable: false },
       { key: 'jobTitle', label: 'Job Title', type: 'string', required: true, selectivelyDisclosable: true },
       { key: 'annualIncome', label: 'Annual Income', type: 'number', required: true, selectivelyDisclosable: true },
       { key: 'currency', label: 'Currency', type: 'string', required: true, selectivelyDisclosable: false },
@@ -60,6 +62,7 @@ const FALLBACK_SCHEMAS: Schema[] = [
     name: 'Identity Credential',
     description: 'Government-backed identity verification credentials. Used for KYC and identity proofing across various services.',
     claims: [
+      { key: 'documentName', label: 'Document Name', type: 'string', required: true, selectivelyDisclosable: false },
       { key: 'fullName', label: 'Full Name', type: 'string', required: true, selectivelyDisclosable: false },
       { key: 'dateOfBirth', label: 'Date of Birth', type: 'date', required: true, selectivelyDisclosable: true },
       { key: 'nationality', label: 'Nationality', type: 'string', required: true, selectivelyDisclosable: true },
@@ -128,7 +131,7 @@ export default function SchemaRegistryPage() {
       {loading ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="bg-card border border-border rounded-xl p-6 animate-pulse">
+            <div key={i} className="bg-card rounded-2xl shadow-[var(--shadow-card)] p-6 animate-pulse">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-12 h-12 bg-muted rounded-lg" />
                 <div className="space-y-2">
@@ -158,7 +161,7 @@ export default function SchemaRegistryPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
-                className="bg-card border border-border rounded-xl overflow-hidden hover:border-muted-foreground/30 transition-all"
+                className="bg-card rounded-2xl shadow-[var(--shadow-card)] overflow-hidden hover:shadow-lg transition-all"
               >
                 <div className={cn('h-1.5', styles.bar)} />
                 <div className="p-6">
@@ -189,11 +192,11 @@ export default function SchemaRegistryPage() {
                         <div className="flex items-center gap-2">
                           <span className="text-sm">{claim.label}</span>
                           {claim.required && (
-                            <Badge variant="destructive" className="text-[10px] px-1 py-0 h-4">REQ</Badge>
+                            <Badge variant="destructive" className="text-[11px] px-1 py-0 h-4">REQ</Badge>
                           )}
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <Badge variant="secondary" className="text-[10px] uppercase px-1.5 py-0 h-4 font-mono">
+                          <Badge variant="secondary" className="text-[11px] uppercase px-1.5 py-0 h-4 font-mono">
                             {claim.type}
                           </Badge>
                           {claim.selectivelyDisclosable ? (

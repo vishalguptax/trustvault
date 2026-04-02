@@ -45,7 +45,8 @@ export class StatusController {
   @ApiResponse({ status: 200, description: 'Status list credential' })
   @ApiResponse({ status: 404, description: 'Status list not found' })
   async getStatusList(@Param('id') id: string) {
-    return this.statusService.getStatusList(id);
+    const result = await this.statusService.getStatusList(id);
+    return { data: result };
   }
 
   @Post('revoke')
@@ -56,7 +57,8 @@ export class StatusController {
   @ApiResponse({ status: 403, description: 'Forbidden — requires issuer or admin role' })
   @ApiResponse({ status: 404, description: 'Credential not found' })
   async revoke(@Body() dto: RevokeDto) {
-    return this.statusService.revokeCredential(dto.credentialId, dto.reason);
+    const result = await this.statusService.revokeCredential(dto.credentialId, dto.reason);
+    return { data: result };
   }
 
   @Post('suspend')
@@ -67,7 +69,8 @@ export class StatusController {
   @ApiResponse({ status: 403, description: 'Forbidden — requires issuer or admin role' })
   @ApiResponse({ status: 404, description: 'Credential not found' })
   async suspend(@Body() dto: SuspendDto) {
-    return this.statusService.suspendCredential(dto.credentialId, dto.reason);
+    const result = await this.statusService.suspendCredential(dto.credentialId, dto.reason);
+    return { data: result };
   }
 
   @Post('reinstate')
@@ -78,6 +81,7 @@ export class StatusController {
   @ApiResponse({ status: 403, description: 'Forbidden — requires issuer or admin role' })
   @ApiResponse({ status: 404, description: 'Credential not found' })
   async reinstate(@Body() dto: ReinstateDto) {
-    return this.statusService.reinstateCredential(dto.credentialId);
+    const result = await this.statusService.reinstateCredential(dto.credentialId);
+    return { data: result };
   }
 }

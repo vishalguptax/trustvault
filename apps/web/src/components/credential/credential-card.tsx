@@ -1,7 +1,7 @@
 'use client';
 
 import { GraduationCap, CurrencyDollar, IdentificationCard } from '@phosphor-icons/react';
-import { cn, truncateDid, formatDate, getCredentialAccentClass } from '@/lib/utils';
+import { cn, truncateDid, formatDate, getCredentialAccentClass, getClaimLabel } from '@/lib/utils';
 import { StatusBadge } from './status-badge';
 
 interface CredentialCardProps {
@@ -43,7 +43,7 @@ export function CredentialCard({
   return (
     <div
       className={cn(
-        'bg-card border border-border rounded-xl overflow-hidden transition-all hover:border-muted-foreground/30',
+        'bg-card rounded-2xl overflow-hidden shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-all duration-200',
         className
       )}
     >
@@ -70,7 +70,7 @@ export function CredentialCard({
           <div className="mt-3 space-y-1.5">
             {Object.entries(claims).slice(0, 3).map(([key, value]) => (
               <div key={key} className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
+                <span className="text-muted-foreground">{getClaimLabel(key)}</span>
                 <span className="text-foreground font-medium truncate ml-2 max-w-[60%] text-right">{value}</span>
               </div>
             ))}
@@ -81,7 +81,7 @@ export function CredentialCard({
         )}
 
         {/* Footer */}
-        <div className="mt-3 pt-3 border-t border-border">
+        <div className="mt-3 pt-3 border-t border-border/50">
           <p className="text-xs text-muted-foreground">Issued {formatDate(issuedAt)}</p>
         </div>
       </div>

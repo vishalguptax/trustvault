@@ -7,6 +7,7 @@ interface User {
   name: string;
   role: 'admin' | 'issuer' | 'verifier' | 'holder';
   active: boolean;
+  trustedIssuerId: string | null;
   createdAt: string;
 }
 

@@ -7,11 +7,13 @@ import {
   Headers,
   HttpCode,
   HttpStatus,
-  UseGuards,
+  BadRequestException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { IssuerService } from './issuer.service';
 import { CreateOfferDto } from './dto/create-offer.dto';
+import { CreateBulkOffersDto } from './dto/bulk-offer.dto';
 import { TokenRequestDto } from './dto/token-request.dto';
 import { CredentialRequestDto } from './dto/credential-request.dto';
 import { Public } from '../auth/decorators/public.decorator';
@@ -27,7 +29,8 @@ export class IssuerController {
   @ApiOperation({ summary: 'Get issuer metadata (OID4VCI)' })
   @ApiResponse({ status: 200, description: 'Issuer metadata' })
   async getMetadata() {
-    return this.issuerService.getIssuerMetadata();
+    const metadata = await this.issuerService.getIssuerMetadata();
+    return { data: metadata };
   }
 
   @Post('offers')
@@ -40,9 +43,24 @@ export class IssuerController {
   async createOffer(@Body() dto: CreateOfferDto) {
     const result = await this.issuerService.createOffer(
       dto.schemaTypeUri,
-      dto.subjectDid,
+      dto.subjectDid || 'pending',
       dto.claims,
       dto.pinRequired,
+    );
+    return { data: result };
+  }
+
+  @Post('offers/batch')
+  @Roles('issuer', 'admin')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Create multiple credential offers in batch (bulk issuance)' })
+  @ApiResponse({ status: 201, description: 'Batch offers created' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @HttpCode(HttpStatus.CREATED)
+  async createBulkOffers(@Body() dto: CreateBulkOffersDto) {
+    const result = await this.issuerService.createBulkOffers(
+      dto.schemaTypeUri,
+      dto.offers,
     );
     return { data: result };
   }
@@ -54,12 +72,10 @@ export class IssuerController {
   @ApiResponse({ status: 200, description: 'Token response' })
   async exchangeToken(@Body() dto: TokenRequestDto) {
     if (dto.grant_type !== 'urn:ietf:params:oauth:grant-type:pre-authorized_code') {
-      return {
-        error: 'unsupported_grant_type',
-        error_description: 'Only pre-authorized_code grant type is supported',
-      };
+      throw new BadRequestException('Only pre-authorized_code grant type is supported');
     }
-    return this.issuerService.exchangeToken(dto['pre-authorized_code'], dto.pin);
+    const result = await this.issuerService.exchangeToken(dto['pre-authorized_code'], dto.pin);
+    return { data: result };
   }
 
   @Post('credential')
@@ -73,15 +89,16 @@ export class IssuerController {
   ) {
     const accessToken = authHeader?.replace('Bearer ', '');
     if (!accessToken) {
-      return { error: 'invalid_token', error_description: 'Missing access token' };
+      throw new UnauthorizedException('Missing access token');
     }
 
-    return this.issuerService.issueCredential(
+    const result = await this.issuerService.issueCredential(
       accessToken,
       dto.format,
       dto.credential_definition,
       dto.proof,
     );
+    return { data: result };
   }
 
   @Get('schemas')

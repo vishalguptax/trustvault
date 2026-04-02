@@ -10,10 +10,12 @@ import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { createHash, randomBytes } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
+import { MailService } from '../mail/mail.service';
 
 const BCRYPT_SALT_ROUNDS = 12;
 const ACCESS_TOKEN_EXPIRY = '15m';
 const REFRESH_TOKEN_EXPIRY = '7d';
+const OTP_EXPIRY_MINUTES = 15;
 
 interface TokenPayload {
   sub: string;
@@ -32,6 +34,7 @@ export interface UserInfo {
   name: string;
   role: string;
   active: boolean;
+  trustedIssuerId: string | null;
   createdAt: Date;
 }
 
@@ -43,6 +46,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly mailService: MailService,
   ) {}
 
   async register(
@@ -75,10 +79,51 @@ export class AuthService {
 
     this.logger.log(`User registered: ${user.email} (role: ${user.role})`);
 
+    this.mailService.sendWelcome(user.email, user.name, user.role).catch((err: unknown) => {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Failed to send welcome email to ${user.email}: ${message}`);
+    });
+
     return {
       ...tokens,
       user: this.sanitizeUser(user),
     };
+  }
+
+  async createUser(
+    email: string,
+    name: string,
+    role: string,
+    loginUrl: string,
+  ): Promise<{ email: string; name: string; role: string; temporaryPassword: string }> {
+    const existing = await this.prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      throw new ConflictException('A user with this email already exists');
+    }
+
+    const temporaryPassword = randomBytes(6).toString('base64url').slice(0, 12) + 'A1!';
+    const passwordHash = await bcrypt.hash(temporaryPassword, BCRYPT_SALT_ROUNDS);
+
+    const user = await this.prisma.user.create({
+      data: {
+        email,
+        passwordHash,
+        name,
+        role,
+        active: true,
+        refreshTokens: [],
+        apiKeys: [],
+      },
+    });
+
+    this.logger.log(`User created by admin: ${user.email} (role: ${user.role})`);
+
+    this.mailService.sendOnboarding(user.email, user.name, user.role, temporaryPassword, loginUrl).catch((err: unknown) => {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Failed to send onboarding email to ${user.email}: ${message}`);
+    });
+
+    return { email: user.email, name: user.name, role: user.role, temporaryPassword };
   }
 
   async login(
@@ -112,7 +157,7 @@ export class AuthService {
 
   async refreshToken(
     refreshToken: string,
-  ): Promise<{ access_token: string; refresh_token: string }> {
+  ): Promise<{ access_token: string; refresh_token: string; user: UserInfo }> {
     let payload: TokenPayload;
 
     try {
@@ -157,7 +202,10 @@ export class AuthService {
 
     this.logger.log(`Token refreshed for user: ${user.id}`);
 
-    return tokens;
+    return {
+      ...tokens,
+      user: this.sanitizeUser(user),
+    };
   }
 
   async logout(userId: string): Promise<{ message: string }> {
@@ -242,6 +290,81 @@ export class AuthService {
     return { apiKey: rawKey, name: keyName };
   }
 
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      return { message: 'If an account with that email exists, a reset code has been sent' };
+    }
+
+    const otp = this.generateOtp();
+    const otpHash = createHash('sha256').update(otp).digest('hex');
+    const expiry = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { resetOtpHash: otpHash, resetOtpExpiry: expiry },
+    });
+
+    this.mailService.sendPasswordReset(user.email, user.name, otp).catch((err: unknown) => {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Failed to send password reset email to ${user.email}: ${message}`);
+    });
+
+    this.logger.log(`Password reset OTP generated for: ${user.email}`);
+
+    return { message: 'If an account with that email exists, a reset code has been sent' };
+  }
+
+  async resetPassword(
+    email: string,
+    otp: string,
+    newPassword: string,
+  ): Promise<{ message: string }> {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      throw new UnauthorizedException('Invalid email or OTP');
+    }
+
+    if (!user.resetOtpHash || !user.resetOtpExpiry) {
+      throw new UnauthorizedException('No password reset was requested');
+    }
+
+    if (new Date() > user.resetOtpExpiry) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { resetOtpHash: null, resetOtpExpiry: null },
+      });
+      throw new UnauthorizedException('OTP has expired');
+    }
+
+    const otpHash = createHash('sha256').update(otp).digest('hex');
+    if (otpHash !== user.resetOtpHash) {
+      throw new UnauthorizedException('Invalid email or OTP');
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordHash,
+        resetOtpHash: null,
+        resetOtpExpiry: null,
+        refreshTokens: [],
+      },
+    });
+
+    this.logger.log(`Password reset successful for: ${user.email}`);
+
+    return { message: 'Password has been reset successfully' };
+  }
+
+  private generateOtp(): string {
+    const buffer = randomBytes(4);
+    const num = buffer.readUInt32BE(0) % 1000000;
+    return num.toString().padStart(6, '0');
+  }
+
   hashApiKey(key: string): string {
     return createHash('sha256').update(key).digest('hex');
   }
@@ -267,6 +390,37 @@ export class AuthService {
     }
 
     return this.sanitizeUser(users[0]);
+  }
+
+  async listUsers(role?: string) {
+    const where = role ? { role } : {};
+    const users = await this.prisma.user.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+    });
+    return users.map((u) => this.sanitizeUser(u));
+  }
+
+  async updateUser(id: string, data: { name?: string; role?: string; active?: boolean }) {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) {
+      throw new NotFoundException(`User not found: ${id}`);
+    }
+    const updated = await this.prisma.user.update({
+      where: { id },
+      data,
+    });
+    return this.sanitizeUser(updated);
+  }
+
+  async deleteUser(id: string) {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) {
+      throw new NotFoundException(`User not found: ${id}`);
+    }
+    await this.prisma.user.delete({ where: { id } });
+    this.logger.log(`User deleted: ${user.email}`);
+    return { deleted: true };
   }
 
   private hashToken(token: string): string {
@@ -295,6 +449,7 @@ export class AuthService {
     name: string;
     role: string;
     active: boolean;
+    trustedIssuerId?: string | null;
     createdAt: Date;
   }): UserInfo {
     return {
@@ -302,6 +457,7 @@ export class AuthService {
       email: user.email,
       name: user.name,
       role: user.role,
+      trustedIssuerId: user.trustedIssuerId ?? null,
       active: user.active,
       createdAt: user.createdAt,
     };

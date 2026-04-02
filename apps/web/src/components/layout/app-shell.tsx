@@ -5,12 +5,13 @@ import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import {
   Sun, Moon, List, CaretLeft, SquaresFour, Plus, File, FileText,
-  CheckCircle, Shield, Users, SignOut,
+  CheckCircle, Shield, Users, UserPlus, SignOut, FileArrowUp,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { useTheme } from './theme-provider';
 import { useAuthStore } from '@/lib/auth/auth-store';
 import { PageTransition } from './page-transition';
+import { Button } from '@/components/ui/button';
 
 interface AppShellProps {
   role: 'issuer' | 'verifier' | 'admin';
@@ -24,6 +25,7 @@ const roleConfig = {
     nav: [
       { label: 'Dashboard', href: '/issuer', icon: <SquaresFour size={20} /> },
       { label: 'New Offer', href: '/issuer/offers/new', icon: <Plus size={20} /> },
+      { label: 'Bulk Issue', href: '/issuer/offers/batch', icon: <FileArrowUp size={20} /> },
       { label: 'Credentials', href: '/issuer/credentials', icon: <File size={20} /> },
       { label: 'Schemas', href: '/issuer/schemas', icon: <FileText size={20} /> },
     ],
@@ -42,7 +44,9 @@ const roleConfig = {
     label: 'Trust Admin',
     accent: 'text-warning',
     nav: [
-      { label: 'Issuers', href: '/admin/issuers', icon: <Users size={20} /> },
+      { label: 'Users', href: '/admin/users', icon: <Users size={20} /> },
+      { label: 'Trust Registry', href: '/admin/issuers', icon: <Shield size={20} /> },
+      { label: 'Onboard', href: '/admin/onboard', icon: <UserPlus size={20} /> },
       { label: 'Schemas', href: '/admin/schemas', icon: <FileText size={20} /> },
     ],
   },
@@ -70,7 +74,7 @@ export function AppShell({ role, children }: AppShellProps) {
       {/* Sidebar */}
       <aside
         className={cn(
-          'bg-card border-r border-border flex flex-col transition-all duration-300',
+          'bg-card shadow-[var(--shadow-card)] flex flex-col transition-all duration-300',
           'fixed inset-y-0 left-0 z-50 md:relative md:translate-x-0',
           mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
           collapsed ? 'w-16' : 'w-60'
@@ -79,7 +83,7 @@ export function AppShell({ role, children }: AppShellProps) {
         aria-label={`${config.label} navigation`}
       >
         {/* Logo */}
-        <div className="h-14 flex items-center px-4 border-b border-border">
+        <div className="h-14 flex items-center px-4">
           <Link href="/" className="flex items-center gap-2 overflow-hidden">
             <div className="w-8 h-8 bg-primary/20 rounded-lg flex items-center justify-center flex-shrink-0">
               <span className="text-primary text-sm font-bold">TV</span>
@@ -94,7 +98,7 @@ export function AppShell({ role, children }: AppShellProps) {
 
         {/* Role Badge */}
         {!collapsed && (
-          <div className="px-4 py-3 border-b border-border">
+          <div className="px-4 py-3">
             <span className={cn('text-xs font-medium', config.accent)}>
               {config.label}
             </span>
@@ -116,7 +120,7 @@ export function AppShell({ role, children }: AppShellProps) {
                 onClick={() => setMobileOpen(false)}
                 aria-current={isActive ? 'page' : undefined}
                 className={cn(
-                  'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
+                  'flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
                   isActive
                     ? 'bg-primary/10 text-primary font-medium'
                     : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
@@ -130,58 +134,65 @@ export function AppShell({ role, children }: AppShellProps) {
         </nav>
 
         {/* Collapse Toggle */}
-        <button
+        <Button
+          variant="ghost"
           onClick={() => setCollapsed(!collapsed)}
-          className="h-12 flex items-center justify-center border-t border-border text-muted-foreground hover:text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          className="h-12 w-full rounded-none text-muted-foreground hover:text-foreground"
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           <CaretLeft size={16} className={cn('transition-transform', collapsed && 'rotate-180')} />
-        </button>
+        </Button>
       </aside>
 
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto" aria-label={`${config.label} content`}>
         {/* Header */}
-        <header className="h-14 border-b border-border flex items-center justify-between px-4 md:px-6 bg-card/80 backdrop-blur-sm sticky top-0 z-10">
+        <header className="h-14 shadow-sm flex items-center justify-between px-4 md:px-6 bg-card/80 backdrop-blur-sm sticky top-0 z-10">
           <div className="flex items-center gap-3">
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => setMobileOpen(!mobileOpen)}
-              className="md:hidden text-muted-foreground hover:text-foreground transition-colors"
+              className="md:hidden"
               aria-label="Toggle navigation"
             >
               <List size={20} />
-            </button>
+            </Button>
             <h1 className="text-lg font-semibold">{getPageTitle(pathname)}</h1>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             {/* Theme Toggle */}
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={toggleTheme}
-              className="w-9 h-9 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
               aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
             >
               {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-            </button>
+            </Button>
             {user && (
               <>
-                <span className="text-xs text-muted-foreground hidden sm:inline">{user.name}</span>
-                <div className={cn('text-xs font-medium px-2 py-0.5 rounded-full', getRoleBadgeClass(role))}>
-                  {user.role}
+                <div className="h-5 w-px bg-border hidden sm:block" />
+                <span className="text-sm text-muted-foreground hidden sm:inline">{user.name}</span>
+                <div className={cn('text-xs font-medium px-2.5 py-1 rounded-full capitalize', getRoleBadgeClass(role))}>
+                  {role === 'admin' ? 'Admin' : role === 'issuer' ? 'Issuer' : 'Verifier'}
                 </div>
-                <button
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={logout}
-                  className="w-9 h-9 rounded-lg flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                  className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                   aria-label="Sign out"
                 >
                   <SignOut size={18} />
-                </button>
+                </Button>
               </>
             )}
           </div>
         </header>
 
         {/* Content */}
-        <div className="p-4 md:p-6">
+        <div className="p-5 md:p-8">
           <PageTransition>{children}</PageTransition>
         </div>
       </main>

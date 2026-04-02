@@ -27,27 +27,32 @@ export function StepIndicator({ steps, currentStep }: StepIndicatorProps) {
           <View key={step} style={{ flexDirection: 'row', alignItems: 'center' }}>
             <View
               style={{
-                width: 28,
-                height: 28,
-                borderRadius: 14,
+                width: 32,
+                height: 32,
+                borderRadius: 16,
                 alignItems: 'center',
                 justifyContent: 'center',
                 backgroundColor: isActive ? colors.primary : colors.muted,
               }}
               accessibilityLabel={`Step ${index + 1}: ${step}, ${stepState}`}
             >
-              <Text style={{
-                fontSize: 12,
-                fontWeight: '700',
-                color: isActive ? colors.primaryFg : colors.mutedText,
-              }}>
-{isComplete ? <Ionicons name="checkmark" size={14} color={colors.primaryFg} /> : <Text style={{ fontSize: 12, fontWeight: '700', color: isActive ? colors.primaryFg : colors.mutedText }}>{index + 1}</Text>}
-              </Text>
+              {isComplete ? (
+                <Ionicons name="checkmark" size={16} color={colors.primaryFg} />
+              ) : (
+                <Text style={{
+                  fontSize: 13,
+                  fontWeight: '700',
+                  color: isActive ? colors.primaryFg : colors.mutedText,
+                }}>
+                  {index + 1}
+                </Text>
+              )}
             </View>
             {index < steps.length - 1 && (
               <View style={{
-                width: 24,
-                height: 2,
+                width: 28,
+                height: 3,
+                borderRadius: 1.5,
                 backgroundColor: index < currentStep ? colors.primary : colors.muted,
               }} />
             )}

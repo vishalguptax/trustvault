@@ -1,17 +1,25 @@
 import { Stack, useRouter } from 'expo-router';
 import { Pressable, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/lib/theme';
+import { useAuth } from '@/lib/auth/auth-context';
+import { TABS } from '@/lib/routes';
 
 export default function TabsLayout() {
   const { colors } = useTheme();
   const router = useRouter();
+  const { user } = useAuth();
+  const initial = user?.name?.charAt(0)?.toUpperCase() ?? 'U';
 
   return (
     <Stack
       screenOptions={{
-        headerStyle: { backgroundColor: colors.surface },
+        headerStyle: {
+          backgroundColor: colors.surface,
+        },
+        headerShadowVisible: true,
         headerTintColor: colors.foreground,
-        headerTitleStyle: { fontWeight: '600' },
+        headerTitleStyle: { fontWeight: '600', fontSize: 17 },
         contentStyle: { backgroundColor: colors.bg },
         animation: 'slide_from_right',
       }}
@@ -19,13 +27,26 @@ export default function TabsLayout() {
       <Stack.Screen
         name="index"
         options={{
-          title: 'TrustVault Wallet',
+          headerTitle: () => (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <View style={{
+                width: 30, height: 30, borderRadius: 10,
+                backgroundColor: `${colors.primary}18`,
+                alignItems: 'center', justifyContent: 'center',
+              }}>
+                <Ionicons name="shield-checkmark" size={16} color={colors.primary} />
+              </View>
+              <Text style={{ color: colors.foreground, fontSize: 17, fontWeight: '700' }}>
+                TrustVault
+              </Text>
+            </View>
+          ),
           headerRight: () => (
             <Pressable
-              onPress={() => router.push('/(tabs)/profile')}
+              onPress={() => router.push(TABS.PROFILE)}
               style={({ pressed }) => ({
-                width: 32, height: 32, borderRadius: 16,
-                backgroundColor: `${colors.primary}20`,
+                width: 36, height: 36, borderRadius: 18,
+                backgroundColor: `${colors.primary}18`,
                 alignItems: 'center', justifyContent: 'center',
                 opacity: pressed ? 0.7 : 1,
                 marginRight: 4,
@@ -33,13 +54,14 @@ export default function TabsLayout() {
               accessibilityLabel="Open profile"
               accessibilityRole="button"
             >
-              <Text style={{ color: colors.primary, fontSize: 14, fontWeight: '700' }}>
-                P
+              <Text style={{ color: colors.primary, fontSize: 15, fontWeight: '700' }}>
+                {initial}
               </Text>
             </Pressable>
           ),
         }}
       />
+      <Stack.Screen name="credentials" options={{ title: 'My Credentials' }} />
       <Stack.Screen name="credential/[id]" options={{ title: 'Credential Details' }} />
       <Stack.Screen name="receive" options={{ title: 'Receive Credential', presentation: 'modal' }} />
       <Stack.Screen name="present" options={{ title: 'Present Credential', presentation: 'modal' }} />

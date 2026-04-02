@@ -12,8 +12,10 @@ import { StatusModule } from './modules/status/status.module';
 import { TrustModule } from './modules/trust/trust.module';
 import { VerifierModule } from './modules/verifier/verifier.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { HealthModule } from './modules/health/health.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from './modules/auth/guards/roles.guard';
+import { MailModule } from './modules/mail/mail.module';
 import { LoggingMiddleware } from './common/middleware/logging.middleware';
 import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware';
 
@@ -28,6 +30,7 @@ import { CorrelationIdMiddleware } from './common/middleware/correlation-id.midd
       limit: 60,
     }]),
     PrismaModule,
+    MailModule,
     DidModule,
     CryptoModule,
     IssuerModule,
@@ -36,6 +39,7 @@ import { CorrelationIdMiddleware } from './common/middleware/correlation-id.midd
     TrustModule,
     VerifierModule,
     AuthModule,
+    HealthModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

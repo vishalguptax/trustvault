@@ -77,7 +77,8 @@ export class WalletController {
   @ApiQuery({ name: 'holderId', required: true })
   @ApiResponse({ status: 200, description: 'List of credentials' })
   async listCredentials(@Query('holderId') holderId: string) {
-    return this.walletService.listCredentials(holderId);
+    const result = await this.walletService.listCredentials(holderId);
+    return { data: result };
   }
 
   @Get('credentials/:id')
@@ -90,17 +91,19 @@ export class WalletController {
   }
 
   @Get('credentials/:id/claims')
-  @ApiOperation({ summary: 'Get credential claims (disclosed/undisclosed)' })
+  @ApiOperation({ summary: 'Get credential claims (fixed/selective)' })
   @ApiResponse({ status: 200, description: 'Credential claims' })
   async getCredentialClaims(@Param('id') id: string) {
-    return this.walletService.getCredentialClaims(id);
+    const claims = await this.walletService.getCredentialClaims(id);
+    return { data: claims };
   }
 
   @Delete('credentials/:id')
   @ApiOperation({ summary: 'Delete credential from wallet' })
   @ApiResponse({ status: 200, description: 'Credential deleted' })
   async deleteCredential(@Param('id') id: string) {
-    return this.walletService.deleteCredential(id);
+    const result = await this.walletService.deleteCredential(id);
+    return { data: result };
   }
 
   @Post('presentations/create')
@@ -131,6 +134,7 @@ export class WalletController {
   @ApiOperation({ summary: 'Create wallet DID' })
   @ApiResponse({ status: 201, description: 'DID created' })
   async createDid(@Body() dto: CreateWalletDidDto) {
-    return this.walletService.createHolderDid(dto.holderId, dto.method);
+    const result = await this.walletService.createHolderDid(dto.holderId, dto.method);
+    return { data: result };
   }
 }

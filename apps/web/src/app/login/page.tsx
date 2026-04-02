@@ -6,8 +6,9 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Envelope, ShieldCheck } from '@phosphor-icons/react';
+import { Envelope, Sun, Moon, ShieldCheck } from '@phosphor-icons/react';
 import { useAuthStore, ROLE_REDIRECTS } from '@/lib/auth/auth-store';
+import { useTheme } from '@/components/layout/theme-provider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
@@ -24,6 +25,7 @@ export default function LoginPage() {
   const login = useAuthStore((s) => s.login);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const router = useRouter();
+  const { theme, toggleTheme } = useTheme();
   const [serverError, setServerError] = useState<string | null>(null);
 
   const form = useForm<LoginValues>({
@@ -49,24 +51,38 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-background">
-      <div className="w-full max-w-sm">
+    <div className="min-h-screen flex flex-col bg-background">
+      {/* Header */}
+      <header className="flex items-center justify-between px-6 py-4">
+        <Link href="/" className="flex items-center gap-2.5">
+          <div className="w-9 h-9 bg-primary/15 rounded-xl flex items-center justify-center ring-1 ring-primary/20">
+            <ShieldCheck size={20} className="text-primary" weight="fill" />
+          </div>
+          <span className="font-semibold text-sm tracking-tight">TrustVault</span>
+        </Link>
+        <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+          {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+        </Button>
+      </header>
+
+      <div className="flex-1 flex items-center justify-center px-4">
+      <div className="w-full max-w-sm bg-card rounded-2xl shadow-[var(--shadow-card)] p-8">
         <div className="flex flex-col items-center mb-8">
-          <div className="w-12 h-12 bg-primary/20 rounded-xl flex items-center justify-center mb-4">
-            <ShieldCheck size={24} className="text-primary" weight="fill" />
+          <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center mb-5">
+            <ShieldCheck size={28} className="text-primary" weight="fill" />
           </div>
           <h1 className="text-2xl font-bold">Welcome back</h1>
-          <p className="text-muted-foreground text-sm mt-1">Sign in to your TrustVault account</p>
+          <p className="text-muted-foreground text-sm mt-2">Sign in to your TrustVault account</p>
         </div>
 
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
           {serverError && (
             <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm rounded-lg px-4 py-3">
               {serverError}
             </div>
           )}
 
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <div className="relative">
               <Envelope size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground z-10" />
@@ -84,7 +100,7 @@ export default function LoginPage() {
             )}
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
             <PasswordInput
               id="password"
@@ -103,11 +119,9 @@ export default function LoginPage() {
         </form>
 
         <p className="text-center text-sm text-muted-foreground mt-6">
-          Do not have an account?{' '}
-          <Link href="/register" className="text-primary hover:underline font-medium">
-            Create one
-          </Link>
+          Contact your administrator for account access.
         </p>
+      </div>
       </div>
     </div>
   );

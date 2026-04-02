@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api/client';
-import { Check } from '@phosphor-icons/react';
+import { Check, Copy, ShareNetwork } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { schemaTypeToAccent, getAccentStyles } from '@/lib/credential-styles';
@@ -81,7 +81,10 @@ export default function NewVerificationRequestPage() {
   const [selectedPolicies, setSelectedPolicies] = useState<string[]>(['require-trusted-issuer', 'require-active-status', 'require-non-expired']);
 
   const [requestUri, setRequestUri] = useState<string | null>(null);
+  const [requestId, setRequestId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [verificationResult, setVerificationResult] = useState<{ status: 'verified' | 'rejected'; completedAt: string } | null>(null);
+  const eventSourceRef = useRef<EventSource | null>(null);
 
   useEffect(() => {
     async function fetchSchemas() {
@@ -96,6 +99,36 @@ export default function NewVerificationRequestPage() {
     }
     fetchSchemas();
   }, []);
+
+  // SSE: Connect to real-time stream when QR is displayed
+  useEffect(() => {
+    if (step !== 4 || !requestId) return;
+
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    const es = new EventSource(`${apiBase}/verifier/presentations/${requestId}/stream`);
+    eventSourceRef.current = es;
+
+    es.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        setVerificationResult({ status: data.status, completedAt: data.completedAt });
+        toast.success(data.status === 'verified' ? 'Credential verified!' : 'Credential rejected');
+        es.close();
+      } catch {
+        // Ignore malformed events
+      }
+    };
+
+    es.onerror = () => {
+      // SSE connection lost — silent fallback, user can still manually check
+      es.close();
+    };
+
+    return () => {
+      es.close();
+      eventSourceRef.current = null;
+    };
+  }, [step, requestId]);
 
   function toggleType(type: string) {
     setSelectedTypes((prev) =>
@@ -122,22 +155,18 @@ export default function NewVerificationRequestPage() {
   async function handleSubmit() {
     setSubmitting(true);
     try {
-      const response = await api.post<{ requestUri: string }>('/verifier/presentations/request', {
-        verifierDid: 'did:key:pending',
+      const response = await api.post<{ requestUri: string; requestId: string }>('/verifier/presentations/request', {
         credentialTypes: selectedTypes,
         requiredClaims: selectedClaims,
         policies: selectedPolicies,
       });
       setRequestUri(response.requestUri);
+      setRequestId(response.requestId);
       setStep(4);
       toast.success('Verification request created');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to create request';
       toast.error(message);
-      // Demo fallback
-      const mockUri = `openid4vp://authorize?client_id=trustvault-verifier&request_uri=https://trustvault.dev/verifier/requests/${crypto.randomUUID()}`;
-      setRequestUri(mockUri);
-      setStep(4);
     } finally {
       setSubmitting(false);
     }
@@ -196,7 +225,7 @@ export default function NewVerificationRequestPage() {
                   key={schema.id}
                   onClick={() => toggleType(schema.type)}
                   className={cn(
-                    'w-full text-left bg-card border rounded-xl p-5 transition-all',
+                    'w-full text-left bg-card border rounded-2xl p-5 transition-all',
                     isSelected ? `${styles.selectedBorder} ring-1 ${styles.selectedRing}` : 'border-border hover:border-muted-foreground/30'
                   )}
                 >
@@ -241,7 +270,7 @@ export default function NewVerificationRequestPage() {
                 const styles = getAccentStyles(accentKey);
                 const currentClaims = selectedClaims[schema.type] ?? [];
                 return (
-                  <div key={schema.id} className="bg-card border border-border rounded-xl p-6">
+                  <div key={schema.id} className="bg-card rounded-2xl shadow-[var(--shadow-card)] p-6">
                     <h3 className={cn('font-semibold mb-4', styles.text)}>{schema.name}</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {schema.claims.map((claim) => {
@@ -293,7 +322,7 @@ export default function NewVerificationRequestPage() {
                   key={policy.id}
                   onClick={() => togglePolicy(policy.id)}
                   className={cn(
-                    'w-full text-left bg-card border rounded-xl p-5 transition-all',
+                    'w-full text-left bg-card border rounded-2xl p-5 transition-all',
                     isSelected ? 'border-info ring-1 ring-info/30' : 'border-border hover:border-muted-foreground/30'
                   )}
                 >
@@ -329,30 +358,112 @@ export default function NewVerificationRequestPage() {
           </motion.div>
         )}
 
-        {/* Step 4: QR Code */}
+        {/* Step 4: QR Code + Live Result */}
         {step === 4 && requestUri && (
           <motion.div key="step4" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center">
-            <div className="bg-card border border-border rounded-xl p-8 w-full max-w-md mx-auto">
-              <h3 className="text-lg font-semibold text-center mb-2">Scan to Present Credentials</h3>
-              <p className="text-sm text-muted-foreground text-center mb-6">
-                Open TrustVault Wallet and scan this QR code to present your credentials
-              </p>
-              <QRDisplay value={requestUri} size={280} waiting />
-            </div>
-            <div className="mt-6 flex gap-3">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setStep(1);
-                  setRequestUri(null);
-                  setSelectedTypes([]);
-                  setSelectedClaims({});
-                  setSelectedPolicies(['require-trusted-issuer', 'require-active-status', 'require-non-expired']);
-                }}
+            {!verificationResult ? (
+              <>
+                <div className="bg-card rounded-2xl shadow-[var(--shadow-card)] p-8 w-full max-w-md mx-auto">
+                  <h3 className="text-lg font-semibold text-center mb-2">Waiting for Credential</h3>
+                  <p className="text-sm text-muted-foreground text-center mb-6">
+                    Scan this QR code with TrustVault Wallet to present credentials
+                  </p>
+                  <QRDisplay value={requestUri} size={280} waiting />
+                  <div className="flex items-center justify-center gap-2 mt-4 text-xs text-muted-foreground">
+                    <span className="inline-block w-2 h-2 rounded-full bg-primary animate-pulse" />
+                    Listening for response...
+                  </div>
+                  <div className="flex gap-2 mt-4 justify-center">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const shareUrl = `${window.location.origin}/verify/${requestId}`;
+                        navigator.clipboard.writeText(shareUrl);
+                        toast.success('Verification link copied!');
+                      }}
+                    >
+                      <Copy size={16} className="mr-1.5" /> Copy Link
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const shareUrl = `${window.location.origin}/verify/${requestId}`;
+                        if (navigator.share) {
+                          navigator.share({ title: 'Verify Credentials', url: shareUrl });
+                        } else {
+                          navigator.clipboard.writeText(shareUrl);
+                          toast.success('Link copied (sharing not supported on this device)');
+                        }
+                      }}
+                    >
+                      <ShareNetwork size={16} className="mr-1.5" /> Share
+                    </Button>
+                  </div>
+                </div>
+                <div className="mt-6 flex gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      eventSourceRef.current?.close();
+                      setStep(1);
+                      setRequestUri(null);
+                      setRequestId(null);
+                      setVerificationResult(null);
+                      setSelectedTypes([]);
+                      setSelectedClaims({});
+                      setSelectedPolicies(['require-trusted-issuer', 'require-active-status', 'require-non-expired']);
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-card rounded-2xl shadow-[var(--shadow-card)] p-8 w-full max-w-md mx-auto text-center"
               >
-                Create Another
-              </Button>
-            </div>
+                <div className={cn(
+                  'w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4',
+                  verificationResult.status === 'verified' ? 'bg-success/10' : 'bg-destructive/10'
+                )}>
+                  {verificationResult.status === 'verified' ? (
+                    <Check size={32} className="text-success" weight="bold" />
+                  ) : (
+                    <span className="text-destructive text-2xl font-bold">✕</span>
+                  )}
+                </div>
+                <h3 className="text-xl font-bold mb-1">
+                  {verificationResult.status === 'verified' ? 'Verified' : 'Rejected'}
+                </h3>
+                <p className="text-sm text-muted-foreground mb-6">
+                  {verificationResult.status === 'verified'
+                    ? 'The credentials have been successfully verified.'
+                    : 'The credential verification was rejected.'}
+                </p>
+                <div className="flex gap-3 justify-center">
+                  <Button variant="outline" asChild>
+                    <a href={`/verifier/results/${requestId}`}>View Details</a>
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setStep(1);
+                      setRequestUri(null);
+                      setRequestId(null);
+                      setVerificationResult(null);
+                      setSelectedTypes([]);
+                      setSelectedClaims({});
+                      setSelectedPolicies(['require-trusted-issuer', 'require-active-status', 'require-non-expired']);
+                    }}
+                  >
+                    Verify Another
+                  </Button>
+                </div>
+              </motion.div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

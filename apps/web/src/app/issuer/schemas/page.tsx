@@ -5,6 +5,7 @@ import { motion } from 'motion/react';
 import { GraduationCap, CurrencyDollar, IdentificationCard, LockOpen, Lock } from '@phosphor-icons/react';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { schemaTypeToAccent, getAccentStyles } from '@/lib/credential-styles';
@@ -32,7 +33,8 @@ const FALLBACK_SCHEMAS: Schema[] = [
     name: 'Education Credential',
     description: 'Academic credentials such as degrees, diplomas, and certificates.',
     claims: [
-      { key: 'institutionName', label: 'Institution Name', type: 'string', required: true, selectivelyDisclosable: false },
+      { key: 'documentName', label: 'Document Name', type: 'string', required: true, selectivelyDisclosable: false },
+      { key: 'institutionName', label: 'Issuing Organization', type: 'string', required: true, selectivelyDisclosable: false },
       { key: 'degree', label: 'Degree', type: 'string', required: true, selectivelyDisclosable: false },
       { key: 'fieldOfStudy', label: 'Field of Study', type: 'string', required: true, selectivelyDisclosable: true },
       { key: 'graduationDate', label: 'Graduation Date', type: 'date', required: true, selectivelyDisclosable: true },
@@ -46,7 +48,8 @@ const FALLBACK_SCHEMAS: Schema[] = [
     name: 'Income Credential',
     description: 'Income and employment verification credentials.',
     claims: [
-      { key: 'employerName', label: 'Employer Name', type: 'string', required: true, selectivelyDisclosable: false },
+      { key: 'documentName', label: 'Document Name', type: 'string', required: true, selectivelyDisclosable: false },
+      { key: 'employerName', label: 'Issuing Organization', type: 'string', required: true, selectivelyDisclosable: false },
       { key: 'jobTitle', label: 'Job Title', type: 'string', required: true, selectivelyDisclosable: true },
       { key: 'annualIncome', label: 'Annual Income', type: 'number', required: true, selectivelyDisclosable: true },
       { key: 'currency', label: 'Currency', type: 'string', required: true, selectivelyDisclosable: false },
@@ -60,6 +63,7 @@ const FALLBACK_SCHEMAS: Schema[] = [
     name: 'Identity Credential',
     description: 'Government-backed identity verification credentials.',
     claims: [
+      { key: 'documentName', label: 'Document Name', type: 'string', required: true, selectivelyDisclosable: false },
       { key: 'fullName', label: 'Full Name', type: 'string', required: true, selectivelyDisclosable: false },
       { key: 'dateOfBirth', label: 'Date of Birth', type: 'date', required: true, selectivelyDisclosable: true },
       { key: 'nationality', label: 'Nationality', type: 'string', required: true, selectivelyDisclosable: true },
@@ -80,6 +84,21 @@ export default function IssuerSchemasPage() {
   const [schemas, setSchemas] = useState<Schema[]>(FALLBACK_SCHEMAS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [authorizedTypes, setAuthorizedTypes] = useState<string[]>([]);
+
+  useEffect(() => {
+    async function fetchAuthorization() {
+      try {
+        const result = await api.get<{ authorized: boolean; credentialTypes: string[] }>('/trust/issuers/me');
+        if (result.authorized && result.credentialTypes.length > 0) {
+          setAuthorizedTypes(result.credentialTypes);
+        }
+      } catch {
+        // If fetch fails, show all schemas
+      }
+    }
+    fetchAuthorization();
+  }, []);
 
   async function fetchSchemas() {
     setLoading(true);
@@ -120,7 +139,7 @@ export default function IssuerSchemasPage() {
       {loading ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="bg-card border border-border rounded-xl p-6 animate-pulse">
+            <div key={i} className="bg-card rounded-2xl shadow-[var(--shadow-card)] p-6 animate-pulse">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 bg-muted rounded-lg" />
                 <div className="h-5 w-32 bg-muted rounded" />
@@ -140,6 +159,7 @@ export default function IssuerSchemasPage() {
             const accentKey = schemaTypeToAccent[schema.type] ?? 'primary';
             const styles = getAccentStyles(accentKey);
             const icon = schemaIcons[schema.type];
+            const isUnauthorized = authorizedTypes.length > 0 && !authorizedTypes.includes(schema.type);
 
             return (
               <motion.div
@@ -147,8 +167,16 @@ export default function IssuerSchemasPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
-                className="bg-card border border-border rounded-xl overflow-hidden hover:border-muted-foreground/30 transition-all"
+                className={cn(
+                  'bg-card rounded-2xl shadow-[var(--shadow-card)] overflow-hidden hover:shadow-lg transition-all relative',
+                  isUnauthorized && 'opacity-50'
+                )}
               >
+                {isUnauthorized && (
+                  <div className="absolute top-3 right-3 z-10">
+                    <Badge variant="secondary" className="text-[11px] bg-muted text-muted-foreground">Not Authorized</Badge>
+                  </div>
+                )}
                 <div className={cn('h-1', styles.bar)} />
                 <div className="p-6">
                   <div className="flex items-center gap-3 mb-2">
@@ -174,11 +202,11 @@ export default function IssuerSchemasPage() {
                         <div className="flex items-center gap-2">
                           <span className="text-sm">{claim.label}</span>
                           {claim.required && (
-                            <Badge variant="destructive" className="text-[10px] px-1 py-0 h-4">REQ</Badge>
+                            <Badge variant="destructive" className="text-[11px] px-1 py-0 h-4">REQ</Badge>
                           )}
                         </div>
                         <div className="flex items-center gap-2">
-                          <Badge variant="secondary" className="text-[10px] uppercase px-1.5 py-0 h-4 font-mono">
+                          <Badge variant="secondary" className="text-[11px] uppercase px-1.5 py-0 h-4 font-mono">
                             {claim.type}
                           </Badge>
                           {claim.selectivelyDisclosable ? (

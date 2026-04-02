@@ -1,13 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { ArrowClockwise } from '@phosphor-icons/react';
 import { api } from '@/lib/api/client';
-import { cn, truncateDid, formatDate } from '@/lib/utils';
+import { cn, formatDate } from '@/lib/utils';
 import { StatusBadge } from '@/components/credential/status-badge';
 import { Button } from '@/components/ui/button';
+import { SearchFilter } from '@/components/ui/search-filter';
+import { CopyableDid } from '@/components/ui/copyable-did';
 import { trapFocus } from '@/lib/focus-trap';
 
 interface Credential {
@@ -21,12 +23,31 @@ interface Credential {
 }
 
 export default function IssuedCredentialsPage() {
+
   const [credentials, setCredentials] = useState<Credential[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [revokeTarget, setRevokeTarget] = useState<Credential | null>(null);
   const [revoking, setRevoking] = useState(false);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState<'all' | 'active' | 'revoked' | 'suspended'>('all');
+  const [typeFilter, setTypeFilter] = useState('all');
+
+  const statusFilters = ['all', 'active', 'revoked', 'suspended'] as const;
+  const typeFilters = ['all', 'Education', 'Income', 'Identity'] as const;
+
+  const filteredCredentials = useMemo(() => {
+    const query = search.toLowerCase();
+    return credentials.filter((cred) => {
+      const matchesSearch =
+        !query ||
+        cred.type.toLowerCase().includes(query) ||
+        cred.subjectDid.toLowerCase().includes(query);
+      const matchesFilter = filter === 'all' || cred.status === filter;
+      const matchesType = typeFilter === 'all' || cred.type.includes(typeFilter);
+      return matchesSearch && matchesFilter && matchesType;
+    });
+  }, [credentials, search, filter, typeFilter]);
 
   useEffect(() => {
     fetchCredentials();
@@ -87,7 +108,33 @@ export default function IssuedCredentialsPage() {
         </div>
       )}
 
-      <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <SearchFilter
+        search={search}
+        onSearchChange={setSearch}
+        placeholder="Search by type or DID..."
+        filterGroups={[
+          {
+            key: 'status',
+            value: filter,
+            onChange: (v) => setFilter(v as typeof filter),
+            options: statusFilters.map((f) => ({ value: f, label: f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1) })),
+          },
+          {
+            key: 'type',
+            value: typeFilter,
+            onChange: (v) => setTypeFilter(v === typeFilter ? 'all' : v),
+            options: [
+              { value: 'all', label: 'All Types' },
+              ...typeFilters.filter((t) => t !== 'all').map((t) => ({ value: t, label: t })),
+            ],
+          },
+        ]}
+        resultCount={filteredCredentials.length}
+        hasActiveFilters={filter !== 'all' || typeFilter !== 'all'}
+        onClearAll={() => { setFilter('all'); setTypeFilter('all'); setSearch(''); }}
+      />
+
+      <div className="bg-card rounded-2xl shadow-[var(--shadow-card)] overflow-hidden">
         {loading ? (
           <div className="p-6 space-y-3">
             {Array.from({ length: 8 }).map((_, i) => (
@@ -101,15 +148,19 @@ export default function IssuedCredentialsPage() {
               </div>
             ))}
           </div>
-        ) : credentials.length === 0 ? (
+        ) : filteredCredentials.length === 0 ? (
           <div className="p-12 text-center">
-            <p className="text-muted-foreground text-sm">No credentials have been issued yet.</p>
+            <p className="text-muted-foreground text-sm">
+              {credentials.length === 0
+                ? 'No credentials have been issued yet.'
+                : 'No credentials match your search or filter.'}
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-border">
+                <tr className="border-b border-border/50">
                   <th className="text-left text-xs font-medium text-muted-foreground px-6 py-3">Type</th>
                   <th className="text-left text-xs font-medium text-muted-foreground px-6 py-3">Subject DID</th>
                   <th className="text-left text-xs font-medium text-muted-foreground px-6 py-3">Issuer</th>
@@ -119,20 +170,19 @@ export default function IssuedCredentialsPage() {
                 </tr>
               </thead>
               <tbody>
-                {credentials.map((cred) => (
+                {filteredCredentials.map((cred) => (
                   <tr
                     key={cred.id}
-                    className="border-b border-border/50 hover:bg-muted/30 transition-colors cursor-pointer"
-                    onClick={() => setExpandedId(expandedId === cred.id ? null : cred.id)}
+                    className="border-b border-border/50 hover:bg-muted/30 transition-colors"
                   >
                     <td className="px-6 py-3">
                       <CredentialTypeBadge type={cred.type} />
                     </td>
                     <td className="px-6 py-3">
-                      <span className="font-mono text-xs text-muted-foreground">{truncateDid(cred.subjectDid)}</span>
+                      <CopyableDid did={cred.subjectDid} />
                     </td>
                     <td className="px-6 py-3">
-                      <span className="font-mono text-xs text-muted-foreground">{truncateDid(cred.issuerDid)}</span>
+                      <CopyableDid did={cred.issuerDid} />
                     </td>
                     <td className="px-6 py-3">
                       <StatusBadge status={cred.status} />
@@ -141,20 +191,12 @@ export default function IssuedCredentialsPage() {
                       <span className="text-xs text-muted-foreground">{formatDate(cred.issuedAt)}</span>
                     </td>
                     <td className="px-6 py-3">
-                      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-auto p-0 text-xs"
-                          onClick={() => setExpandedId(expandedId === cred.id ? null : cred.id)}
-                        >
-                          {expandedId === cred.id ? 'Hide' : 'View'}
-                        </Button>
+                      <div className="flex items-center gap-1">
                         {cred.status === 'active' && (
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
-                            className="h-auto p-0 text-xs text-destructive hover:text-destructive"
+                            className="text-xs h-7 px-2.5 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
                             onClick={() => setRevokeTarget(cred)}
                           >
                             Revoke
@@ -192,7 +234,7 @@ export default function IssuedCredentialsPage() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-card border border-border rounded-xl p-6 max-w-md w-full mx-4"
+              className="bg-card rounded-2xl shadow-[var(--shadow-card)] p-6 max-w-md w-full mx-4"
               onClick={(e) => e.stopPropagation()}
               onKeyDown={trapFocus}
             >
@@ -231,9 +273,10 @@ export default function IssuedCredentialsPage() {
 }
 
 function CredentialTypeBadge({ type }: { type: string }) {
-  const isEducation = type.includes('Education');
-  const isIncome = type.includes('Income');
-  const displayName = type.replace('Verifiable', '').replace('Credential', '').trim();
+  const safeType = type ?? '';
+  const isEducation = safeType.includes('Education');
+  const isIncome = safeType.includes('Income');
+  const displayName = safeType.replace('Verifiable', '').replace('Credential', '').trim() || 'Unknown';
 
   return (
     <span

@@ -112,7 +112,10 @@ export default function VerifierDashboard() {
             <p className="text-warning text-sm font-medium">API Unavailable</p>
             <p className="text-warning/70 text-xs mt-1">{error}. Showing empty state.</p>
           </div>
-          <button
+          <Button
+            variant="link"
+            size="sm"
+            className="text-warning flex-shrink-0 ml-4"
             onClick={() => {
               setError(null);
               setLoading(true);
@@ -127,10 +130,9 @@ export default function VerifierDashboard() {
                 setResults([]);
               }).finally(() => setLoading(false));
             }}
-            className="text-warning text-xs font-medium flex-shrink-0 ml-4"
           >
             Retry
-          </button>
+          </Button>
         </div>
       )}
 
@@ -139,9 +141,9 @@ export default function VerifierDashboard() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
-        className="bg-card border border-border rounded-xl overflow-hidden"
+        className="bg-card rounded-2xl shadow-[var(--shadow-card)] overflow-hidden"
       >
-        <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+        <div className="px-6 py-4 border-b border-border/50 flex items-center justify-between">
           <h3 className="text-lg font-semibold">Recent Results</h3>
           <Button variant="link" size="sm" className="text-info" asChild><Link href="/verifier/results">View all</Link></Button>
         </div>
@@ -194,7 +196,7 @@ export default function VerifierDashboard() {
                       <span className="text-xs text-muted-foreground">{formatDate(result.createdAt)}</span>
                     </td>
                     <td className="px-6 py-3">
-                      <Button variant="ghost" size="sm" className="h-auto p-0 text-xs" asChild><Link href={`/verifier/results/${result.id}`}>View Detail</Link></Button>
+                      <Button variant="outline" size="sm" className="text-xs h-7 px-2.5" asChild><Link href={`/verifier/results/${result.id}`}>View Detail</Link></Button>
                     </td>
                   </tr>
                 ))}
@@ -224,14 +226,15 @@ function ResultBadge({ result }: { result: 'verified' | 'rejected' }) {
 }
 
 function CredentialTypeBadge({ type }: { type: string }) {
-  const isEducation = type.includes('Education');
-  const isIncome = type.includes('Income');
-  const displayName = type.replace('Verifiable', '').replace('Credential', '').trim();
+  const safeType = type ?? '';
+  const isEducation = safeType.includes('Education');
+  const isIncome = safeType.includes('Income');
+  const displayName = safeType.replace('Verifiable', '').replace('Credential', '').trim() || 'Unknown';
 
   return (
     <span
       className={cn(
-        'inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium',
+        'inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-medium',
         isEducation && 'bg-credential-education/10 text-credential-education',
         isIncome && 'bg-credential-income/10 text-credential-income',
         !isEducation && !isIncome && 'bg-credential-identity/10 text-credential-identity'

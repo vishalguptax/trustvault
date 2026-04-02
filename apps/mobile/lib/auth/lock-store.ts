@@ -1,64 +1,34 @@
 import { Platform } from 'react-native';
 import * as Crypto from 'expo-crypto';
+import * as SecureStore from 'expo-secure-store';
+import * as LocalAuthentication from 'expo-local-authentication';
 
 const TAG = '[LockStore]';
 const MPIN_HASH_KEY = 'trustvault_mpin_hash';
 const LOCK_ENABLED_KEY = 'trustvault_lock_enabled';
 const BIOMETRIC_ENABLED_KEY = 'trustvault_biometric_enabled';
 
-let memoryStore: Record<string, string> = {};
-
-async function getSecureStore() {
-  if (Platform.OS === 'web') return null;
-  try {
-    return require('expo-secure-store') as typeof import('expo-secure-store');
-  } catch (err) {
-    console.warn(`${TAG} SecureStore unavailable, using memory:`, err);
-    return null;
-  }
-}
-
-async function getLocalAuth() {
-  if (Platform.OS === 'web') return null;
-  try {
-    return require('expo-local-authentication') as typeof import('expo-local-authentication');
-  } catch (err) {
-    console.warn(`${TAG} LocalAuthentication unavailable:`, err);
-    return null;
-  }
-}
+// ── Storage helpers ──────────────────────────────────────────────
 
 async function storeItem(key: string, value: string): Promise<void> {
-  const store = await getSecureStore();
-  if (store) {
-    await store.setItemAsync(key, value);
-  } else {
-    memoryStore[key] = value;
-  }
+  if (Platform.OS === 'web') return;
+  await SecureStore.setItemAsync(key, value);
 }
 
 async function getItem(key: string): Promise<string | null> {
-  const store = await getSecureStore();
-  return store
-    ? await store.getItemAsync(key)
-    : memoryStore[key] ?? null;
+  if (Platform.OS === 'web') return null;
+  return SecureStore.getItemAsync(key);
 }
 
 async function deleteItem(key: string): Promise<void> {
-  const store = await getSecureStore();
-  if (store) {
-    await store.deleteItemAsync(key);
-  } else {
-    delete memoryStore[key];
-  }
+  if (Platform.OS === 'web') return;
+  await SecureStore.deleteItemAsync(key);
 }
 
+// ── PIN ──────────────────────────────────────────────────────────
+
 async function hashPin(pin: string): Promise<string> {
-  const digest = await Crypto.digestStringAsync(
-    Crypto.CryptoDigestAlgorithm.SHA256,
-    pin,
-  );
-  return digest;
+  return Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, pin);
 }
 
 export async function setMpin(pin: string): Promise<void> {
@@ -93,6 +63,8 @@ export async function clearMpin(): Promise<void> {
   console.log(`${TAG} MPIN and lock preferences cleared`);
 }
 
+// ── Lock toggle ──────────────────────────────────────────────────
+
 export async function setLockEnabled(enabled: boolean): Promise<void> {
   await storeItem(LOCK_ENABLED_KEY, enabled ? '1' : '0');
   console.log(`${TAG} lock enabled: ${enabled}`);
@@ -104,6 +76,8 @@ export async function isLockEnabled(): Promise<boolean> {
   console.log(`${TAG} isLockEnabled: ${enabled}`);
   return enabled;
 }
+
+// ── Biometric toggle ─────────────────────────────────────────────
 
 export async function setBiometricEnabled(enabled: boolean): Promise<void> {
   await storeItem(BIOMETRIC_ENABLED_KEY, enabled ? '1' : '0');
@@ -117,38 +91,29 @@ export async function isBiometricEnabled(): Promise<boolean> {
   return enabled;
 }
 
+// ── Biometric auth ───────────────────────────────────────────────
+
 export async function isBiometricAvailable(): Promise<boolean> {
-  const localAuth = await getLocalAuth();
-  if (!localAuth) {
-    console.log(`${TAG} biometric: not available (no module)`);
-    return false;
-  }
-  const compatible = await localAuth.hasHardwareAsync();
+  if (Platform.OS === 'web') return false;
+  const compatible = await LocalAuthentication.hasHardwareAsync();
   if (!compatible) {
     console.log(`${TAG} biometric: no hardware`);
     return false;
   }
-  const enrolled = await localAuth.isEnrolledAsync();
+  const enrolled = await LocalAuthentication.isEnrolledAsync();
   console.log(`${TAG} biometric available: ${enrolled}`);
   return enrolled;
 }
 
 export async function authenticateWithBiometric(): Promise<boolean> {
-  const localAuth = await getLocalAuth();
-  if (!localAuth) {
-    console.log(`${TAG} biometric auth: module unavailable`);
-    return false;
-  }
-  try {
-    const result = await localAuth.authenticateAsync({
-      promptMessage: 'Unlock TrustVault',
-      cancelLabel: 'Use PIN',
-      disableDeviceFallback: true,
-    });
-    console.log(`${TAG} biometric auth: ${result.success ? 'success' : 'failed'}`);
-    return result.success;
-  } catch (err) {
-    console.warn(`${TAG} biometric auth error:`, err);
-    return false;
-  }
+  if (Platform.OS === 'web') return false;
+  const result = await LocalAuthentication.authenticateAsync({
+    promptMessage: 'Unlock TrustVault',
+    cancelLabel: 'Use PIN',
+    fallbackLabel: 'Use PIN',
+    disableDeviceFallback: false,
+  });
+  const errorMsg = result.success ? 'none' : (result as { error?: string }).error ?? 'unknown';
+  console.log(`${TAG} biometric auth: success=${result.success}, error=${errorMsg}`);
+  return result.success;
 }

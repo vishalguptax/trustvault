@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'motion/react';
 import { api } from '@/lib/api/client';
 import { cn, formatDate } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { SearchFilter } from '@/components/ui/search-filter';
 
 interface VerificationResult {
   id: string;
@@ -18,6 +19,22 @@ export default function VerificationResultsPage() {
   const [results, setResults] = useState<VerificationResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState<'all' | 'verified' | 'rejected'>('all');
+
+  const resultFilters = ['all', 'verified', 'rejected'] as const;
+
+  const filteredResults = useMemo(() => {
+    const query = search.toLowerCase();
+    return results.filter((r) => {
+      const matchesSearch =
+        !query ||
+        r.id.toLowerCase().includes(query) ||
+        (r.credentialTypes ?? []).some((t) => t.toLowerCase().includes(query));
+      const matchesFilter = filter === 'all' || r.result === filter;
+      return matchesSearch && matchesFilter;
+    });
+  }, [results, search, filter]);
 
   useEffect(() => {
     async function fetchResults() {
@@ -67,7 +84,24 @@ export default function VerificationResultsPage() {
         </div>
       )}
 
-      <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <SearchFilter
+        search={search}
+        onSearchChange={setSearch}
+        placeholder="Search by ID or credential type..."
+        filterGroups={[
+          {
+            key: 'result',
+            value: filter,
+            onChange: (v) => setFilter(v as typeof filter),
+            options: resultFilters.map((f) => ({ value: f, label: f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1) })),
+          },
+        ]}
+        resultCount={filteredResults.length}
+        hasActiveFilters={filter !== 'all'}
+        onClearAll={() => { setFilter('all'); setSearch(''); }}
+      />
+
+      <div className="bg-card rounded-2xl shadow-[var(--shadow-card)] overflow-hidden">
         {loading ? (
           <div className="p-6 space-y-3">
             {Array.from({ length: 8 }).map((_, i) => (
@@ -79,18 +113,22 @@ export default function VerificationResultsPage() {
               </div>
             ))}
           </div>
-        ) : results.length === 0 ? (
+        ) : filteredResults.length === 0 ? (
           <div className="p-12 text-center">
-            <p className="text-muted-foreground text-sm">No verification results yet.</p>
-            <Button variant="link" size="sm" className="text-info mt-2" asChild>
-              <Link href="/verifier/requests/new">Create a verification request</Link>
-            </Button>
+            <p className="text-muted-foreground text-sm">
+              {results.length === 0 ? 'No verification results yet.' : 'No results match your search or filter.'}
+            </p>
+            {results.length === 0 && (
+              <Button variant="link" size="sm" className="text-info mt-2" asChild>
+                <Link href="/verifier/requests/new">Create a verification request</Link>
+              </Button>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-border">
+                <tr className="border-b border-border/50">
                   <th className="text-left text-xs font-medium text-muted-foreground px-6 py-3">Request ID</th>
                   <th className="text-left text-xs font-medium text-muted-foreground px-6 py-3">Credential Types</th>
                   <th className="text-left text-xs font-medium text-muted-foreground px-6 py-3">Result</th>
@@ -99,7 +137,7 @@ export default function VerificationResultsPage() {
                 </tr>
               </thead>
               <tbody>
-                {results.map((result, index) => (
+                {filteredResults.map((result, index) => (
                   <motion.tr
                     key={result.id}
                     initial={{ opacity: 0, y: 10 }}
@@ -112,15 +150,16 @@ export default function VerificationResultsPage() {
                     </td>
                     <td className="px-6 py-3">
                       <div className="flex flex-wrap gap-1">
-                        {result.credentialTypes.map((type) => {
-                          const isEducation = type.includes('Education');
-                          const isIncome = type.includes('Income');
-                          const displayName = type.replace('Verifiable', '').replace('Credential', '').trim();
+                        {(result.credentialTypes ?? []).map((type) => {
+                          const safeType = type ?? '';
+                          const isEducation = safeType.includes('Education');
+                          const isIncome = safeType.includes('Income');
+                          const displayName = safeType.replace('Verifiable', '').replace('Credential', '').trim() || 'Unknown';
                           return (
                             <span
                               key={type}
                               className={cn(
-                                'inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium',
+                                'inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-medium',
                                 isEducation && 'bg-credential-education/10 text-credential-education',
                                 isIncome && 'bg-credential-income/10 text-credential-income',
                                 !isEducation && !isIncome && 'bg-credential-identity/10 text-credential-identity'
@@ -149,7 +188,7 @@ export default function VerificationResultsPage() {
                       <span className="text-xs text-muted-foreground">{formatDate(result.createdAt)}</span>
                     </td>
                     <td className="px-6 py-3">
-                      <Button variant="ghost" size="sm" className="h-auto p-0 text-xs" asChild>
+                      <Button variant="outline" size="sm" className="text-xs h-7 px-2.5" asChild>
                         <Link href={`/verifier/results/${result.id}`}>View Detail</Link>
                       </Button>
                     </td>

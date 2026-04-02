@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { type BarcodeScanningResult } from 'expo-camera';
+import { URI_SCHEME } from '@/lib/routes';
 
 type ScanResult =
   | { type: 'offer'; uri: string }
@@ -15,10 +16,10 @@ interface UseScannerReturn {
 }
 
 function classifyUri(data: string): ScanResult {
-  if (data.startsWith('openid-credential-offer://')) {
+  if (data.startsWith(URI_SCHEME.CREDENTIAL_OFFER)) {
     return { type: 'offer', uri: data };
   }
-  if (data.startsWith('openid4vp://') || data.startsWith('openid-vc://')) {
+  if (data.startsWith(URI_SCHEME.VERIFICATION) || data.startsWith(URI_SCHEME.VERIFICATION_ALT)) {
     return { type: 'verification', uri: data };
   }
   return { type: 'unknown', uri: data };

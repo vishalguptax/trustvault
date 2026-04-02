@@ -20,6 +20,12 @@ describe('WalletService', () => {
       findUnique: vi.fn(),
       update: vi.fn(),
     },
+    credentialSchema: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
+    trustedIssuer: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
   };
 
   const mockDidService = {
@@ -43,6 +49,14 @@ describe('WalletService', () => {
     getConsentHistory: vi.fn(),
   };
 
+  const mockVerifierService = {
+    handlePresentationResponse: vi.fn(),
+  };
+
+  const mockMailService = {
+    sendCredentialIssued: vi.fn().mockResolvedValue(undefined),
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
     service = new WalletService(
@@ -51,6 +65,8 @@ describe('WalletService', () => {
       mockSdJwtService as any,
       mockOid4vciClient as any,
       mockConsentService as any,
+      mockVerifierService as any,
+      mockMailService as any,
     );
   });
 
@@ -103,21 +119,26 @@ describe('WalletService', () => {
   });
 
   describe('listCredentials', () => {
-    it('should return credentials and total count', async () => {
+    it('should return enriched credentials and total count', async () => {
       const creds = [
-        { id: 'c1', credentialType: 'UniversityDegree' },
-        { id: 'c2', credentialType: 'DriverLicense' },
+        { id: 'c1', credentialType: 'UniversityDegree', issuerDid: 'did:key:issuer1' },
+        { id: 'c2', credentialType: 'DriverLicense', issuerDid: 'did:key:issuer2' },
       ];
       mockPrisma.walletCredential.findMany.mockResolvedValue(creds);
+      mockPrisma.credentialSchema.findMany.mockResolvedValue([
+        { typeUri: 'UniversityDegree', name: 'University Degree' },
+      ]);
+      mockPrisma.trustedIssuer.findMany.mockResolvedValue([
+        { did: 'did:key:issuer1', name: 'Test University' },
+      ]);
 
       const result = await service.listCredentials('holder-1');
 
-      expect(result.credentials).toEqual(creds);
       expect(result.total).toBe(2);
-      expect(mockPrisma.walletCredential.findMany).toHaveBeenCalledWith({
-        where: { holderId: 'holder-1' },
-        orderBy: { createdAt: 'desc' },
-      });
+      expect(result.credentials[0].typeName).toBe('University Degree');
+      expect(result.credentials[0].issuerName).toBe('Test University');
+      expect(result.credentials[1].typeName).toBe('DriverLicense'); // No schema match, falls back to type
+      expect(result.credentials[1].issuerName).toBeNull(); // No issuer match
     });
 
     it('should return empty list when holder has no credentials', async () => {
@@ -147,7 +168,7 @@ describe('WalletService', () => {
   });
 
   describe('getCredentialClaims', () => {
-    it('should separate disclosed and undisclosed (selectable) claims', async () => {
+    it('should separate fixed and selective (selectable) claims', async () => {
       mockPrisma.walletCredential.findUnique.mockResolvedValue({
         id: 'c1',
         claims: {
@@ -165,8 +186,8 @@ describe('WalletService', () => {
 
       const result = await service.getCredentialClaims('c1');
 
-      expect(result.disclosed).toEqual([{ key: 'degree', value: 'CS', selectable: false }]);
-      expect(result.undisclosed).toEqual([
+      expect(result.fixedClaims).toEqual([{ key: 'degree', value: 'CS', selectable: false }]);
+      expect(result.selectiveClaims).toEqual([
         { key: 'name', value: 'Alice', selectable: true },
         { key: 'gpa', value: 3.8, selectable: true },
       ]);
@@ -190,7 +211,7 @@ describe('WalletService', () => {
 
       const result = await service.getCredentialClaims('c1');
 
-      const allKeys = [...result.disclosed, ...result.undisclosed].map((c) => c.key);
+      const allKeys = [...result.fixedClaims, ...result.selectiveClaims].map((c) => c.key);
       expect(allKeys).not.toContain('iss');
       expect(allKeys).not.toContain('sub');
       expect(allKeys).not.toContain('iat');
@@ -234,10 +255,11 @@ describe('WalletService', () => {
       ).rejects.toThrow(NotFoundException);
     });
 
-    it('should create a presentation with selected credentials', async () => {
+    it('should create a presentation and submit to verifier', async () => {
       const verificationRequest = {
         id: 'vr-1',
         nonce: 'nonce-123',
+        state: 'state-abc',
         verifierDid: 'did:key:verifier',
       };
       const walletCred = {
@@ -257,7 +279,11 @@ describe('WalletService', () => {
       mockPrisma.walletCredential.findUnique.mockResolvedValue(walletCred);
       mockSdJwtService.present.mockResolvedValue('presented-sd-jwt');
       mockConsentService.recordConsent.mockResolvedValue(undefined);
-      mockPrisma.verificationRequest.update.mockResolvedValue(verificationRequest);
+      mockVerifierService.handlePresentationResponse.mockResolvedValue({
+        verificationId: 'vr-1',
+        status: 'verified',
+        result: { verified: true, checks: {} },
+      });
 
       const result = await service.createPresentation(
         'vr-1',
@@ -269,24 +295,18 @@ describe('WalletService', () => {
 
       expect(result.presentationId).toBe('vr-1');
       expect(result.vpToken).toBe('presented-sd-jwt');
-      expect(result.status).toBe('submitted');
-      expect(mockSdJwtService.present).toHaveBeenCalledWith({
-        sdJwtVc: walletCred.rawCredential,
-        disclosedClaims: ['name'],
-        nonce: 'nonce-123',
-        audience: 'did:key:verifier',
-        holderPrivateKey: holderDid.keyPair.privateKey,
-      });
-      expect(mockPrisma.verificationRequest.update).toHaveBeenCalledWith({
-        where: { id: 'vr-1' },
-        data: { status: 'received' },
-      });
+      expect(result.result).toBe('verified');
+      expect(mockVerifierService.handlePresentationResponse).toHaveBeenCalledWith(
+        'presented-sd-jwt',
+        'state-abc',
+      );
     });
 
     it('should JSON-stringify vpToken when multiple credentials are presented', async () => {
       const verificationRequest = {
         id: 'vr-1',
         nonce: 'nonce-123',
+        state: 'state-abc',
         verifierDid: 'did:key:verifier',
       };
 
@@ -302,7 +322,11 @@ describe('WalletService', () => {
         .mockResolvedValueOnce('presented-1')
         .mockResolvedValueOnce('presented-2');
       mockConsentService.recordConsent.mockResolvedValue(undefined);
-      mockPrisma.verificationRequest.update.mockResolvedValue(verificationRequest);
+      mockVerifierService.handlePresentationResponse.mockResolvedValue({
+        verificationId: 'vr-1',
+        status: 'verified',
+        result: { verified: true, checks: {} },
+      });
 
       const result = await service.createPresentation(
         'vr-1',

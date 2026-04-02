@@ -6,9 +6,10 @@ export class CreateOfferDto {
   @IsString()
   schemaTypeUri!: string;
 
-  @ApiProperty({ example: 'did:key:z...' })
+  @ApiPropertyOptional({ example: 'did:key:z...' })
+  @IsOptional()
   @IsString()
-  subjectDid!: string;
+  subjectDid?: string;
 
   @ApiProperty({ example: { name: 'John Doe', degree: 'MSc', institution: 'MIT' } })
   @IsObject()

@@ -57,7 +57,7 @@ export class IssuerService {
 
   async getIssuerMetadata(): Promise<Record<string, unknown>> {
     const issuerDid = await this.getOrCreateIssuerDid();
-    const baseUrl = this.configService.get<string>('issuer.baseUrl') || 'http://localhost:3000/issuer';
+    const baseUrl = this.configService.get<string>('issuer.baseUrl');
 
     const schemas = await this.prisma.credentialSchema.findMany({ where: { active: true } });
 
@@ -114,7 +114,7 @@ export class IssuerService {
 
     const issuerDid = await this.getOrCreateIssuerDid();
     const preAuthorizedCode = randomBytes(32).toString('base64url');
-    const baseUrl = this.configService.get<string>('issuer.baseUrl') || 'http://localhost:3000/issuer';
+    const baseUrl = this.configService.get<string>('issuer.baseUrl');
 
     const offer = await this.prisma.credentialOffer.create({
       data: {
@@ -146,6 +146,49 @@ export class IssuerService {
       offerId: offer.id,
       credentialOfferUri,
       preAuthorizedCode,
+    };
+  }
+
+  async createBulkOffers(
+    schemaTypeUri: string,
+    offers: Array<{ claims: Record<string, unknown> }>,
+  ) {
+    const results: Array<{
+      index: number;
+      offerId?: string;
+      credentialOfferUri?: string;
+      error?: string;
+    }> = [];
+
+    let successful = 0;
+    let failed = 0;
+
+    for (let i = 0; i < offers.length; i++) {
+      try {
+        const result = await this.createOffer(
+          schemaTypeUri,
+          'pending', // subjectDid — resolved during OID4VCI flow
+          offers[i].claims,
+          false, // pinRequired
+        );
+        results.push({
+          index: i,
+          offerId: result.offerId,
+          credentialOfferUri: result.credentialOfferUri,
+        });
+        successful++;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Unknown error';
+        results.push({ index: i, error: message });
+        failed++;
+      }
+    }
+
+    return {
+      total: offers.length,
+      successful,
+      failed,
+      results,
     };
   }
 
@@ -328,7 +371,20 @@ export class IssuerService {
     return this.toSchemaDto(schema);
   }
 
-  async listIssuedCredentials() {
-    return this.prisma.issuedCredential.findMany({ orderBy: { issuedAt: 'desc' } });
+  async listIssuedCredentials(issuerDid?: string) {
+    const where = issuerDid ? { issuerDid } : {};
+    const credentials = await this.prisma.issuedCredential.findMany({
+      where,
+      orderBy: { issuedAt: 'desc' },
+    });
+    return credentials.map((c) => ({
+      id: c.id,
+      type: c.schemaTypeUri,
+      subjectDid: c.subjectDid,
+      issuerDid: c.issuerDid,
+      status: c.status,
+      issuedAt: c.issuedAt,
+      expiresAt: c.expiresAt,
+    }));
   }
 }

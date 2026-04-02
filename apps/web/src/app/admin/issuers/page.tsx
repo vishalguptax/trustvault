@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -12,6 +12,7 @@ import { cn, truncateDid, formatDate } from '@/lib/utils';
 import { trapFocus } from '@/lib/focus-trap';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { SearchFilter } from '@/components/ui/search-filter';
 import { Label } from '@/components/ui/label';
 
 interface TrustedIssuer {
@@ -54,6 +55,19 @@ export default function TrustedIssuersPage() {
   const [removeTarget, setRemoveTarget] = useState<TrustedIssuer | null>(null);
   const [removing, setRemoving] = useState(false);
   const [registering, setRegistering] = useState(false);
+  const [search, setSearch] = useState('');
+  const [typeFilter, setTypeFilter] = useState('all');
+
+  const filteredIssuers = useMemo(() => {
+    const query = search.toLowerCase();
+    return issuers.filter((issuer) => {
+      const matchesSearch = !query ||
+        issuer.name.toLowerCase().includes(query) ||
+        issuer.did.toLowerCase().includes(query);
+      const matchesType = typeFilter === 'all' || issuer.credentialTypes.some((ct) => ct.includes(typeFilter));
+      return matchesSearch && matchesType;
+    });
+  }, [issuers, search, typeFilter]);
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
@@ -160,7 +174,29 @@ export default function TrustedIssuersPage() {
         </div>
       )}
 
-      <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <SearchFilter
+        search={search}
+        onSearchChange={setSearch}
+        placeholder="Search by name or DID..."
+        resultCount={filteredIssuers.length}
+        onClearAll={() => { setSearch(''); setTypeFilter('all'); }}
+      />
+
+      <div className="flex gap-1.5 items-center mb-4">
+        {['all', 'Education', 'Income', 'Identity'].map((t) => (
+          <Button
+            key={t}
+            variant={typeFilter === t ? 'default' : 'ghost'}
+            size="sm"
+            className="h-8 px-3 text-xs"
+            onClick={() => setTypeFilter(t)}
+          >
+            {t === 'all' ? 'All Types' : t}
+          </Button>
+        ))}
+      </div>
+
+      <div className="bg-card rounded-2xl shadow-[var(--shadow-card)] overflow-hidden">
         {loading ? (
           <div className="p-6 space-y-3">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -173,23 +209,27 @@ export default function TrustedIssuersPage() {
               </div>
             ))}
           </div>
-        ) : issuers.length === 0 ? (
+        ) : filteredIssuers.length === 0 ? (
           <div className="p-12 text-center">
-            <p className="text-muted-foreground text-sm">No trusted issuers registered yet.</p>
-            <Button
-              variant="link"
-              size="sm"
-              onClick={() => setShowRegisterDialog(true)}
-              className="text-warning mt-2"
-            >
-              Register the first issuer
-            </Button>
+            <p className="text-muted-foreground text-sm">
+              {issuers.length === 0 ? 'No trusted issuers registered yet.' : 'No issuers match your search.'}
+            </p>
+            {issuers.length === 0 && (
+              <Button
+                variant="link"
+                size="sm"
+                onClick={() => setShowRegisterDialog(true)}
+                className="text-warning mt-2"
+              >
+                Register the first issuer
+              </Button>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-border">
+                <tr className="border-b border-border/50">
                   <th className="text-left text-xs font-medium text-muted-foreground px-6 py-3">Name</th>
                   <th className="text-left text-xs font-medium text-muted-foreground px-6 py-3">DID</th>
                   <th className="text-left text-xs font-medium text-muted-foreground px-6 py-3">Credential Types</th>
@@ -199,7 +239,7 @@ export default function TrustedIssuersPage() {
                 </tr>
               </thead>
               <tbody>
-                {issuers.map((issuer, index) => (
+                {filteredIssuers.map((issuer, index) => (
                   <motion.tr
                     key={issuer.did}
                     initial={{ opacity: 0, y: 10 }}
@@ -230,7 +270,7 @@ export default function TrustedIssuersPage() {
                             <span
                               key={type}
                               className={cn(
-                                'inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium',
+                                'inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-medium',
                                 isEducation && 'bg-credential-education/10 text-credential-education',
                                 isIncome && 'bg-credential-income/10 text-credential-income',
                                 !isEducation && !isIncome && 'bg-credential-identity/10 text-credential-identity'
@@ -259,13 +299,13 @@ export default function TrustedIssuersPage() {
                       <span className="text-xs text-muted-foreground">{formatDate(issuer.createdAt)}</span>
                     </td>
                     <td className="px-6 py-3">
-                      <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="sm" className="h-auto p-0 text-xs text-warning">Edit</Button>
+                      <div className="flex items-center gap-1">
+                        <Button variant="outline" size="sm" className="text-xs h-7 px-2.5">Edit</Button>
                         <Button
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
                           onClick={() => setRemoveTarget(issuer)}
-                          className="h-auto p-0 text-xs text-destructive"
+                          className="text-xs h-7 px-2.5 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
                         >
                           Remove
                         </Button>
@@ -303,7 +343,7 @@ export default function TrustedIssuersPage() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-card border border-border rounded-xl p-6 max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto"
+              className="bg-card rounded-2xl shadow-[var(--shadow-card)] p-6 max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
               onKeyDown={trapFocus}
             >
@@ -414,7 +454,7 @@ export default function TrustedIssuersPage() {
                   )}
                 </div>
 
-                <div className="flex items-center justify-end gap-3 pt-2 border-t border-border">
+                <div className="flex items-center justify-end gap-3 pt-2 border-t border-border/50">
                   <Button
                     type="button"
                     variant="outline"
@@ -462,7 +502,7 @@ export default function TrustedIssuersPage() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-card border border-border rounded-xl p-6 max-w-md w-full mx-4"
+              className="bg-card rounded-2xl shadow-[var(--shadow-card)] p-6 max-w-md w-full mx-4"
               onClick={(e) => e.stopPropagation()}
               onKeyDown={trapFocus}
             >

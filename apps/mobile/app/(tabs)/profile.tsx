@@ -1,9 +1,12 @@
-import { View, Text, Pressable, ScrollView, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
-import { useState, useEffect, useCallback } from 'react';
+import { View, Text, Pressable, ScrollView } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { useState, useCallback } from 'react';
 import { useAuth } from '@/lib/auth/auth-context';
-import { useTheme } from '@/lib/theme';
+import { useTheme, cardShadow, cardShadowDark } from '@/lib/theme';
 import { API_BASE_URL } from '@/lib/constants';
+import { ConfirmSheet } from '@/components/confirm-sheet';
+import { AUTH } from '@/lib/routes';
 import {
   hasMpin,
   isLockEnabled,
@@ -18,34 +21,37 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const { colors, isDark, toggleTheme } = useTheme();
+  const shadow = isDark ? cardShadowDark : cardShadow;
 
   const [lockOn, setLockOn] = useState(false);
   const [pinExists, setPinExists] = useState(false);
   const [bioAvailable, setBioAvailable] = useState(false);
   const [bioEnabled, setBioEnabled] = useState(false);
+  const [showRemovePin, setShowRemovePin] = useState(false);
+  const [showLogout, setShowLogout] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const [le, mp, ba, be] = await Promise.all([
-        isLockEnabled(),
-        hasMpin(),
-        isBiometricAvailable(),
-        isBiometricEnabled(),
-      ]);
-      if (cancelled) return;
-      setLockOn(le);
-      setPinExists(mp);
-      setBioAvailable(ba);
-      setBioEnabled(be);
-    })();
-    return () => { cancelled = true; };
-  }, []);
+  // Load and refresh security state on every screen focus (including return from setup-mpin)
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      (async () => {
+        const [lo, pe, ba, be] = await Promise.all([
+          isLockEnabled(), hasMpin(), isBiometricAvailable(), isBiometricEnabled(),
+        ]);
+        if (cancelled) return;
+        setLockOn(lo);
+        setPinExists(pe);
+        setBioAvailable(ba);
+        setBioEnabled(be);
+      })();
+      return () => { cancelled = true; };
+    }, []),
+  );
 
   const handleToggleLock = useCallback(async () => {
     if (!pinExists) {
-      // No PIN set yet — navigate to setup
-      router.push('/(auth)/setup-mpin');
+      // No PIN yet — go set one up
+      router.push({ pathname: AUTH.SETUP_MPIN, params: { returnTo: 'profile' } });
       return;
     }
     const newValue = !lockOn;
@@ -54,7 +60,7 @@ export default function ProfileScreen() {
   }, [lockOn, pinExists, router]);
 
   const handleChangePin = useCallback(() => {
-    router.push('/(auth)/setup-mpin');
+    router.push({ pathname: AUTH.SETUP_MPIN, params: { mode: 'change', returnTo: 'profile' } });
   }, [router]);
 
   const handleToggleBiometric = useCallback(async () => {
@@ -63,66 +69,34 @@ export default function ProfileScreen() {
     setBioEnabled(newValue);
   }, [bioEnabled]);
 
-  const handleResetPin = useCallback(() => {
-    Alert.alert(
-      'Reset PIN',
-      'This will remove your PIN and disable app lock. You can set a new PIN afterwards.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reset',
-          style: 'destructive',
-          onPress: async () => {
-            await clearMpin();
-            setLockOn(false);
-            setPinExists(false);
-            setBioEnabled(false);
-          },
-        },
-      ],
-    );
+  const handleRemovePin = useCallback(async () => {
+    await clearMpin();
+    setLockOn(false);
+    setPinExists(false);
+    setBioEnabled(false);
+    setShowRemovePin(false);
   }, []);
 
-  const handleLogout = () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Sign Out',
-          style: 'destructive',
-          onPress: async () => {
-            await logout();
-            router.replace('/(auth)/login');
-          },
-        },
-      ],
-    );
-  };
+  const handleLogout = useCallback(async () => {
+    setShowLogout(false);
+    await logout();
+    router.replace(AUTH.LOGIN);
+  }, [logout, router]);
 
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.bg }}
-      contentContainerStyle={{ padding: 16, paddingBottom: 48 }}
+      contentContainerStyle={{ padding: 20, paddingBottom: 48 }}
     >
       {/* User card */}
-      <View style={{
-        backgroundColor: colors.surface,
-        borderRadius: 16,
-        padding: 20,
-        marginBottom: 16,
-        borderWidth: 1,
-        borderColor: colors.border,
-      }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+      <View style={{ backgroundColor: colors.surface, borderRadius: 18, padding: 20, marginBottom: 20, ...shadow }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 18 }}>
           <View style={{
-            width: 48, height: 48, borderRadius: 24,
-            backgroundColor: `${colors.primary}20`,
-            alignItems: 'center', justifyContent: 'center',
-            marginRight: 14,
+            width: 56, height: 56, borderRadius: 28,
+            backgroundColor: `${colors.primary}18`,
+            alignItems: 'center', justifyContent: 'center', marginRight: 16,
           }}>
-            <Text style={{ color: colors.primary, fontSize: 20, fontWeight: '700' }}>
+            <Text style={{ color: colors.primary, fontSize: 22, fontWeight: '700' }}>
               {user?.name?.charAt(0)?.toUpperCase() ?? '?'}
             </Text>
           </View>
@@ -130,18 +104,13 @@ export default function ProfileScreen() {
             <Text style={{ color: colors.foreground, fontSize: 18, fontWeight: '600' }}>
               {user?.name ?? 'User'}
             </Text>
-            <Text style={{ color: colors.mutedText, fontSize: 13, marginTop: 2 }}>
+            <Text style={{ color: colors.mutedText, fontSize: 13, marginTop: 3 }}>
               {user?.email ?? ''}
             </Text>
           </View>
         </View>
 
-        <View style={{
-          backgroundColor: colors.muted,
-          borderRadius: 8,
-          paddingHorizontal: 12,
-          paddingVertical: 8,
-        }}>
+        <View style={{ backgroundColor: colors.muted, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10 }}>
           <Text style={{ color: colors.mutedText, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>
             Role
           </Text>
@@ -151,13 +120,7 @@ export default function ProfileScreen() {
         </View>
 
         {user?.id ? (
-          <View style={{
-            backgroundColor: colors.muted,
-            borderRadius: 8,
-            paddingHorizontal: 12,
-            paddingVertical: 8,
-            marginTop: 8,
-          }}>
+          <View style={{ backgroundColor: colors.muted, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, marginTop: 8 }}>
             <Text style={{ color: colors.mutedText, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>
               User ID
             </Text>
@@ -168,211 +131,188 @@ export default function ProfileScreen() {
         ) : null}
       </View>
 
-      {/* Settings section */}
-      <Text style={{ color: colors.mutedText, fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8, marginLeft: 4 }}>
-        Preferences
-      </Text>
-      <View style={{
-        backgroundColor: colors.surface,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: colors.border,
-        marginBottom: 16,
-        overflow: 'hidden',
-      }}>
-        {/* Theme toggle */}
-        <Pressable
+      {/* Preferences */}
+      <SectionLabel colors={colors}>Preferences</SectionLabel>
+      <View style={{ backgroundColor: colors.surface, borderRadius: 18, marginBottom: 20, overflow: 'hidden', ...shadow }}>
+        <ToggleRow
+          label="Dark Mode"
+          value={isDark}
           onPress={toggleTheme}
-          style={({ pressed }) => ({
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingHorizontal: 16,
-            paddingVertical: 14,
-            backgroundColor: pressed ? colors.muted : 'transparent',
-          })}
-          accessibilityLabel={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-          accessibilityRole="switch"
-          accessibilityState={{ checked: isDark }}
-        >
-          <Text style={{ color: colors.foreground, fontSize: 15 }}>Dark Mode</Text>
-          <View style={{
-            width: 44, height: 26, borderRadius: 13,
-            backgroundColor: isDark ? colors.primary : colors.muted,
-            justifyContent: 'center',
-            paddingHorizontal: 2,
-          }}>
-            <View style={{
-              width: 22, height: 22, borderRadius: 11,
-              backgroundColor: colors.surface,
-              alignSelf: isDark ? 'flex-end' : 'flex-start',
-            }} />
-          </View>
-        </Pressable>
+          colors={colors}
+        />
       </View>
 
-      {/* App Lock section */}
-      <Text style={{ color: colors.mutedText, fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8, marginLeft: 4 }}>
-        Security
-      </Text>
-      <View style={{
-        backgroundColor: colors.surface,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: colors.border,
-        marginBottom: 16,
-        overflow: 'hidden',
-      }}>
-        {/* Lock toggle */}
-        <Pressable
+      {/* Security */}
+      <SectionLabel colors={colors}>Security</SectionLabel>
+      <View style={{ backgroundColor: colors.surface, borderRadius: 18, marginBottom: 20, overflow: 'hidden', ...shadow }}>
+        <ToggleRow
+          label="App Lock"
+          value={lockOn}
           onPress={handleToggleLock}
-          style={({ pressed }) => ({
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingHorizontal: 16,
-            paddingVertical: 14,
-            backgroundColor: pressed ? colors.muted : 'transparent',
-          })}
-          accessibilityLabel={lockOn ? 'Disable app lock' : 'Enable app lock'}
-          accessibilityRole="switch"
-          accessibilityState={{ checked: lockOn }}
-        >
-          <Text style={{ color: colors.foreground, fontSize: 15 }}>App Lock</Text>
-          <View style={{
-            width: 44, height: 26, borderRadius: 13,
-            backgroundColor: lockOn ? colors.primary : colors.muted,
-            justifyContent: 'center',
-            paddingHorizontal: 2,
-          }}>
-            <View style={{
-              width: 22, height: 22, borderRadius: 11,
-              backgroundColor: colors.surface,
-              alignSelf: lockOn ? 'flex-end' : 'flex-start',
-            }} />
-          </View>
-        </Pressable>
+          colors={colors}
+        />
 
-        {pinExists ? (
+        {pinExists && (
           <>
-            <View style={{ height: 1, backgroundColor: colors.border }} />
-            {/* Change PIN */}
-            <Pressable
+            <Divider colors={colors} />
+            <ActionRow
+              label="Change PIN"
+              icon="key-outline"
               onPress={handleChangePin}
-              style={({ pressed }) => ({
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                paddingHorizontal: 16,
-                paddingVertical: 14,
-                backgroundColor: pressed ? colors.muted : 'transparent',
-              })}
-              accessibilityLabel="Change PIN"
-              accessibilityRole="button"
-            >
-              <Text style={{ color: colors.foreground, fontSize: 15 }}>Change PIN</Text>
-              <Text style={{ color: colors.mutedText, fontSize: 18 }}>{'>'}</Text>
-            </Pressable>
+              colors={colors}
+            />
 
-            {/* Biometric toggle — only if hardware supports it */}
-            {bioAvailable ? (
+            {bioAvailable && (
               <>
-                <View style={{ height: 1, backgroundColor: colors.border }} />
-                <Pressable
+                <Divider colors={colors} />
+                <ToggleRow
+                  label="Use Biometric"
+                  value={bioEnabled}
                   onPress={handleToggleBiometric}
-                  style={({ pressed }) => ({
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    paddingHorizontal: 16,
-                    paddingVertical: 14,
-                    backgroundColor: pressed ? colors.muted : 'transparent',
-                  })}
-                  accessibilityLabel={bioEnabled ? 'Disable biometric unlock' : 'Enable biometric unlock'}
-                  accessibilityRole="switch"
-                  accessibilityState={{ checked: bioEnabled }}
-                >
-                  <Text style={{ color: colors.foreground, fontSize: 15 }}>Use Biometric</Text>
-                  <View style={{
-                    width: 44, height: 26, borderRadius: 13,
-                    backgroundColor: bioEnabled ? colors.primary : colors.muted,
-                    justifyContent: 'center',
-                    paddingHorizontal: 2,
-                  }}>
-                    <View style={{
-                      width: 22, height: 22, borderRadius: 11,
-                      backgroundColor: colors.surface,
-                      alignSelf: bioEnabled ? 'flex-end' : 'flex-start',
-                    }} />
-                  </View>
-                </Pressable>
+                  colors={colors}
+                />
               </>
-            ) : null}
+            )}
 
-            <View style={{ height: 1, backgroundColor: colors.border }} />
-            {/* Reset PIN */}
-            <Pressable
-              onPress={handleResetPin}
-              style={({ pressed }) => ({
-                flexDirection: 'row',
-                alignItems: 'center',
-                paddingHorizontal: 16,
-                paddingVertical: 14,
-                backgroundColor: pressed ? colors.muted : 'transparent',
-              })}
-              accessibilityLabel="Reset PIN"
-              accessibilityRole="button"
-            >
-              <Text style={{ color: colors.danger, fontSize: 15 }}>Reset PIN</Text>
-            </Pressable>
+            <Divider colors={colors} />
+            <ActionRow
+              label="Remove PIN"
+              icon="trash-outline"
+              onPress={() => setShowRemovePin(true)}
+              colors={colors}
+              destructive
+            />
           </>
-        ) : null}
+        )}
       </View>
 
-      {/* Info section */}
-      <Text style={{ color: colors.mutedText, fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8, marginLeft: 4 }}>
-        About
-      </Text>
-      <View style={{
-        backgroundColor: colors.surface,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: colors.border,
-        marginBottom: 24,
-        overflow: 'hidden',
-      }}>
+      {/* About */}
+      <SectionLabel colors={colors}>About</SectionLabel>
+      <View style={{ backgroundColor: colors.surface, borderRadius: 18, marginBottom: 28, overflow: 'hidden', ...shadow }}>
         <InfoRow label="API Server" value={API_BASE_URL} colors={colors} />
-        <View style={{ height: 1, backgroundColor: colors.border }} />
+        <Divider colors={colors} />
         <InfoRow label="App Version" value="0.1.0" colors={colors} />
-        <View style={{ height: 1, backgroundColor: colors.border }} />
+        <Divider colors={colors} />
         <InfoRow label="SDK" value="Expo SDK 55" colors={colors} />
       </View>
 
       {/* Sign out */}
       <Pressable
-        onPress={handleLogout}
+        onPress={() => setShowLogout(true)}
         style={({ pressed }) => ({
-          backgroundColor: `${colors.danger}12`,
-          borderWidth: 1,
-          borderColor: `${colors.danger}30`,
-          borderRadius: 14,
-          paddingVertical: 14,
-          alignItems: 'center',
-          minHeight: 48,
-          opacity: pressed ? 0.8 : 1,
+          backgroundColor: pressed ? `${colors.danger}20` : `${colors.danger}12`,
+          borderRadius: 16, paddingVertical: 15,
+          alignItems: 'center', justifyContent: 'center',
+          flexDirection: 'row', gap: 8, minHeight: 48,
         })}
         accessibilityRole="button"
         accessibilityLabel="Sign out"
       >
+        <Ionicons name="log-out-outline" size={18} color={colors.danger} />
         <Text style={{ color: colors.danger, fontWeight: '600', fontSize: 15 }}>Sign Out</Text>
       </Pressable>
+
+      {/* Confirm sheets */}
+      <ConfirmSheet
+        visible={showRemovePin}
+        title="Remove PIN"
+        message="This will remove your PIN and disable app lock. You can set a new PIN afterwards."
+        confirmLabel="Remove"
+        destructive
+        onConfirm={handleRemovePin}
+        onCancel={() => setShowRemovePin(false)}
+      />
+      <ConfirmSheet
+        visible={showLogout}
+        title="Sign Out"
+        message="Are you sure you want to sign out? You will need to log in again."
+        confirmLabel="Sign Out"
+        destructive
+        onConfirm={handleLogout}
+        onCancel={() => setShowLogout(false)}
+      />
     </ScrollView>
   );
 }
 
-function InfoRow({ label, value, colors }: { label: string; value: string; colors: Record<string, string> }) {
+// ── Reusable row components ──
+
+function SectionLabel({ colors, children }: { colors: { mutedText: string }; children: string }) {
   return (
-    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12 }}>
+    <Text style={{
+      color: colors.mutedText, fontSize: 12, fontWeight: '600',
+      textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10, marginLeft: 4,
+    }}>
+      {children}
+    </Text>
+  );
+}
+
+function Divider({ colors }: { colors: { border: string } }) {
+  return <View style={{ height: 1, backgroundColor: colors.border, marginHorizontal: 18 }} />;
+}
+
+function ToggleRow({ label, value, onPress, colors }: {
+  label: string; value: boolean; onPress: () => void;
+  colors: { foreground: string; primary: string; muted: string; surface: string; border: string };
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+        paddingHorizontal: 18, paddingVertical: 15,
+        backgroundColor: pressed ? colors.muted : 'transparent',
+      })}
+      accessibilityLabel={`${label}: ${value ? 'on' : 'off'}`}
+      accessibilityRole="switch"
+      accessibilityState={{ checked: value }}
+    >
+      <Text style={{ color: colors.foreground, fontSize: 15 }}>{label}</Text>
+      <View style={{
+        width: 46, height: 28, borderRadius: 14,
+        backgroundColor: value ? colors.primary : colors.border,
+        justifyContent: 'center', paddingHorizontal: 2,
+      }}>
+        <View style={{
+          width: 24, height: 24, borderRadius: 12,
+          backgroundColor: '#FFFFFF',
+          alignSelf: value ? 'flex-end' : 'flex-start',
+        }} />
+      </View>
+    </Pressable>
+  );
+}
+
+function ActionRow({ label, icon, onPress, colors, destructive = false }: {
+  label: string; icon: string; onPress: () => void;
+  colors: { foreground: string; muted: string; mutedText: string; danger: string };
+  destructive?: boolean;
+}) {
+  const textColor = destructive ? colors.danger : colors.foreground;
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        flexDirection: 'row', alignItems: 'center',
+        paddingHorizontal: 18, paddingVertical: 15,
+        backgroundColor: pressed ? colors.muted : 'transparent', minHeight: 48,
+      })}
+      accessibilityLabel={label}
+      accessibilityRole="button"
+    >
+      <Ionicons name={icon as keyof typeof Ionicons.glyphMap} size={18} color={textColor} style={{ marginRight: 12 }} />
+      <Text style={{ color: textColor, fontSize: 15, flex: 1 }}>{label}</Text>
+      <Ionicons name="chevron-forward" size={16} color={colors.mutedText} />
+    </Pressable>
+  );
+}
+
+function InfoRow({ label, value, colors }: {
+  label: string; value: string; colors: { foreground: string; mutedText: string };
+}) {
+  return (
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 13 }}>
       <Text style={{ color: colors.mutedText, fontSize: 14 }}>{label}</Text>
       <Text style={{ color: colors.foreground, fontSize: 13, fontFamily: 'monospace' }} numberOfLines={1}>{value}</Text>
     </View>

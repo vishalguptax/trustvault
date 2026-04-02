@@ -40,6 +40,10 @@
   --color-credential-income: hsl(var(--credential-income));
   --color-credential-identity: hsl(var(--credential-identity));
 
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.04), 0 2px 12px rgba(26, 43, 26, 0.06);
+  --shadow-card-hover: 0 4px 16px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(26, 43, 26, 0.08);
+  --shadow-card-active: 0 1px 2px rgba(0, 0, 0, 0.08);
+
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
@@ -63,37 +67,37 @@
 }
 
 @layer base {
-  /* Light Mode — clean, professional, high-contrast */
+  /* Light Mode — warm sage, modern, minimal */
   :root {
-    --background: 210 20% 98%;       /* #F9FAFB slate-50 */
-    --foreground: 222 47% 11%;       /* #1E293B slate-800 */
+    --background: 100 10% 95%;       /* #F2F4F0 warm sage */
+    --foreground: 140 25% 13%;       /* #1A2B1A dark green-black */
 
     --card: 0 0% 100%;               /* #FFFFFF white */
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 140 25% 13%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 140 25% 13%;
 
-    --primary: 174 58% 39%;          /* #0D9488 teal-600 */
+    --primary: 155 54% 40%;          /* #2D9F73 warm green */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96%;        /* #F1F5F9 slate-100 */
-    --secondary-foreground: 222 47% 11%;
+    --secondary: 100 10% 92%;        /* #E8ECE6 sage */
+    --secondary-foreground: 140 25% 13%;
 
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%; /* #64748B slate-500 */
+    --muted: 100 10% 92%;
+    --muted-foreground: 110 8% 50%;  /* #7C8B7A warm gray-green */
 
-    --accent: 210 40% 96%;
-    --accent-foreground: 222 47% 11%;
+    --accent: 100 10% 92%;
+    --accent-foreground: 140 25% 13%;
 
     --destructive: 0 84% 60%;        /* #EF4444 red-500 */
     --destructive-foreground: 0 0% 100%;
 
-    --border: 214 32% 91%;           /* #E2E8F0 slate-200 */
-    --input: 214 32% 91%;
-    --ring: 174 58% 39%;
+    --border: 100 10% 88%;           /* #DDE3D9 sage border */
+    --input: 100 10% 88%;
+    --ring: 155 54% 40%;
 
-    --radius: 0.5rem;
+    --radius: 0.875rem;
 
     /* Status colors */
     --success: 160 60% 40%;          /* #059669 emerald-600 */
@@ -102,39 +106,39 @@
 
     /* Credential type accents */
     --credential-education: 263 70% 50%;  /* #7C3AED purple-600 */
-    --credential-income: 174 58% 39%;     /* #0D9488 teal-600 */
+    --credential-income: 155 54% 40%;     /* #2D9F73 green */
     --credential-identity: 38 92% 45%;    /* #D97706 amber-600 */
   }
 
-  /* Dark Mode — "Digital Vault" aesthetic */
+  /* Dark Mode — sage-charcoal aesthetic */
   .dark {
-    --background: 222 47% 6%;        /* #0B1120 deep navy */
-    --foreground: 210 20% 98%;       /* #F9FAFB */
+    --background: 150 20% 8%;        /* #111916 dark sage-charcoal */
+    --foreground: 100 10% 95%;       /* #F2F4F0 */
 
-    --card: 220 26% 9%;              /* #111827 surface */
-    --card-foreground: 210 20% 98%;
+    --card: 150 15% 11%;             /* #1A2420 dark sage surface */
+    --card-foreground: 100 10% 95%;
 
-    --popover: 220 26% 9%;
-    --popover-foreground: 210 20% 98%;
+    --popover: 150 15% 11%;
+    --popover-foreground: 100 10% 95%;
 
-    --primary: 174 58% 40%;          /* #14B8A6 teal */
-    --primary-foreground: 222 47% 6%;
+    --primary: 155 54% 50%;          /* #3DBF86 brighter green */
+    --primary-foreground: 150 20% 8%;
 
-    --secondary: 217 19% 17%;        /* #1F2937 muted surface */
-    --secondary-foreground: 210 20% 98%;
+    --secondary: 150 12% 16%;        /* #243028 dark sage muted */
+    --secondary-foreground: 100 10% 95%;
 
-    --muted: 217 19% 17%;
-    --muted-foreground: 218 11% 50%; /* #6B7280 */
+    --muted: 150 12% 16%;
+    --muted-foreground: 120 8% 55%;  /* #8A9B88 */
 
-    --accent: 217 19% 17%;
-    --accent-foreground: 210 20% 98%;
+    --accent: 150 12% 16%;
+    --accent-foreground: 100 10% 95%;
 
     --destructive: 0 84% 60%;        /* #EF4444 red */
-    --destructive-foreground: 210 20% 98%;
+    --destructive-foreground: 100 10% 95%;
 
-    --border: 217 19% 17%;
-    --input: 217 19% 17%;
-    --ring: 174 58% 40%;
+    --border: 150 12% 20%;           /* #2D3B32 */
+    --input: 150 12% 16%;
+    --ring: 155 54% 50%;
 
     /* Status colors */
     --success: 160 60% 45%;          /* #10B981 emerald */
@@ -143,7 +147,7 @@
 
     /* Credential type accents */
     --credential-education: 263 70% 58%;  /* #7C3AED purple */
-    --credential-income: 174 58% 40%;     /* #14B8A6 teal */
+    --credential-income: 155 54% 50%;     /* #3DBF86 green */
     --credential-identity: 38 92% 50%;    /* #F59E0B amber */
   }
 }
@@ -169,16 +173,40 @@
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
     font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.6;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Instrument Sans', system-ui, sans-serif;
+    letter-spacing: -0.025em;
   }
 
   code, pre {
     font-family: 'JetBrains Mono', monospace;
+  }
+
+  ::selection {
+    background-color: hsl(var(--primary) / 0.2);
+    color: hsl(var(--foreground));
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.4);
   }
 }
 

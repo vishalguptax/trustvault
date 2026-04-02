@@ -1,4 +1,4 @@
-import { IsString, IsObject, IsOptional } from 'class-validator';
+import { IsString, IsObject, IsOptional, IsArray } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CredentialProofDto {
@@ -13,6 +13,7 @@ export class CredentialProofDto {
 
 export class CredentialDefinitionDto {
   @ApiProperty({ example: ['VerifiableEducationCredential'] })
+  @IsArray()
   type!: string[];
 }
 

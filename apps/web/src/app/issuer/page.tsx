@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
 import { File, CheckCircle, XCircle } from '@phosphor-icons/react';
+import { CopyableDid } from '@/components/ui/copyable-did';
 import { api } from '@/lib/api/client';
 import { cn, truncateDid, formatDate } from '@/lib/utils';
 import { StatCard, StatCardSkeleton } from '@/components/dashboard/stat-card';
@@ -150,9 +151,9 @@ export default function IssuerDashboard() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
-        className="bg-card border border-border rounded-xl overflow-hidden"
+        className="bg-card rounded-2xl shadow-[var(--shadow-card)] overflow-hidden"
       >
-        <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+        <div className="px-6 py-4 border-b border-border/50 flex items-center justify-between">
           <h3 className="text-lg font-semibold">Recent Issuances</h3>
           <Button variant="link" size="sm" asChild><Link href="/issuer/credentials">View all</Link></Button>
         </div>
@@ -192,7 +193,7 @@ export default function IssuerDashboard() {
                       <CredentialTypeBadge type={cred.type} />
                     </td>
                     <td className="px-6 py-3">
-                      <span className="font-mono text-xs text-muted-foreground">{truncateDid(cred.subjectDid)}</span>
+                      <CopyableDid did={cred.subjectDid} />
                     </td>
                     <td className="px-6 py-3">
                       <StatusBadge status={cred.status} />
@@ -201,12 +202,11 @@ export default function IssuerDashboard() {
                       <span className="text-xs text-muted-foreground">{formatDate(cred.issuedAt)}</span>
                     </td>
                     <td className="px-6 py-3">
-                      <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="sm" className="h-auto p-0 text-xs" asChild><Link href={`/issuer/credentials?id=${cred.id}`}>View</Link></Button>
-                        {cred.status === 'active' && (
-                          <Button variant="ghost" size="sm" className="h-auto p-0 text-xs text-destructive hover:text-destructive">Revoke</Button>
-                        )}
-                      </div>
+                      {cred.status === 'active' ? (
+                        <Button variant="outline" size="sm" className="text-xs h-7 px-2.5 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive">Revoke</Button>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -220,9 +220,10 @@ export default function IssuerDashboard() {
 }
 
 function CredentialTypeBadge({ type }: { type: string }) {
-  const isEducation = type.includes('Education');
-  const isIncome = type.includes('Income');
-  const displayName = type.replace('Verifiable', '').replace('Credential', '').trim();
+  const safeType = type ?? '';
+  const isEducation = safeType.includes('Education');
+  const isIncome = safeType.includes('Income');
+  const displayName = safeType.replace('Verifiable', '').replace('Credential', '').trim() || 'Unknown';
 
   return (
     <span

@@ -1,14 +1,18 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BitstringStatusListService } from './bitstring-status-list.service';
+import { MailService } from '../mail/mail.service';
 
 @Injectable()
 export class StatusService {
+  private readonly logger = new Logger(StatusService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly bitstringService: BitstringStatusListService,
     private readonly configService: ConfigService,
+    private readonly mailService: MailService,
   ) {}
 
   async getOrCreateStatusList(issuerDid: string, purpose: string = 'revocation') {
@@ -84,7 +88,36 @@ export class StatusService {
       data: { status: 'revoked' },
     });
 
+    this.notifyRevocation(credential.subjectDid, credential.schemaTypeUri, reason).catch(() => {});
+
     return { revoked: true, updatedAt: new Date() };
+  }
+
+  private async notifyRevocation(
+    subjectDid: string,
+    schemaTypeUri: string,
+    reason?: string,
+  ): Promise<void> {
+    const walletDid = await this.prisma.walletDid.findFirst({
+      where: { did: subjectDid },
+    });
+    if (!walletDid) return;
+
+    const holder = await this.prisma.user.findUnique({
+      where: { id: walletDid.holderId },
+    });
+    if (!holder) return;
+
+    const schema = await this.prisma.credentialSchema.findUnique({
+      where: { typeUri: schemaTypeUri },
+    });
+
+    await this.mailService.sendCredentialRevoked(
+      holder.email,
+      holder.name,
+      schema?.name || schemaTypeUri,
+      reason || 'No reason provided',
+    );
   }
 
   async suspendCredential(credentialId: string, reason?: string) {
@@ -148,7 +181,7 @@ export class StatusService {
 
     return {
       '@context': ['https://www.w3.org/ns/credentials/v2'],
-      id: `${this.configService.get<string>('issuer.baseUrl') || 'http://localhost:3000'}/status/lists/${id}`,
+      id: `${this.configService.get<string>('apiBaseUrl') || 'http://localhost:8000'}/status/lists/${id}`,
       type: ['VerifiableCredential', 'BitstringStatusListCredential'],
       issuer: statusList.issuerDid,
       validFrom: statusList.createdAt.toISOString(),

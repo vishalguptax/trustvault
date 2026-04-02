@@ -12,16 +12,19 @@ datasource db {
 // ============================================
 
 model User {
-  id             String   @id @default(auto()) @map("_id") @db.ObjectId
-  email          String   @unique
-  passwordHash   String
-  name           String
-  role           String   @default("holder")
-  refreshTokens  String[]
-  apiKeys        ApiKey[]
-  active         Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id               String    @id @default(auto()) @map("_id") @db.ObjectId
+  email            String    @unique
+  passwordHash     String
+  name             String
+  role             String    @default("holder")
+  trustedIssuerId  String?   /// Links issuer users to their TrustedIssuer entry
+  refreshTokens    String[]
+  apiKeys          ApiKey[]
+  resetOtpHash     String?
+  resetOtpExpiry   DateTime?
+  active           Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   @@index([role])
   @@map("users")
@@ -219,6 +222,8 @@ model ConsentRecord {
 model VerificationRequest {
   id                      String    @id @default(auto()) @map("_id") @db.ObjectId
   verifierDid             String
+  verifierName            String?
+  purpose                 String?
   presentationDefinition  Json
   nonce                   String    @unique
   state                   String    @unique

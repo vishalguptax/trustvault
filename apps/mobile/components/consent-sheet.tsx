@@ -1,6 +1,7 @@
 import { View, Text, Pressable, Modal, ScrollView } from 'react-native';
 import { impactMedium, notifySuccess, notifyError, notifyWarning } from '@/lib/haptics';
-import { useTheme } from '@/lib/theme';
+import { useTheme, cardShadow, cardShadowDark } from '@/lib/theme';
+import { getClaimLabel } from '@/lib/constants';
 
 interface DisclosureItem {
   credentialType: string;
@@ -24,7 +25,8 @@ export function ConsentSheet({
   onAllow,
   onDeny,
 }: ConsentSheetProps) {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
+  const shadow = isDark ? cardShadowDark : cardShadow;
 
   const handleAllow = () => {
     notifySuccess();
@@ -46,17 +48,17 @@ export function ConsentSheet({
       <View
         style={{
           flex: 1,
-          backgroundColor: 'rgba(0, 0, 0, 0.6)',
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
           justifyContent: 'flex-end',
         }}
       >
         <View
           style={{
             backgroundColor: colors.surface,
-            borderTopLeftRadius: 24,
-            borderTopRightRadius: 24,
+            borderTopLeftRadius: 28,
+            borderTopRightRadius: 28,
             paddingTop: 12,
-            paddingHorizontal: 20,
+            paddingHorizontal: 22,
             paddingBottom: 40,
             maxHeight: '75%',
           }}
@@ -66,12 +68,12 @@ export function ConsentSheet({
           {/* Handle bar */}
           <View
             style={{
-              width: 40,
+              width: 48,
               height: 4,
               backgroundColor: colors.muted,
               borderRadius: 2,
               alignSelf: 'center',
-              marginBottom: 20,
+              marginBottom: 22,
             }}
           />
 
@@ -100,7 +102,7 @@ export function ConsentSheet({
           <Text
             style={{
               color: colors.foreground,
-              fontSize: 20,
+              fontSize: 22,
               fontWeight: '700',
               marginBottom: 4,
               marginTop: 8,
@@ -113,7 +115,8 @@ export function ConsentSheet({
             style={{
               color: colors.mutedText,
               fontSize: 14,
-              marginBottom: 20,
+              marginBottom: 22,
+              lineHeight: 20,
             }}
           >
             {purpose}
@@ -125,14 +128,14 @@ export function ConsentSheet({
               color: colors.foreground,
               fontSize: 14,
               fontWeight: '600',
-              marginBottom: 12,
+              marginBottom: 14,
             }}
           >
             Information that will be shared:
           </Text>
 
           <ScrollView
-            style={{ maxHeight: 200, marginBottom: 24 }}
+            style={{ maxHeight: 200, marginBottom: 26 }}
             showsVerticalScrollIndicator={false}
           >
             {disclosures.map((disclosure) => (
@@ -140,8 +143,8 @@ export function ConsentSheet({
                 key={disclosure.credentialType}
                 style={{
                   backgroundColor: colors.muted,
-                  borderRadius: 12,
-                  padding: 14,
+                  borderRadius: 16,
+                  padding: 16,
                   marginBottom: 10,
                 }}
               >
@@ -150,7 +153,7 @@ export function ConsentSheet({
                     color: colors.primary,
                     fontSize: 12,
                     fontWeight: '600',
-                    marginBottom: 8,
+                    marginBottom: 10,
                     textTransform: 'uppercase',
                     letterSpacing: 0.5,
                   }}
@@ -163,20 +166,20 @@ export function ConsentSheet({
                     style={{
                       flexDirection: 'row',
                       alignItems: 'center',
-                      marginBottom: 4,
+                      marginBottom: 6,
                     }}
                   >
                     <View
                       style={{
-                        width: 4,
-                        height: 4,
-                        borderRadius: 2,
+                        width: 5,
+                        height: 5,
+                        borderRadius: 2.5,
                         backgroundColor: colors.mutedText,
-                        marginRight: 8,
+                        marginRight: 10,
                       }}
                     />
                     <Text style={{ color: colors.foreground, fontSize: 14 }}>
-                      {claim}
+                      {getClaimLabel(claim)}
                     </Text>
                   </View>
                 ))}
@@ -190,13 +193,12 @@ export function ConsentSheet({
               onPress={handleDeny}
               style={({ pressed }) => ({
                 flex: 1,
-                paddingVertical: 14,
-                borderRadius: 12,
+                paddingVertical: 15,
+                borderRadius: 16,
                 alignItems: 'center',
-                borderWidth: 1.5,
-                borderColor: colors.muted,
-                backgroundColor: pressed ? colors.muted : 'transparent',
-                minHeight: 44,
+                backgroundColor: colors.muted,
+                opacity: pressed ? 0.8 : 1,
+                minHeight: 48,
               })}
               accessibilityLabel="Deny sharing credentials"
               accessibilityRole="button"
@@ -210,12 +212,13 @@ export function ConsentSheet({
               onPress={handleAllow}
               style={({ pressed }) => ({
                 flex: 1,
-                paddingVertical: 14,
-                borderRadius: 12,
+                paddingVertical: 15,
+                borderRadius: 16,
                 alignItems: 'center',
                 backgroundColor: colors.primary,
-                opacity: pressed ? 0.85 : 1,
-                minHeight: 44,
+                opacity: pressed ? 0.9 : 1,
+                minHeight: 48,
+                ...shadow,
               })}
               accessibilityLabel="Allow sharing credentials"
               accessibilityRole="button"

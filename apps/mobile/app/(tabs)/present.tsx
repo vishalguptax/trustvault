@@ -15,8 +15,9 @@ import { AnimatedCheck } from '@/components/animated-check';
 import { ConsentSheet } from '@/components/consent-sheet';
 import { useCredentialStore, StoredCredential } from '@/lib/store';
 import { api } from '@/lib/api';
-import { CREDENTIAL_TYPE_CONFIG } from '@/lib/constants';
-import { useTheme } from '@/lib/theme';
+import { CREDENTIAL_TYPE_CONFIG, getClaimLabel } from '@/lib/constants';
+import { useTheme, cardShadow, cardShadowDark } from '@/lib/theme';
+import { TABS, API } from '@/lib/routes';
 
 type PresentStep = 'loading' | 'select' | 'disclose' | 'consent' | 'submitting' | 'result' | 'error';
 
@@ -31,20 +32,32 @@ interface VerificationRequest {
   requiredClaims: Record<string, string[]>;
 }
 
-interface PresentationResult {
-  verificationId: string;
-  result: 'verified' | 'rejected';
-  checks: Record<string, boolean>;
+/** Backend response from POST /wallet/presentations/create */
+interface PresentationResultApi {
+  presentationId: string;
+  vpToken: string;
+  status: string;
+  // Future fields when backend completes the verification flow
+  verificationId?: string;
+  result?: 'verified' | 'rejected';
+  checks?: Record<string, boolean>;
 }
 
 function parseVerificationUri(uri: string): VerificationRequest | null {
   try {
     const url = new URL(uri);
-    const requestUri = url.searchParams.get('request_uri') ?? '';
-    // Extract request ID from the request_uri path
-    const requestIdMatch = requestUri.match(/presentations\/([^/?]+)/);
-    const requestId = requestIdMatch ? requestIdMatch[1] : url.searchParams.get('state') ?? '';
 
+    // Backend generates: openid4vp://?request_uri=<encoded>&nonce=<nonce>
+    const requestUri = url.searchParams.get('request_uri') ?? '';
+    const nonce = url.searchParams.get('nonce') ?? '';
+
+    // Extract request ID from the request_uri path (e.g., .../presentations/<id>)
+    const requestIdMatch = requestUri.match(/presentations\/([^/?]+)/);
+    const requestId = requestIdMatch
+      ? requestIdMatch[1]
+      : url.searchParams.get('state') ?? '';
+
+    // These may or may not be present depending on backend version
     const verifierDid = url.searchParams.get('verifier_did') ?? '';
     const verifierName = url.searchParams.get('verifier_name') ?? 'Verifier';
     const purpose = url.searchParams.get('purpose') ?? 'Identity verification';
@@ -77,7 +90,8 @@ function parseVerificationUri(uri: string): VerificationRequest | null {
 
 export default function PresentScreen() {
   const router = useRouter();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
+  const shadow = isDark ? cardShadowDark : cardShadow;
   const { user } = useAuth();
   const { uri } = useLocalSearchParams<{ uri: string }>();
   const credentials = useCredentialStore((state) => state.credentials);
@@ -146,11 +160,12 @@ export default function PresentScreen() {
   );
 
   const allDisclosableClaims = useMemo(() => {
-    const claims: { key: string; credentialType: string; required: boolean }[] = [];
+    const claims: { key: string; credentialId: string; credentialType: string; required: boolean }[] = [];
     selectedCredentials.forEach((cred) => {
       cred.sdClaims.forEach((claim) => {
         claims.push({
           key: claim,
+          credentialId: cred.id,
           credentialType: cred.typeName,
           required: requiredClaimKeys.has(claim),
         });
@@ -160,6 +175,7 @@ export default function PresentScreen() {
         if (!cred.sdClaims.includes(claim)) {
           claims.push({
             key: claim,
+            credentialId: cred.id,
             credentialType: cred.typeName,
             required: true,
           });
@@ -238,8 +254,8 @@ export default function PresentScreen() {
         disclosedClaimsMap[cred.id] = credDisclosed;
       });
 
-      const response = await api.post<PresentationResult>(
-        '/wallet/presentations/create',
+      const response = await api.post<PresentationResultApi>(
+        API.WALLET.CREATE_PRESENTATION,
         {
           verificationRequestId: verificationRequest?.id ?? '',
           holderId: user?.id ?? '',
@@ -249,20 +265,25 @@ export default function PresentScreen() {
         },
       );
 
-      setResult(response.result);
-      if (response.result === 'verified') {
+      // Backend returns { presentationId, vpToken, status }
+      // Map status to result: 'submitted' means presentation was accepted
+      const verificationResult: 'verified' | 'rejected' =
+        response.result ?? (response.status === 'submitted' ? 'verified' : 'rejected');
+
+      setResult(verificationResult);
+      if (verificationResult === 'verified') {
         notifySuccess();
       } else {
         notifyError();
       }
 
       addConsentRecord({
-        id: response.verificationId,
+        id: response.verificationId ?? response.presentationId ?? '',
         verifierName: verificationRequest?.verifierName ?? 'Verifier',
         verifierDid: verificationRequest?.verifierDid ?? '',
         credentialIds: selectedIds,
         disclosedClaims: disclosedClaimsList,
-        result: response.result,
+        result: verificationResult,
         timestamp: new Date().toISOString(),
       });
 
@@ -355,11 +376,11 @@ export default function PresentScreen() {
                   onPress={() => toggleCredential(cred.id)}
                   style={({ pressed }) => ({
                     backgroundColor: colors.surface,
-                    borderRadius: 12,
-                    padding: 16,
-                    marginBottom: 10,
-                    borderWidth: 2,
-                    borderColor: isSelected ? accent : 'transparent',
+                    borderRadius: 18,
+                    borderWidth: isSelected ? 2 : 1,
+                    borderColor: isSelected ? accent : colors.border,
+                    padding: isSelected ? 17 : 18,
+                    marginBottom: 12,
                     opacity: pressed ? 0.8 : 1,
                   })}
                   accessibilityLabel={`${isSelected ? 'Deselect' : 'Select'} ${cred.typeName} from ${cred.issuerName}`}
@@ -413,9 +434,9 @@ export default function PresentScreen() {
             style={({ pressed }) => ({
               marginTop: 16,
               paddingVertical: 14,
-              borderRadius: 12,
+              borderRadius: 16,
               alignItems: 'center',
-              minHeight: 44,
+              minHeight: 48,
               backgroundColor:
                 selectedIds.length > 0
                   ? colors.primary
@@ -460,16 +481,18 @@ export default function PresentScreen() {
 
             return (
               <View
-                key={`${claim.credentialType}-${claim.key}`}
+                key={`${claim.credentialId}-${claim.key}`}
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   backgroundColor: colors.surface,
-                  borderRadius: 10,
-                  paddingHorizontal: 16,
-                  paddingVertical: 12,
-                  marginBottom: 8,
+                  borderRadius: 16,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  paddingHorizontal: 18,
+                  paddingVertical: 14,
+                  marginBottom: 10,
                 }}
               >
                 <View style={{ flex: 1 }}>
@@ -477,10 +500,9 @@ export default function PresentScreen() {
                     style={{
                       color: colors.foreground,
                       fontSize: 14,
-                      textTransform: 'capitalize',
                     }}
                   >
-                    {claim.key}
+                    {getClaimLabel(claim.key)}
                   </Text>
                   <Text style={{ color: colors.mutedText, fontSize: 11, marginTop: 2 }}>
                     {claim.credentialType}
@@ -491,9 +513,9 @@ export default function PresentScreen() {
                   value={isOn}
                   onValueChange={() => toggleDisclosure(claim.key)}
                   disabled={isRequired}
-                  trackColor={{ false: colors.muted, true: colors.primary }}
-                  thumbColor={colors.foreground}
-                  accessibilityLabel={`${isOn ? 'Hide' : 'Reveal'} ${claim.key}`}
+                  trackColor={{ false: colors.border, true: colors.primary }}
+                  thumbColor="#FFFFFF"
+                  accessibilityLabel={`${isOn ? 'Hide' : 'Reveal'} ${getClaimLabel(claim.key)}`}
                 />
               </View>
             );
@@ -504,9 +526,9 @@ export default function PresentScreen() {
             style={({ pressed }) => ({
               marginTop: 16,
               paddingVertical: 14,
-              borderRadius: 12,
+              borderRadius: 16,
               alignItems: 'center',
-              minHeight: 44,
+              minHeight: 48,
               backgroundColor: colors.primary,
               opacity: pressed ? 0.85 : 1,
             })}
@@ -550,7 +572,7 @@ export default function PresentScreen() {
       {step === 'result' && (
         <View style={{ marginTop: 48, alignItems: 'center' }}>
           <AnimatedCheck
-            variant={result === 'verified' ? 'success' : 'rejection'}
+            type={result === 'verified' ? 'success' : 'error'}
             size={80}
           />
           <Text
@@ -578,7 +600,7 @@ export default function PresentScreen() {
               : 'The verification was rejected. Please check your credentials.'}
           </Text>
           <Pressable
-            onPress={() => router.replace('/')}
+            onPress={() => router.replace(TABS.HOME)}
             style={({ pressed }) => ({
               backgroundColor: colors.primary,
               opacity: pressed ? 0.85 : 1,
@@ -599,7 +621,7 @@ export default function PresentScreen() {
 
       {step === 'error' && (
         <View style={{ marginTop: 48, alignItems: 'center' }}>
-          <AnimatedCheck variant="rejection" size={80} />
+          <AnimatedCheck type="error" size={80} />
           <Text
             style={{
               color: colors.foreground,
@@ -623,7 +645,7 @@ export default function PresentScreen() {
             {errorMessage}
           </Text>
           <Pressable
-            onPress={() => router.replace('/')}
+            onPress={() => router.replace(TABS.HOME)}
             style={({ pressed }) => ({
               backgroundColor: colors.muted,
               opacity: pressed ? 0.85 : 1,
