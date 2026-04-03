@@ -1,0 +1,6 @@
+documentName,employeeName,employerName,jobTitle,department,annualIncome,monthlySalary,currency,employmentStartDate,employmentEndDate,employeeId,employmentType
+Salary Certificate 2025,Aarav Sharma,Infosys Ltd,Senior Software Engineer,Engineering,1800000,150000,INR,2021-07-01,,INF2021045,Full-time
+Income Certificate,Priya Patel,TCS,Data Analyst,Analytics,1200000,100000,INR,2022-01-15,,TCS2022089,Full-time
+Employment Letter,Rohan Gupta,Wipro,Product Manager,Product,2200000,183333,INR,2020-03-10,,WIP2020112,Full-time
+Internship Certificate,Ananya Singh,Google India,Software Engineering Intern,Engineering,600000,50000,INR,2025-01-06,2025-06-30,GOOG2025INT,Internship
+Salary Slip March 2025,Vikram Reddy,Flipkart,Backend Developer,Engineering,1500000,125000,INR,2023-08-01,,FK2023201,Full-time

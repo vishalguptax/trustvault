@@ -23,7 +23,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const stored = localStorage.getItem('trustvault-theme') as Theme | null;
+    const stored = localStorage.getItem('trustilock-theme') as Theme | null;
     if (stored === 'light' || stored === 'dark') {
       setTheme(stored);
     } else if (window.matchMedia('(prefers-color-scheme: light)').matches) {
@@ -37,7 +37,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const root = document.documentElement;
     root.classList.remove('light', 'dark');
     root.classList.add(theme);
-    localStorage.setItem('trustvault-theme', theme);
+    localStorage.setItem('trustilock-theme', theme);
   }, [theme, mounted]);
 
   function toggleTheme() {

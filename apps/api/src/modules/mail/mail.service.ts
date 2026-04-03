@@ -9,7 +9,7 @@ import {
   passwordResetEmail,
 } from './email-templates';
 
-const DEFAULT_FROM = 'TrustVault <noreply@sandhya.vishalg.in>';
+const DEFAULT_FROM = 'TrustiLock <noreply@sandhya.vishalg.in>';
 
 @Injectable()
 export class MailService {

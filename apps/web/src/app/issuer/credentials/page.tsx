@@ -1,37 +1,32 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { ArrowClockwise } from '@phosphor-icons/react';
-import { api } from '@/lib/api/client';
-import { cn, formatDate } from '@/lib/utils';
+import { ColumnDef } from '@tanstack/react-table';
+import { formatDate } from '@/lib/utils';
 import { StatusBadge } from '@/components/credential/status-badge';
+import { CredentialTypeBadge } from '@/components/credential/credential-type-badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { SearchFilter } from '@/components/ui/search-filter';
+import { DataTable, BulkAction } from '@/components/ui/data-table';
 import { CopyableDid } from '@/components/ui/copyable-did';
 import { trapFocus } from '@/lib/focus-trap';
-
-interface Credential {
-  id: string;
-  type: string;
-  subjectDid: string;
-  issuerDid: string;
-  status: 'active' | 'revoked' | 'suspended' | 'expired';
-  issuedAt: string;
-  claims?: Record<string, string>;
-}
+import { useCredentials, useRevokeCredential } from '@/hooks/use-issuer';
+import type { Credential } from '@/lib/api/issuer';
 
 export default function IssuedCredentialsPage() {
-
-  const [credentials, setCredentials] = useState<Credential[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: credentials = [], isLoading: loading, error: queryError, refetch } = useCredentials();
+  const error = queryError ? (queryError instanceof Error ? queryError.message : 'Failed to fetch credentials') : null;
   const [revokeTarget, setRevokeTarget] = useState<Credential | null>(null);
-  const [revoking, setRevoking] = useState(false);
+  const [bulkRevoking, setBulkRevoking] = useState(false);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'active' | 'revoked' | 'suspended'>('all');
   const [typeFilter, setTypeFilter] = useState('all');
+
+  const revokeCredential = useRevokeCredential();
 
   const statusFilters = ['all', 'active', 'revoked', 'suspended'] as const;
   const typeFilters = ['all', 'Education', 'Income', 'Identity'] as const;
@@ -39,58 +34,115 @@ export default function IssuedCredentialsPage() {
   const filteredCredentials = useMemo(() => {
     const query = search.toLowerCase();
     return credentials.filter((cred) => {
-      const matchesSearch =
-        !query ||
-        cred.type.toLowerCase().includes(query) ||
-        cred.subjectDid.toLowerCase().includes(query);
+      const matchesSearch = !query || cred.type.toLowerCase().includes(query) || cred.subjectDid.toLowerCase().includes(query);
       const matchesFilter = filter === 'all' || cred.status === filter;
       const matchesType = typeFilter === 'all' || cred.type.includes(typeFilter);
       return matchesSearch && matchesFilter && matchesType;
     });
   }, [credentials, search, filter, typeFilter]);
 
-  useEffect(() => {
-    fetchCredentials();
-  }, []);
-
-  async function fetchCredentials() {
-    setLoading(true);
-    try {
-      const data = await api.get<Credential[]>('/issuer/credentials');
-      setCredentials(data);
-      setError(null);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to fetch credentials';
-      setError(message);
-      setCredentials([]);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleRevoke() {
+  function handleRevoke() {
     if (!revokeTarget) return;
-    setRevoking(true);
-    try {
-      await api.post('/status/revoke', { credentialId: revokeTarget.id, reason: 'Revoked by issuer' });
-      toast.success(`Credential ${revokeTarget.id.slice(0, 8)} revoked`);
-      setCredentials((prev) =>
-        prev.map((c) => (c.id === revokeTarget.id ? { ...c, status: 'revoked' as const } : c))
-      );
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to revoke credential';
-      toast.error(message);
-    } finally {
-      setRevoking(false);
-      setRevokeTarget(null);
-    }
+    revokeCredential.mutate(
+      { credentialId: revokeTarget.id, reason: 'Revoked by issuer' },
+      {
+        onSuccess: () => { toast.success(`Credential ${revokeTarget.id.slice(0, 8)} revoked`); setRevokeTarget(null); },
+        onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to revoke credential'),
+      },
+    );
   }
+
+  const columns: ColumnDef<Credential, unknown>[] = useMemo(() => [
+    {
+      id: 'select',
+      header: ({ table }) => (
+        <Checkbox
+          checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')}
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
+    {
+      accessorKey: 'type',
+      header: 'Type',
+      cell: ({ row }) => <CredentialTypeBadge type={row.original.type} />,
+    },
+    {
+      accessorKey: 'subjectDid',
+      header: 'Subject DID',
+      cell: ({ row }) => <CopyableDid did={row.original.subjectDid} />,
+    },
+    {
+      accessorKey: 'issuerDid',
+      header: 'Issuer',
+      cell: ({ row }) => <CopyableDid did={row.original.issuerDid} />,
+    },
+    {
+      accessorKey: 'status',
+      header: 'Status',
+      cell: ({ row }) => <StatusBadge status={row.original.status} />,
+    },
+    {
+      accessorKey: 'issuedAt',
+      header: 'Issued',
+      cell: ({ row }) => <span className="text-xs text-muted-foreground">{formatDate(row.original.issuedAt)}</span>,
+    },
+    {
+      id: 'actions',
+      header: 'Actions',
+      cell: ({ row }) => (
+        <div className="flex items-center gap-1">
+          {row.original.status === 'active' && (
+            <Button variant="outline" size="sm" className="text-xs h-7 px-2.5 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive" onClick={() => setRevokeTarget(row.original)}>Revoke</Button>
+          )}
+        </div>
+      ),
+    },
+  ], [filteredCredentials]);
+
+  const bulkActions: BulkAction[] = [
+    {
+      label: bulkRevoking ? 'Revoking...' : 'Revoke Selected',
+      onClick: async (selectedRows) => {
+        setBulkRevoking(true);
+        const targets = Object.keys(selectedRows)
+          .filter((k) => selectedRows[k])
+          .map((k) => filteredCredentials[parseInt(k)])
+          .filter((c) => c.status === 'active');
+        let successCount = 0;
+        for (const cred of targets) {
+          try {
+            await new Promise<void>((resolve, reject) => {
+              revokeCredential.mutate(
+                { credentialId: cred.id, reason: 'Bulk revoked by issuer' },
+                { onSuccess: () => { successCount++; resolve(); }, onError: reject },
+              );
+            });
+          } catch { /* continue */ }
+        }
+        toast.success(`${successCount} credential(s) revoked`);
+        setBulkRevoking(false);
+      },
+      variant: 'destructive',
+      disabled: bulkRevoking,
+    },
+  ];
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold">Issued Credentials</h2>
-        <Button variant="ghost" size="sm" onClick={fetchCredentials}>
+        <Button variant="ghost" size="sm" onClick={() => refetch()}>
           <ArrowClockwise size={16} weight="duotone" />
           Refresh
         </Button>
@@ -102,9 +154,7 @@ export default function IssuedCredentialsPage() {
             <p className="text-warning text-sm font-medium">API Unavailable</p>
             <p className="text-warning/70 text-xs mt-1">{error}</p>
           </div>
-          <Button variant="link" size="sm" className="text-warning" onClick={fetchCredentials}>
-            Retry
-          </Button>
+          <Button variant="link" size="sm" className="text-warning" onClick={() => refetch()}>Retry</Button>
         </div>
       )}
 
@@ -134,114 +184,23 @@ export default function IssuedCredentialsPage() {
         onClearAll={() => { setFilter('all'); setTypeFilter('all'); setSearch(''); }}
       />
 
-      <div className="bg-card rounded-2xl shadow-[var(--shadow-card)] overflow-hidden">
-        {loading ? (
-          <div className="p-6 space-y-3">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-4 animate-pulse">
-                <div className="h-4 w-28 bg-muted rounded" />
-                <div className="h-4 w-40 bg-muted rounded" />
-                <div className="h-4 w-32 bg-muted rounded" />
-                <div className="h-4 w-16 bg-muted rounded" />
-                <div className="h-4 w-24 bg-muted rounded" />
-                <div className="h-4 w-20 bg-muted rounded" />
-              </div>
-            ))}
-          </div>
-        ) : filteredCredentials.length === 0 ? (
-          <div className="p-12 text-center">
-            <p className="text-muted-foreground text-sm">
-              {credentials.length === 0
-                ? 'No credentials have been issued yet.'
-                : 'No credentials match your search or filter.'}
-            </p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border/50">
-                  <th className="text-left text-xs font-medium text-muted-foreground px-6 py-3">Type</th>
-                  <th className="text-left text-xs font-medium text-muted-foreground px-6 py-3">Subject DID</th>
-                  <th className="text-left text-xs font-medium text-muted-foreground px-6 py-3">Issuer</th>
-                  <th className="text-left text-xs font-medium text-muted-foreground px-6 py-3">Status</th>
-                  <th className="text-left text-xs font-medium text-muted-foreground px-6 py-3">Issued</th>
-                  <th className="text-left text-xs font-medium text-muted-foreground px-6 py-3">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredCredentials.map((cred) => (
-                  <tr
-                    key={cred.id}
-                    className="border-b border-border/50 hover:bg-muted/30 transition-colors"
-                  >
-                    <td className="px-6 py-3">
-                      <CredentialTypeBadge type={cred.type} />
-                    </td>
-                    <td className="px-6 py-3">
-                      <CopyableDid did={cred.subjectDid} />
-                    </td>
-                    <td className="px-6 py-3">
-                      <CopyableDid did={cred.issuerDid} />
-                    </td>
-                    <td className="px-6 py-3">
-                      <StatusBadge status={cred.status} />
-                    </td>
-                    <td className="px-6 py-3">
-                      <span className="text-xs text-muted-foreground">{formatDate(cred.issuedAt)}</span>
-                    </td>
-                    <td className="px-6 py-3">
-                      <div className="flex items-center gap-1">
-                        {cred.status === 'active' && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-xs h-7 px-2.5 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
-                            onClick={() => setRevokeTarget(cred)}
-                          >
-                            Revoke
-                          </Button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+      <div className="glass-card rounded-2xl overflow-hidden">
+        <DataTable
+          columns={columns}
+          data={filteredCredentials}
+          loading={loading}
+          emptyMessage={credentials.length === 0 ? 'No credentials have been issued yet.' : 'No credentials match your search or filter.'}
+          bulkActions={bulkActions}
+        />
       </div>
 
       {/* Revoke Confirmation Dialog */}
       <AnimatePresence>
         {revokeTarget && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-            onClick={() => !revoking && setRevokeTarget(null)}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape' && !revoking) setRevokeTarget(null);
-            }}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="revoke-dialog-title"
-            aria-describedby="revoke-dialog-description"
-            tabIndex={-1}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-card rounded-2xl shadow-[var(--shadow-card)] p-6 max-w-md w-full mx-4"
-              onClick={(e) => e.stopPropagation()}
-              onKeyDown={trapFocus}
-            >
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => !revokeCredential.isPending && setRevokeTarget(null)} onKeyDown={(e) => { if (e.key === 'Escape' && !revokeCredential.isPending) setRevokeTarget(null); }} role="dialog" aria-modal="true" aria-labelledby="revoke-dialog-title" aria-describedby="revoke-dialog-description" tabIndex={-1}>
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="glass-card rounded-2xl p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()} onKeyDown={trapFocus}>
               <h3 id="revoke-dialog-title" className="text-lg font-semibold mb-2">Revoke Credential</h3>
-              <p id="revoke-dialog-description" className="text-sm text-muted-foreground mb-1">
-                Are you sure you want to revoke this credential? This action cannot be undone.
-              </p>
+              <p id="revoke-dialog-description" className="text-sm text-muted-foreground mb-1">Are you sure you want to revoke this credential? This action cannot be undone.</p>
               <div className="bg-muted/50 rounded-lg p-3 my-4">
                 <p className="text-xs text-muted-foreground">Credential ID</p>
                 <p className="text-sm font-mono">{revokeTarget.id}</p>
@@ -249,45 +208,13 @@ export default function IssuedCredentialsPage() {
                 <p className="text-sm">{revokeTarget.type}</p>
               </div>
               <div className="flex items-center justify-end gap-3">
-                <Button
-                  variant="ghost"
-                  onClick={() => setRevokeTarget(null)}
-                  disabled={revoking}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={handleRevoke}
-                  disabled={revoking}
-                >
-                  {revoking ? 'Revoking...' : 'Confirm Revoke'}
-                </Button>
+                <Button variant="ghost" onClick={() => setRevokeTarget(null)} disabled={revokeCredential.isPending}>Cancel</Button>
+                <Button variant="destructive" onClick={handleRevoke} disabled={revokeCredential.isPending}>{revokeCredential.isPending ? 'Revoking...' : 'Confirm Revoke'}</Button>
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
     </div>
-  );
-}
-
-function CredentialTypeBadge({ type }: { type: string }) {
-  const safeType = type ?? '';
-  const isEducation = safeType.includes('Education');
-  const isIncome = safeType.includes('Income');
-  const displayName = safeType.replace('Verifiable', '').replace('Credential', '').trim() || 'Unknown';
-
-  return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium',
-        isEducation && 'bg-credential-education/10 text-credential-education',
-        isIncome && 'bg-credential-income/10 text-credential-income',
-        !isEducation && !isIncome && 'bg-credential-identity/10 text-credential-identity'
-      )}
-    >
-      {displayName}
-    </span>
   );
 }

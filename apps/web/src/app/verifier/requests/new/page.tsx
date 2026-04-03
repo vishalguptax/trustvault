@@ -4,11 +4,13 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api/client';
+import { API_BASE_URL } from '@/lib/constants';
 import { Check, Copy, ShareNetwork } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { schemaTypeToAccent, getAccentStyles } from '@/lib/credential-styles';
 import { QRDisplay } from '@/components/qr/qr-display';
+import { useSchemas } from '@/hooks/use-issuer';
 
 interface SchemaDefinition {
   id: string;
@@ -23,7 +25,7 @@ interface PolicyDefinition {
   description: string;
 }
 
-const FALLBACK_SCHEMAS: SchemaDefinition[] = [
+const SIMPLE_FALLBACK_SCHEMAS: SchemaDefinition[] = [
   {
     id: 'education',
     type: 'VerifiableEducationCredential',
@@ -73,7 +75,6 @@ const FALLBACK_POLICIES: PolicyDefinition[] = [
 
 export default function NewVerificationRequestPage() {
   const [step, setStep] = useState(1);
-  const [schemas, setSchemas] = useState<SchemaDefinition[]>(FALLBACK_SCHEMAS);
   const [policies] = useState<PolicyDefinition[]>(FALLBACK_POLICIES);
 
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
@@ -86,26 +87,16 @@ export default function NewVerificationRequestPage() {
   const [verificationResult, setVerificationResult] = useState<{ status: 'verified' | 'rejected'; completedAt: string } | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
 
-  useEffect(() => {
-    async function fetchSchemas() {
-      try {
-        const data = await api.get<SchemaDefinition[]>('/issuer/schemas');
-        if (data && data.length > 0) {
-          setSchemas(data);
-        }
-      } catch {
-        // Use fallback
-      }
-    }
-    fetchSchemas();
-  }, []);
+  const { data: fetchedSchemas } = useSchemas();
+  const schemas: SchemaDefinition[] = fetchedSchemas && fetchedSchemas.length > 0
+    ? fetchedSchemas.map((s) => ({ id: s.id, type: s.type, name: s.name, claims: s.claims.map((c) => ({ key: c.key, label: c.label })) }))
+    : SIMPLE_FALLBACK_SCHEMAS;
 
   // SSE: Connect to real-time stream when QR is displayed
   useEffect(() => {
     if (step !== 4 || !requestId) return;
 
-    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-    const es = new EventSource(`${apiBase}/verifier/presentations/${requestId}/stream`);
+    const es = new EventSource(`${API_BASE_URL}/verifier/presentations/${requestId}/stream`);
     eventSourceRef.current = es;
 
     es.onmessage = (event) => {
@@ -270,7 +261,7 @@ export default function NewVerificationRequestPage() {
                 const styles = getAccentStyles(accentKey);
                 const currentClaims = selectedClaims[schema.type] ?? [];
                 return (
-                  <div key={schema.id} className="bg-card rounded-2xl shadow-[var(--shadow-card)] p-6">
+                  <div key={schema.id} className="glass-card rounded-2xl p-6">
                     <h3 className={cn('font-semibold mb-4', styles.text)}>{schema.name}</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {schema.claims.map((claim) => {
@@ -363,10 +354,10 @@ export default function NewVerificationRequestPage() {
           <motion.div key="step4" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center">
             {!verificationResult ? (
               <>
-                <div className="bg-card rounded-2xl shadow-[var(--shadow-card)] p-8 w-full max-w-md mx-auto">
+                <div className="glass-card rounded-2xl p-8 w-full max-w-md mx-auto">
                   <h3 className="text-lg font-semibold text-center mb-2">Waiting for Credential</h3>
                   <p className="text-sm text-muted-foreground text-center mb-6">
-                    Scan this QR code with TrustVault Wallet to present credentials
+                    Scan this QR code with TrustiLock Wallet to present credentials
                   </p>
                   <QRDisplay value={requestUri} size={280} waiting />
                   <div className="flex items-center justify-center gap-2 mt-4 text-xs text-muted-foreground">
@@ -424,7 +415,7 @@ export default function NewVerificationRequestPage() {
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="bg-card rounded-2xl shadow-[var(--shadow-card)] p-8 w-full max-w-md mx-auto text-center"
+                className="glass-card rounded-2xl p-8 w-full max-w-md mx-auto text-center"
               >
                 <div className={cn(
                   'w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4',

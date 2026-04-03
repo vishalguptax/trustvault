@@ -70,7 +70,7 @@ export function QrDisplay({ value, size = 200, label }: QrDisplayProps) {
                 letterSpacing: 1,
               }}
             >
-              TRUSTVAULT
+              TRUSTILOCK
             </Text>
           </View>
         </View>

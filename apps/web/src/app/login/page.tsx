@@ -6,7 +6,8 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Envelope, Sun, Moon, ShieldCheck } from '@phosphor-icons/react';
+import { Envelope, Sun, Moon } from '@phosphor-icons/react';
+import { TrustiLockLogo } from '@/components/ui/trustilock-logo';
 import { useAuthStore, ROLE_REDIRECTS } from '@/lib/auth/auth-store';
 import { useTheme } from '@/components/layout/theme-provider';
 import { Button } from '@/components/ui/button';
@@ -51,14 +52,14 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-background relative">
       {/* Header */}
       <header className="flex items-center justify-between px-6 py-4">
         <Link href="/" className="flex items-center gap-2.5">
           <div className="w-9 h-9 bg-primary/15 rounded-xl flex items-center justify-center ring-1 ring-primary/20">
-            <ShieldCheck size={20} className="text-primary" weight="fill" />
+            <TrustiLockLogo size={22} className="text-primary" />
           </div>
-          <span className="font-semibold text-sm tracking-tight">TrustVault</span>
+          <span className="font-semibold text-sm tracking-tight">TrustiLock</span>
         </Link>
         <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
           {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
@@ -66,13 +67,13 @@ export default function LoginPage() {
       </header>
 
       <div className="flex-1 flex items-center justify-center px-4">
-      <div className="w-full max-w-sm bg-card rounded-2xl shadow-[var(--shadow-card)] p-8">
+      <div className="w-full max-w-sm glass-card rounded-2xl p-8">
         <div className="flex flex-col items-center mb-8">
           <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center mb-5">
-            <ShieldCheck size={28} className="text-primary" weight="fill" />
+            <TrustiLockLogo size={30} className="text-primary" />
           </div>
           <h1 className="text-2xl font-bold">Welcome back</h1>
-          <p className="text-muted-foreground text-sm mt-2">Sign in to your TrustVault account</p>
+          <p className="text-muted-foreground text-sm mt-2">Sign in to your TrustiLock account</p>
         </div>
 
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">

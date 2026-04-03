@@ -101,6 +101,16 @@ export class IssuerController {
     return { data: result };
   }
 
+  @Get('offers')
+  @Roles('issuer', 'admin')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List all credential offers' })
+  @ApiResponse({ status: 200, description: 'List of credential offers with status and URIs' })
+  async listOffers() {
+    const offers = await this.issuerService.listOffers();
+    return { data: offers };
+  }
+
   @Get('schemas')
   @Public()
   @ApiOperation({ summary: 'List credential schemas' })

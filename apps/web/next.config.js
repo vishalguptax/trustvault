@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ['@trustvault/shared'],
+  transpilePackages: ['@trustilock/shared'],
   eslint: {
     ignoreDuringBuilds: true,
   },

@@ -1,0 +1,6 @@
+{
+  "enabledPlugins": {
+    "expo@expo-plugins": true,
+    "fullstack-dev-skills@fullstack-dev-skills": true
+  }
+}

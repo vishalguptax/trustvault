@@ -59,7 +59,7 @@ async function bootstrap() {
   // --- Swagger ---
   const port = process.env.PORT || 8000;
   const config = new DocumentBuilder()
-    .setTitle('TrustVault API')
+    .setTitle('TrustiLock API')
     .setDescription(
       'Verifiable Credential ecosystem — issuer, wallet, verifier, trust registry.\n\n' +
       '**Protocols:** OID4VCI, OID4VP, SD-JWT-VC, Bitstring Status List\n\n' +
@@ -67,7 +67,7 @@ async function bootstrap() {
     )
     .setVersion('0.1.0')
     .addBearerAuth()
-    .addServer(`http://localhost:${port}`, 'Local development')
+    .addServer(process.env.API_BASE_URL || `http://localhost:${port}`, 'Local development')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
@@ -80,7 +80,7 @@ async function bootstrap() {
   await app.listen(port, '0.0.0.0');
 
   logger.log('===========================================');
-  logger.log(`  TrustVault API v0.1.0`);
+  logger.log(`  TrustiLock API v0.1.0`);
   logger.log(`  Environment: ${process.env.NODE_ENV || 'development'}`);
   logger.log(`  Port: ${port}`);
   logger.log(`  Database: connected`);

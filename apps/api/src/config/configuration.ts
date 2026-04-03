@@ -16,7 +16,7 @@ export const configuration = () => ({
     statusListSize: parseInt(process.env.STATUS_LIST_SIZE || '131072', 10),
   },
   jwt: {
-    secret: process.env.JWT_SECRET || 'trustvault-dev-secret-change-in-production',
+    secret: process.env.JWT_SECRET || 'trustilock-dev-secret-change-in-production',
     accessExpiry: process.env.JWT_ACCESS_EXPIRY || '15m',
     refreshExpiry: process.env.JWT_REFRESH_EXPIRY || '7d',
   },

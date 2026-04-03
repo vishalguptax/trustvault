@@ -37,7 +37,7 @@ interface CredentialStore {
   _hasHydrated: boolean;
 }
 
-const STORAGE_KEY = 'trustvault_credentials';
+const STORAGE_KEY = 'trustilock_credentials';
 
 /**
  * Storage adapter — uses expo-secure-store on native (encrypted),

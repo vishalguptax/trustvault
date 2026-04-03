@@ -1,94 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { GraduationCap, CurrencyDollar, IdentificationCard, LockOpen, Lock } from '@phosphor-icons/react';
-import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
-
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { schemaTypeToAccent, getAccentStyles } from '@/lib/credential-styles';
-
-interface ClaimDefinition {
-  key: string;
-  label: string;
-  type: 'string' | 'number' | 'date' | 'boolean';
-  required: boolean;
-  selectivelyDisclosable: boolean;
-}
-
-interface Schema {
-  id: string;
-  type: string;
-  name: string;
-  description: string;
-  claims: ClaimDefinition[];
-}
-
-const FALLBACK_SCHEMAS: Schema[] = [
-  {
-    id: 'education',
-    type: 'VerifiableEducationCredential',
-    name: 'Education Credential',
-    description: 'Academic credentials such as degrees, diplomas, and certificates.',
-    claims: [
-      { key: 'documentName', label: 'Document Name', type: 'string', required: true, selectivelyDisclosable: false },
-      { key: 'candidateName', label: 'Candidate Name', type: 'string', required: true, selectivelyDisclosable: false },
-      { key: 'institutionName', label: 'Issuing Organization', type: 'string', required: true, selectivelyDisclosable: false },
-      { key: 'degree', label: 'Degree / Certificate Title', type: 'string', required: false, selectivelyDisclosable: false },
-      { key: 'fieldOfStudy', label: 'Field of Study', type: 'string', required: false, selectivelyDisclosable: true },
-      { key: 'graduationDate', label: 'Date of Completion', type: 'date', required: false, selectivelyDisclosable: true },
-      { key: 'gpa', label: 'GPA / CGPA', type: 'number', required: false, selectivelyDisclosable: true },
-      { key: 'percentage', label: 'Percentage', type: 'number', required: false, selectivelyDisclosable: true },
-      { key: 'grade', label: 'Grade', type: 'string', required: false, selectivelyDisclosable: true },
-      { key: 'studentId', label: 'Student / Roll Number', type: 'string', required: false, selectivelyDisclosable: true },
-      { key: 'semester', label: 'Semester / Year', type: 'string', required: false, selectivelyDisclosable: true },
-      { key: 'boardName', label: 'Board / University Name', type: 'string', required: false, selectivelyDisclosable: false },
-      { key: 'registrationNumber', label: 'Registration Number', type: 'string', required: false, selectivelyDisclosable: true },
-    ],
-  },
-  {
-    id: 'income',
-    type: 'VerifiableIncomeCredential',
-    name: 'Income Credential',
-    description: 'Income and employment verification credentials.',
-    claims: [
-      { key: 'documentName', label: 'Document Name', type: 'string', required: true, selectivelyDisclosable: false },
-      { key: 'employeeName', label: 'Employee Name', type: 'string', required: true, selectivelyDisclosable: false },
-      { key: 'employerName', label: 'Issuing Organization', type: 'string', required: true, selectivelyDisclosable: false },
-      { key: 'jobTitle', label: 'Job Title / Designation', type: 'string', required: false, selectivelyDisclosable: true },
-      { key: 'department', label: 'Department', type: 'string', required: false, selectivelyDisclosable: true },
-      { key: 'annualIncome', label: 'Annual Income', type: 'number', required: false, selectivelyDisclosable: true },
-      { key: 'monthlySalary', label: 'Monthly Salary', type: 'number', required: false, selectivelyDisclosable: true },
-      { key: 'currency', label: 'Currency', type: 'string', required: false, selectivelyDisclosable: false },
-      { key: 'employmentStartDate', label: 'Employment Start Date', type: 'date', required: false, selectivelyDisclosable: true },
-      { key: 'employmentEndDate', label: 'Employment End Date', type: 'date', required: false, selectivelyDisclosable: true },
-      { key: 'employeeId', label: 'Employee ID', type: 'string', required: false, selectivelyDisclosable: true },
-      { key: 'employmentType', label: 'Employment Type', type: 'string', required: false, selectivelyDisclosable: true },
-    ],
-  },
-  {
-    id: 'identity',
-    type: 'VerifiableIdentityCredential',
-    name: 'Identity Credential',
-    description: 'Government-backed identity verification credentials.',
-    claims: [
-      { key: 'documentName', label: 'Document Name', type: 'string', required: true, selectivelyDisclosable: false },
-      { key: 'fullName', label: 'Full Name', type: 'string', required: true, selectivelyDisclosable: false },
-      { key: 'dateOfBirth', label: 'Date of Birth', type: 'date', required: false, selectivelyDisclosable: true },
-      { key: 'nationality', label: 'Nationality', type: 'string', required: false, selectivelyDisclosable: true },
-      { key: 'documentNumber', label: 'Document Number', type: 'string', required: false, selectivelyDisclosable: true },
-      { key: 'address', label: 'Address', type: 'string', required: false, selectivelyDisclosable: true },
-      { key: 'gender', label: 'Gender', type: 'string', required: false, selectivelyDisclosable: true },
-      { key: 'issuingAuthority', label: 'Issuing Authority', type: 'string', required: false, selectivelyDisclosable: false },
-      { key: 'validUntil', label: 'Valid Until', type: 'date', required: false, selectivelyDisclosable: true },
-      { key: 'placeOfBirth', label: 'Place of Birth', type: 'string', required: false, selectivelyDisclosable: true },
-      { key: 'fatherName', label: "Father's Name", type: 'string', required: false, selectivelyDisclosable: true },
-      { key: 'bloodGroup', label: 'Blood Group', type: 'string', required: false, selectivelyDisclosable: true },
-    ],
-  },
-];
+import { useSchemas, useIssuerAuthorization } from '@/hooks/use-issuer';
+import { FALLBACK_SCHEMAS } from '@/lib/schema-fallbacks';
 
 const schemaIcons: Record<string, React.ReactNode> = {
   VerifiableEducationCredential: <GraduationCap size={24} weight="duotone" />,
@@ -97,44 +16,12 @@ const schemaIcons: Record<string, React.ReactNode> = {
 };
 
 export default function IssuerSchemasPage() {
-  const [schemas, setSchemas] = useState<Schema[]>(FALLBACK_SCHEMAS);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [authorizedTypes, setAuthorizedTypes] = useState<string[]>([]);
+  const { data: fetchedSchemas, isLoading: loading, error: queryError, refetch } = useSchemas();
+  const { data: authorization } = useIssuerAuthorization();
+  const error = queryError ? (queryError instanceof Error ? queryError.message : 'Failed to fetch schemas') : null;
 
-  useEffect(() => {
-    async function fetchAuthorization() {
-      try {
-        const result = await api.get<{ authorized: boolean; credentialTypes: string[] }>('/trust/issuers/me');
-        if (result.authorized && result.credentialTypes.length > 0) {
-          setAuthorizedTypes(result.credentialTypes);
-        }
-      } catch {
-        // If fetch fails, show all schemas
-      }
-    }
-    fetchAuthorization();
-  }, []);
-
-  async function fetchSchemas() {
-    setLoading(true);
-    try {
-      const data = await api.get<Schema[]>('/issuer/schemas');
-      if (data && data.length > 0) {
-        setSchemas(data);
-      }
-      setError(null);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to fetch schemas';
-      setError(message);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    fetchSchemas();
-  }, []);
+  const schemas = fetchedSchemas && fetchedSchemas.length > 0 ? fetchedSchemas : FALLBACK_SCHEMAS;
+  const authorizedTypes = authorization?.authorized ? authorization.credentialTypes : [];
 
   return (
     <div>
@@ -146,7 +33,7 @@ export default function IssuerSchemasPage() {
             <p className="text-warning text-sm font-medium">API Unavailable</p>
             <p className="text-warning/70 text-xs mt-1">{error}. Showing default schemas.</p>
           </div>
-          <Button variant="link" size="sm" className="text-warning flex-shrink-0 ml-4" onClick={fetchSchemas}>
+          <Button variant="link" size="sm" className="text-warning flex-shrink-0 ml-4" onClick={() => refetch()}>
             Retry
           </Button>
         </div>
@@ -155,7 +42,7 @@ export default function IssuerSchemasPage() {
       {loading ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="bg-card rounded-2xl shadow-[var(--shadow-card)] p-6 animate-pulse">
+            <div key={i} className="glass-card rounded-2xl p-6 animate-pulse">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 bg-muted rounded-lg" />
                 <div className="h-5 w-32 bg-muted rounded" />
@@ -184,8 +71,8 @@ export default function IssuerSchemasPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
                 className={cn(
-                  'bg-card rounded-2xl shadow-[var(--shadow-card)] overflow-hidden hover:shadow-lg transition-all relative',
-                  isUnauthorized && 'opacity-50'
+                  'glass-card rounded-2xl overflow-hidden hover:shadow-lg transition-all relative',
+                  isUnauthorized && 'opacity-50',
                 )}
               >
                 {isUnauthorized && (

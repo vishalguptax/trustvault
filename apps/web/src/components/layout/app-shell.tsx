@@ -5,8 +5,9 @@ import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import {
   Sun, Moon, List, CaretLeft, SquaresFour, Plus, File, FileText,
-  CheckCircle, Shield, Users, UserPlus, SignOut, FileArrowUp,
+  CheckCircle, Shield, Users, UserPlus, SignOut, FileArrowUp, QrCode,
 } from '@phosphor-icons/react';
+import { TrustiLockLogo } from '@/components/ui/trustilock-logo';
 import { cn } from '@/lib/utils';
 import { useTheme } from './theme-provider';
 import { useAuthStore } from '@/lib/auth/auth-store';
@@ -26,6 +27,7 @@ const roleConfig = {
       { label: 'Dashboard', href: '/issuer', icon: <SquaresFour size={20} /> },
       { label: 'New Offer', href: '/issuer/offers/new', icon: <Plus size={20} /> },
       { label: 'Bulk Issue', href: '/issuer/offers/batch', icon: <FileArrowUp size={20} /> },
+      { label: 'Offers', href: '/issuer/offers', icon: <QrCode size={20} /> },
       { label: 'Credentials', href: '/issuer/credentials', icon: <File size={20} /> },
       { label: 'Schemas', href: '/issuer/schemas', icon: <FileText size={20} /> },
     ],
@@ -62,7 +64,7 @@ export function AppShell({ role, children }: AppShellProps) {
   const config = roleConfig[role];
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen overflow-hidden relative">
       {/* Mobile overlay */}
       {mobileOpen && (
         <div
@@ -74,7 +76,7 @@ export function AppShell({ role, children }: AppShellProps) {
       {/* Sidebar */}
       <aside
         className={cn(
-          'bg-card shadow-[var(--shadow-card)] flex flex-col transition-all duration-300',
+          'glass-sidebar flex flex-col transition-all duration-300',
           'fixed inset-y-0 left-0 z-50 md:relative md:translate-x-0',
           mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
           collapsed ? 'w-16' : 'w-60'
@@ -86,11 +88,11 @@ export function AppShell({ role, children }: AppShellProps) {
         <div className="h-14 flex items-center px-4">
           <Link href="/" className="flex items-center gap-2 overflow-hidden">
             <div className="w-8 h-8 bg-primary/20 rounded-lg flex items-center justify-center flex-shrink-0">
-              <span className="text-primary text-sm font-bold">TV</span>
+              <TrustiLockLogo size={20} className="text-primary" />
             </div>
             {!collapsed && (
               <span className="text-foreground font-semibold text-sm whitespace-nowrap">
-                TrustVault
+                TrustiLock
               </span>
             )}
           </Link>
@@ -145,9 +147,9 @@ export function AppShell({ role, children }: AppShellProps) {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto" aria-label={`${config.label} content`}>
+      <main className="flex-1 overflow-y-auto relative z-[1]" aria-label={`${config.label} content`}>
         {/* Header */}
-        <header className="h-14 shadow-sm flex items-center justify-between px-4 md:px-6 bg-card/80 backdrop-blur-sm sticky top-0 z-10">
+        <header className="h-14 glass-header flex items-center justify-between px-4 md:px-6 sticky top-0 z-10">
           <div className="flex items-center gap-3">
             <Button
               variant="ghost"

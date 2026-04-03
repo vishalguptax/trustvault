@@ -1,0 +1,6 @@
+documentName,candidateName,institutionName,degree,fieldOfStudy,graduationDate,gpa,percentage,grade,studentId,semester,boardName,registrationNumber
+B.Tech Computer Science,Aarav Sharma,IIT Delhi,Bachelor of Technology,Computer Science,2025-06-15,8.9,,A+,CS2021001,8th Semester,IIT Delhi,REG2021001
+B.Sc Mathematics,Priya Patel,Delhi University,Bachelor of Science,Mathematics,2025-05-20,9.2,91.5,A,MA2021042,,Delhi University,REG2021042
+MBA Finance,Rohan Gupta,IIM Ahmedabad,Master of Business Administration,Finance,2024-12-10,8.5,,A,MBA2022018,4th Semester,IIM Ahmedabad,REG2022018
+12th Board Certificate,Ananya Singh,CBSE,Higher Secondary,,2025-03-30,,95.6,A1,12345678,,CBSE,CBSE2025012
+B.Com Honours,Vikram Reddy,Christ University,Bachelor of Commerce,Accounting & Finance,2025-04-01,8.1,81.2,A,BC2022099,6th Semester,Bangalore University,REG2022099

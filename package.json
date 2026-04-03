@@ -1,23 +1,23 @@
 {
-  "name": "trustvault",
+  "name": "trustilock",
   "version": "0.1.0",
   "private": true,
   "description": "Verifiable Credential ecosystem prototype — issuer, wallet, verifier, trust registry",
   "scripts": {
-    "dev": "turbo dev --filter=@trustvault/api --filter=@trustvault/web --filter=@trustvault/mobile",
-    "dev:api": "turbo dev --filter=@trustvault/api",
-    "dev:web": "turbo dev --filter=@trustvault/web",
-    "dev:mobile": "turbo dev --filter=@trustvault/mobile",
+    "dev": "turbo dev --filter=@trustilock/api --filter=@trustilock/web --filter=@trustilock/mobile",
+    "dev:api": "turbo dev --filter=@trustilock/api",
+    "dev:web": "turbo dev --filter=@trustilock/web",
+    "dev:mobile": "turbo dev --filter=@trustilock/mobile",
     "dev:all": "turbo dev",
     "build": "turbo build",
-    "test": "turbo test --filter=@trustvault/api",
-    "test:e2e": "turbo test:e2e --filter=@trustvault/api",
+    "test": "turbo test --filter=@trustilock/api",
+    "test:e2e": "turbo test:e2e --filter=@trustilock/api",
     "lint": "turbo lint",
     "clean": "turbo clean",
     "start": "node tools/dev.mjs",
-    "build:mobile:dev": "pnpm --filter @trustvault/mobile build:dev",
-    "build:mobile:preview": "pnpm --filter @trustvault/mobile build:preview",
-    "build:mobile:prod": "pnpm --filter @trustvault/mobile build:prod"
+    "build:mobile:dev": "pnpm --filter @trustilock/mobile build:dev",
+    "build:mobile:preview": "pnpm --filter @trustilock/mobile build:preview",
+    "build:mobile:prod": "pnpm --filter @trustilock/mobile build:prod"
   },
   "devDependencies": {
     "@swc/core": "^1.15.21",
@@ -31,9 +31,5 @@
   "engines": {
     "node": ">=20.0.0"
   },
-  "dependencies": {
-    "expo": "~55.0.9",
-    "react": "19.2.0",
-    "react-native": "0.83.4"
-  }
+  "dependencies": {}
 }

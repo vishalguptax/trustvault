@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# WSL Setup Script for TrustVault Mobile Local Builds
+# WSL Setup Script for TrustiLock Mobile Local Builds
 # =============================================================================
 #
 # Prerequisites:
@@ -17,7 +17,7 @@
 set -e
 
 echo ""
-echo "=== TrustVault WSL Build Environment Setup ==="
+echo "=== TrustiLock WSL Build Environment Setup ==="
 echo ""
 
 # Node.js 20 LTS
@@ -102,7 +102,7 @@ PROFILE="$HOME/.bashrc"
 if ! grep -q "ANDROID_HOME" "$PROFILE" 2>/dev/null; then
   cat >> "$PROFILE" << 'ENVBLOCK'
 
-# Android SDK (added by TrustVault setup)
+# Android SDK (added by TrustiLock setup)
 export ANDROID_HOME="$HOME/android-sdk"
 export ANDROID_SDK_ROOT="$ANDROID_HOME"
 export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"

@@ -1,5 +1,6 @@
 import { View, Text, TextInput, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { TrustiLockLogo } from '@/components/trustilock-logo';
 import { useRouter, Link } from 'expo-router';
 import { useState, useCallback, useRef } from 'react';
 import { useAuth } from '@/lib/auth/auth-context';
@@ -51,10 +52,10 @@ export default function RegisterScreen() {
             backgroundColor: `${colors.primary}14`,
             alignItems: 'center', justifyContent: 'center', marginBottom: 24,
           }}>
-            <Ionicons name="shield-checkmark" size={32} color={colors.primary} />
+            <TrustiLockLogo size={40} color={colors.primary} />
           </View>
           <Text style={{ color: colors.foreground, fontSize: 30, fontWeight: '800', letterSpacing: -0.5 }}>Create Account</Text>
-          <Text style={{ color: colors.mutedText, fontSize: 15, marginTop: 8, lineHeight: 22 }}>Set up your TrustVault wallet</Text>
+          <Text style={{ color: colors.mutedText, fontSize: 15, marginTop: 8, lineHeight: 22 }}>Set up your TrustiLock wallet</Text>
         </View>
 
         {/* Error */}

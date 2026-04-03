@@ -2,7 +2,7 @@ import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 
 const TAG = '[TokenStore]';
-const REFRESH_TOKEN_KEY = 'trustvault_refresh_token';
+const REFRESH_TOKEN_KEY = 'trustilock_refresh_token';
 
 export async function getRefreshToken(): Promise<string | null> {
   if (Platform.OS === 'web') return null;

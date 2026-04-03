@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * TrustVault Dev CLI
+ * TrustiLock Dev CLI
  *
  * Launches all services in separate Windows Terminal tabs with a
  * status dashboard in the main terminal.
@@ -33,7 +33,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SERVICES = {
   api: {
     name: 'API Server',
-    pkg: '@trustvault/api',
+    pkg: '@trustilock/api',
     port: 8000,
     cmd: 'dev',
     color: 'green',
@@ -41,7 +41,7 @@ const SERVICES = {
   },
   web: {
     name: 'Web Dashboard',
-    pkg: '@trustvault/web',
+    pkg: '@trustilock/web',
     port: 3000,
     cmd: 'dev',
     color: 'cyan',
@@ -49,7 +49,7 @@ const SERVICES = {
   },
   mobile: {
     name: 'Mobile Wallet',
-    pkg: '@trustvault/mobile',
+    pkg: '@trustilock/mobile',
     port: 5000,
     cmd: 'dev',
     color: 'yellow',
@@ -362,7 +362,7 @@ async function commandLoop(servicesToShow) {
 function showBanner() {
   console.log('');
   console.log(`  ${c.cyan}${c.bold}┌─────────────────────────────────┐${c.reset}`);
-  console.log(`  ${c.cyan}${c.bold}│     TrustVault Dev CLI          │${c.reset}`);
+  console.log(`  ${c.cyan}${c.bold}│     TrustiLock Dev CLI          │${c.reset}`);
   console.log(`  ${c.cyan}${c.bold}│     ${c.reset}${c.dim}verifiable credentials${c.reset}${c.cyan}${c.bold}       │${c.reset}`);
   console.log(`  ${c.cyan}${c.bold}└─────────────────────────────────┘${c.reset}`);
   console.log('');

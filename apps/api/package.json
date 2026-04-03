@@ -1,5 +1,5 @@
 {
-  "name": "@trustvault/api",
+  "name": "@trustilock/api",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -29,7 +29,7 @@
     "@sd-jwt/sd-jwt-vc": "^0.7.0",
     "@sd-jwt/types": "^0.7.0",
     "@sd-jwt/utils": "^0.7.0",
-    "@trustvault/shared": "workspace:^",
+    "@trustilock/shared": "workspace:^",
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.0",
     "class-validator": "^0.14.0",

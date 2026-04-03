@@ -161,43 +161,43 @@ const verifierPolicies = [
 // ============================================
 const users = [
   {
-    email: 'admin@trustvault.dev',
+    email: 'admin@trustilock.dev',
     password: 'Admin@123456',
-    name: 'TrustVault Admin',
+    name: 'TrustiLock Admin',
     role: 'admin',
   },
   {
-    email: 'issuer@trustvault.dev',
+    email: 'issuer@trustilock.dev',
     password: 'Issuer@123456',
     name: 'National Technical University',
     role: 'issuer',
   },
   {
-    email: 'issuer2@trustvault.dev',
+    email: 'issuer2@trustilock.dev',
     password: 'Issuer@123456',
     name: 'Apex Financial Services',
     role: 'issuer',
   },
   {
-    email: 'verifier@trustvault.dev',
+    email: 'verifier@trustilock.dev',
     password: 'Verifier@123456',
     name: 'HomeFirst Finance',
     role: 'verifier',
   },
   {
-    email: 'verifier2@trustvault.dev',
+    email: 'verifier2@trustilock.dev',
     password: 'Verifier@123456',
     name: 'ClearHire Background Checks',
     role: 'verifier',
   },
   {
-    email: 'holder@trustvault.dev',
+    email: 'holder@trustilock.dev',
     password: 'Holder@123456',
     name: 'Sandhya Sharma',
     role: 'holder',
   },
   {
-    email: 'holder2@trustvault.dev',
+    email: 'holder2@trustilock.dev',
     password: 'Holder@123456',
     name: 'Raj Patel',
     role: 'holder',
@@ -536,7 +536,7 @@ function buildAuditLogs() {
 // Seed Runner
 // ============================================
 async function seed() {
-  console.log('=== TrustVault Seed ===\n');
+  console.log('=== TrustiLock Seed ===\n');
 
   // --- Schemas ---
   console.log('Seeding credential schemas...');
@@ -634,13 +634,13 @@ async function seed() {
 
   // --- Wallet Credentials (real SD-JWT-VCs for holder dashboard) ---
   console.log('\nSeeding wallet credentials...');
-  const holderUser = await prisma.user.findUnique({ where: { email: 'holder@trustvault.dev' } });
-  const holder2User = await prisma.user.findUnique({ where: { email: 'holder2@trustvault.dev' } });
+  const holderUser = await prisma.user.findUnique({ where: { email: 'holder@trustilock.dev' } });
+  const holder2User = await prisma.user.findUnique({ where: { email: 'holder2@trustilock.dev' } });
 
   if (holderUser) {
     const existingWalletCreds = await prisma.walletCredential.count({ where: { holderId: holderUser.id } });
     if (existingWalletCreds > 0) {
-      console.log(`  ~ holder@trustvault.dev already has ${existingWalletCreds} credentials — skipping`);
+      console.log(`  ~ holder@trustilock.dev already has ${existingWalletCreds} credentials — skipping`);
     } else {
       const now = Date.now();
       const DAY = 86400000;
@@ -664,7 +664,7 @@ async function seed() {
             isPrimary: true,
           },
         });
-        console.log(`  + WalletDid for holder@trustvault.dev`);
+        console.log(`  + WalletDid for holder@trustilock.dev`);
       }
 
       // Store issuer DIDs + keys so verification can resolve them
@@ -779,7 +779,7 @@ async function seed() {
             expiresAt: def.expiresAt,
           },
         });
-        console.log(`  + ${def.credentialType} → holder@trustvault.dev (real SD-JWT-VC)`);
+        console.log(`  + ${def.credentialType} → holder@trustilock.dev (real SD-JWT-VC)`);
       }
     }
   }
@@ -787,7 +787,7 @@ async function seed() {
   if (holder2User) {
     const existingWalletCreds = await prisma.walletCredential.count({ where: { holderId: holder2User.id } });
     if (existingWalletCreds > 0) {
-      console.log(`  ~ holder2@trustvault.dev already has ${existingWalletCreds} credentials — skipping`);
+      console.log(`  ~ holder2@trustilock.dev already has ${existingWalletCreds} credentials — skipping`);
     } else {
       const now = Date.now();
       const DAY = 86400000;
@@ -845,7 +845,7 @@ async function seed() {
           expiresAt: new Date(now + 350 * DAY),
         },
       });
-      console.log(`  + VerifiableEducationCredential → holder2@trustvault.dev (real SD-JWT-VC)`);
+      console.log(`  + VerifiableEducationCredential → holder2@trustilock.dev (real SD-JWT-VC)`);
     }
   }
 

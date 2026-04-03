@@ -16,7 +16,7 @@ import { ApiKeyGuard } from './guards/api-key.guard';
       useFactory: (configService: ConfigService) => ({
         secret: configService.get<string>(
           'JWT_SECRET',
-          'trustvault-dev-secret-change-in-production',
+          'trustilock-dev-secret-change-in-production',
         ),
         signOptions: { expiresIn: '15m' },
       }),

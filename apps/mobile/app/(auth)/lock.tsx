@@ -203,7 +203,7 @@ export default function LockScreen() {
         style={{ color: colors.foreground, fontSize: 22, fontWeight: '700', marginBottom: 8 }}
         accessibilityRole="header"
       >
-        Unlock TrustVault
+        Unlock TrustiLock
       </Text>
       <Text style={{ color: colors.mutedText, fontSize: 14, marginBottom: 32 }}>
         Enter your 4-digit PIN

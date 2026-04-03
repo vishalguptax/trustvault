@@ -1,19 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
 import { Users, ShieldCheck, Clock, PenNib, LockKey } from '@phosphor-icons/react';
-import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-
-interface Policy {
-  id: string;
-  name: string;
-  description: string;
-  enabled: boolean;
-}
+import { usePolicies, useTogglePolicy } from '@/hooks/use-verifier';
+import type { Policy } from '@/lib/api/verifier';
 
 const FALLBACK_POLICIES: Policy[] = [
   {
@@ -65,49 +59,37 @@ function PolicyIcon({ policyId }: { policyId: string }) {
 }
 
 export default function PoliciesPage() {
-  const [policies, setPolicies] = useState<Policy[]>(FALLBACK_POLICIES);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: fetchedPolicies, isLoading: loading, error: queryError, refetch } = usePolicies();
+  const error = queryError ? (queryError instanceof Error ? queryError.message : 'Failed to fetch policies') : null;
+  const togglePolicy = useTogglePolicy();
 
-  async function fetchPolicies() {
-    setLoading(true);
-    try {
-      const data = await api.get<Policy[]>('/verifier/policies');
-      if (data && data.length > 0) {
-        setPolicies(data);
-      }
-      setError(null);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to fetch policies';
-      setError(message);
-    } finally {
-      setLoading(false);
-    }
-  }
+  // Use fetched policies or fallback
+  const [localPolicies, setLocalPolicies] = useState<Policy[]>(FALLBACK_POLICIES);
 
   useEffect(() => {
-    fetchPolicies();
-  }, []);
+    if (fetchedPolicies && fetchedPolicies.length > 0) {
+      setLocalPolicies(fetchedPolicies);
+    }
+  }, [fetchedPolicies]);
 
-  async function togglePolicy(policyId: string) {
-    const policy = policies.find((p) => p.id === policyId);
-    if (!policy) return;
-
+  function handleToggle(policy: Policy) {
     // Optimistic update
-    setPolicies((prev) =>
-      prev.map((p) => (p.id === policyId ? { ...p, enabled: !p.enabled } : p))
+    setLocalPolicies((prev) =>
+      prev.map((p) => (p.id === policy.id ? { ...p, enabled: !p.enabled } : p)),
     );
 
-    try {
-      await api.put(`/verifier/policies/${policyId}`, { enabled: !policy.enabled });
-      toast.success(`Policy "${policy.name}" ${policy.enabled ? 'disabled' : 'enabled'}`);
-    } catch {
-      // Revert on error
-      setPolicies((prev) =>
-        prev.map((p) => (p.id === policyId ? { ...p, enabled: policy.enabled } : p))
-      );
-      toast.error('Failed to update policy');
-    }
+    togglePolicy.mutate(
+      { id: policy.id, enabled: !policy.enabled },
+      {
+        onSuccess: () => toast.success(`Policy "${policy.name}" ${policy.enabled ? 'disabled' : 'enabled'}`),
+        onError: () => {
+          setLocalPolicies((prev) =>
+            prev.map((p) => (p.id === policy.id ? { ...p, enabled: policy.enabled } : p)),
+          );
+          toast.error('Failed to update policy');
+        },
+      },
+    );
   }
 
   return (
@@ -123,12 +105,7 @@ export default function PoliciesPage() {
             <p className="text-warning text-sm font-medium">API Unavailable</p>
             <p className="text-warning/70 text-xs mt-1">{error}. Showing default policies.</p>
           </div>
-          <Button
-            variant="link"
-            size="sm"
-            className="text-warning"
-            onClick={fetchPolicies}
-          >
+          <Button variant="link" size="sm" className="text-warning" onClick={() => refetch()}>
             Retry
           </Button>
         </div>
@@ -137,7 +114,7 @@ export default function PoliciesPage() {
       {loading ? (
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="bg-card rounded-2xl shadow-[var(--shadow-card)] p-5 animate-pulse">
+            <div key={i} className="glass-card rounded-2xl p-5 animate-pulse">
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 bg-muted rounded-lg" />
                 <div className="flex-1 space-y-2">
@@ -151,13 +128,13 @@ export default function PoliciesPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {policies.map((policy, index) => (
+          {localPolicies.map((policy, index) => (
             <motion.div
               key={policy.id}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
-              className="bg-card rounded-2xl shadow-[var(--shadow-card)] p-5 hover:shadow-lg transition-all"
+              className="glass-card rounded-2xl p-5 hover:shadow-lg transition-all"
             >
               <div className="flex items-center gap-4">
                 <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center', policy.enabled ? 'bg-info/10 text-info' : 'bg-muted text-muted-foreground')}>
@@ -172,10 +149,10 @@ export default function PoliciesPage() {
                   </p>
                 </div>
                 <button
-                  onClick={() => togglePolicy(policy.id)}
+                  onClick={() => handleToggle(policy)}
                   className={cn(
                     'relative w-12 h-6 rounded-full transition-colors flex-shrink-0 cursor-pointer focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none',
-                    policy.enabled ? 'bg-info' : 'bg-muted'
+                    policy.enabled ? 'bg-info' : 'bg-muted',
                   )}
                   role="switch"
                   aria-checked={policy.enabled}
@@ -184,7 +161,7 @@ export default function PoliciesPage() {
                   <div
                     className={cn(
                       'absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform',
-                      policy.enabled ? 'translate-x-6' : 'translate-x-0.5'
+                      policy.enabled ? 'translate-x-6' : 'translate-x-0.5',
                     )}
                   />
                 </button>

@@ -35,8 +35,8 @@ export function StatCard({ label, value, icon, trend, accentColor = 'primary', c
   return (
     <div
       className={cn(
-        'bg-card rounded-2xl p-5 relative overflow-hidden group',
-        'shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)]',
+        'glass-card rounded-2xl p-5 relative overflow-hidden group',
+        'hover:shadow-[var(--shadow-card-hover)]',
         'border border-border/50 transition-all duration-300 ease-out',
         'hover:-translate-y-0.5',
         hoverBorder,
@@ -86,7 +86,7 @@ export function StatCard({ label, value, icon, trend, accentColor = 'primary', c
 
 export function StatCardSkeleton() {
   return (
-    <div className="bg-card rounded-2xl p-5 animate-pulse shadow-[var(--shadow-card)] border border-border/50 h-full">
+    <div className="glass-card rounded-2xl p-5 animate-pulse border border-border/50 h-full">
       <div className="flex items-start justify-between">
         <div className="space-y-2">
           <div className="h-4 w-24 bg-muted rounded" />

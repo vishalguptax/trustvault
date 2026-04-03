@@ -4,13 +4,13 @@ This file provides guidance to Claude Code when working with code in this reposi
 
 ## Project Overview
 
-TrustVault is a Verifiable Credential ecosystem prototype — issuer, wallet, verifier, trust registry. Zero budget, milestone-based execution.
+TrustiLock is a Verifiable Credential ecosystem prototype — issuer, wallet, verifier, trust registry. Zero budget, milestone-based execution.
 
 - **Backend:** Modular NestJS monolith with Prisma + MongoDB Atlas
 - **Mobile Wallet:** React Native + Expo (phone app — QR scanning, credential storage)
 - **Web Portals:** Next.js + shadcn/ui (Issuer, Verifier, Trust Admin dashboards)
 
-**Key docs:** `TRUSTVAULT_ROADMAP.md`, `TRUSTVAULT_EXECUTION_PLAN.md`, `TRUSTVAULT_FRONTEND_PLAN.md`, `TRUSTVAULT_ONBOARDING.md`
+**Key docs:** `docs/planning/TRUSTILOCK_ROADMAP.md`, `docs/planning/TRUSTILOCK_EXECUTION_PLAN.md`, `docs/planning/TRUSTILOCK_FRONTEND_PLAN.md`, `docs/setup/TRUSTILOCK_ONBOARDING.md`
 
 ## Common Commands
 
@@ -109,7 +109,7 @@ These rules override defaults. Apply to every response, every file, every change
 - **RESTful conventions.** GET for reads, POST for creates/actions, PUT for updates, DELETE for removes.
 - **Swagger decorators on every endpoint.** Use `@ApiTags`, `@ApiOperation`, `@ApiResponse` from `@nestjs/swagger`.
 - **Consistent response shapes.** Success: `{ data, message? }`. Error: `{ error, statusCode, message }`.
-- **Verify against the API contracts** in `TRUSTVAULT_EXECUTION_PLAN.md` Section 3 before implementing any endpoint.
+- **Verify against the API contracts** in `docs/planning/TRUSTILOCK_EXECUTION_PLAN.md` Section 3 before implementing any endpoint.
 
 ### VC/Crypto Standards
 
@@ -145,13 +145,13 @@ These rules override defaults. Apply to every response, every file, every change
 - **Do not launch agents for work you can do directly.**
 - **One milestone at a time.** Do not implement multiple milestones in parallel.
 - **When blocked, ask.** Do not burn tokens exploring when a question to the user resolves it faster.
-- **Read the execution plan first.** Before implementing any module, read the relevant section in `TRUSTVAULT_EXECUTION_PLAN.md`.
+- **Read the execution plan first.** Before implementing any module, read the relevant section in `docs/planning/TRUSTILOCK_EXECUTION_PLAN.md`.
 
 ---
 
 ## Milestone Reference
 
-### Backend (see `TRUSTVAULT_EXECUTION_PLAN.md`)
+### Backend (see `docs/planning/TRUSTILOCK_EXECUTION_PLAN.md`)
 ```
 M1: Foundation     → Monorepo, Prisma+MongoDB, DID module, Crypto module
 M2: Issuer         → OID4VCI endpoints, SD-JWT-VC issuance
@@ -161,7 +161,7 @@ M5: E2E            → Wire all modules, 5 test scenarios, seed data
 M6: Demo Ready     → Swagger, Postman, Docker Compose, README
 ```
 
-### Frontend (see `TRUSTVAULT_FRONTEND_PLAN.md`)
+### Frontend (see `docs/planning/TRUSTILOCK_FRONTEND_PLAN.md`)
 ```
 FM1: Foundation    → Expo + Next.js setup, design system, shared types
 FM2: Mobile Wallet → Dashboard, receive, present, consent, QR scanning

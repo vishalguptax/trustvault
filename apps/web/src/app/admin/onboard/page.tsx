@@ -7,8 +7,9 @@ import { z } from 'zod';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { UserPlus, Check, Copy, Envelope } from '@phosphor-icons/react';
-import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { useOnboardUser } from '@/hooks/use-trust';
+import type { OnboardResult } from '@/lib/api/trust';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -35,16 +36,10 @@ const ROLES = [
   { value: 'verifier', label: 'Verifier' },
 ] as const;
 
-interface OnboardResult {
-  user: { email: string; name: string; role: string };
-  temporaryPassword: string;
-  did: string | null;
-  issuer: Record<string, unknown> | null;
-}
-
 export default function OnboardPage() {
   const [result, setResult] = useState<OnboardResult | null>(null);
   const [copied, setCopied] = useState(false);
+  const onboardUser = useOnboardUser();
 
   const form = useForm<OnboardValues>({
     resolver: zodResolver(onboardSchema),
@@ -53,28 +48,36 @@ export default function OnboardPage() {
 
   const selectedRole = form.watch('role');
 
-  async function onSubmit(values: OnboardValues) {
-    try {
-      const payload: Record<string, unknown> = {
-        name: values.name,
-        email: values.email,
-        role: values.role,
-      };
+  function onSubmit(values: OnboardValues) {
+    const payload: {
+      name: string;
+      email: string;
+      role: string;
+      credentialTypes?: string[];
+      description?: string;
+    } = {
+      name: values.name,
+      email: values.email,
+      role: values.role,
+    };
 
-      if (values.role === 'issuer') {
-        if (values.credentialTypes) {
-          payload.credentialTypes = values.credentialTypes.split(',').map((s) => s.trim()).filter(Boolean);
-        }
-        if (values.description) payload.description = values.description;
+    if (values.role === 'issuer') {
+      if (values.credentialTypes) {
+        payload.credentialTypes = values.credentialTypes.split(',').map((s) => s.trim()).filter(Boolean);
       }
-
-      const data = await api.post<OnboardResult>('/trust/onboard', payload);
-      setResult(data);
-      toast.success(`${values.role === 'issuer' ? 'Issuer' : 'Verifier'} onboarded successfully`);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to onboard user';
-      toast.error(message);
+      if (values.description) payload.description = values.description;
     }
+
+    onboardUser.mutate(payload, {
+      onSuccess: (data) => {
+        setResult(data);
+        toast.success(`${values.role === 'issuer' ? 'Issuer' : 'Verifier'} onboarded successfully`);
+      },
+      onError: (err) => {
+        const message = err instanceof Error ? err.message : 'Failed to onboard user';
+        toast.error(message);
+      },
+    });
   }
 
   async function handleCopy() {
@@ -108,7 +111,7 @@ export default function OnboardPage() {
         {!result ? (
           <motion.div key="form" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="mt-6 space-y-5">
-              <div className="bg-card rounded-2xl shadow-[var(--shadow-card)] p-6 space-y-4">
+              <div className="glass-card rounded-2xl p-6 space-y-4">
                 <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Account Details</h3>
 
                 <div className="space-y-2">
@@ -173,15 +176,15 @@ export default function OnboardPage() {
                 </motion.div>
               )}
 
-              <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+              <Button type="submit" className="w-full" disabled={onboardUser.isPending}>
                 <Envelope size={16} className="mr-2" />
-                {form.formState.isSubmitting ? 'Creating account...' : 'Create Account & Send Credentials'}
+                {onboardUser.isPending ? 'Creating account...' : 'Create Account & Send Credentials'}
               </Button>
             </form>
           </motion.div>
         ) : (
           <motion.div key="result" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="mt-6">
-            <div className="bg-card rounded-2xl shadow-[var(--shadow-card)] overflow-hidden">
+            <div className="glass-card rounded-2xl overflow-hidden">
               <div className="bg-success/10 border-b border-success/20 px-6 py-4 flex items-center gap-3">
                 <div className="w-10 h-10 bg-success/20 rounded-full flex items-center justify-center">
                   <Check size={20} className="text-success" weight="bold" />

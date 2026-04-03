@@ -1,25 +1,28 @@
 {
   "expo": {
-    "name": "TrustVault Wallet",
-    "slug": "trustvault-wallet",
+    "name": "TrustiLock Wallet",
+    "slug": "trustilock-wallet",
     "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "scheme": "trustvault",
+    "scheme": "trustilock",
     "userInterfaceStyle": "dark",
     "newArchEnabled": false,
     "splash": {
-      "backgroundColor": "#0B1120"
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0B1628"
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.trustvault.wallet"
+      "bundleIdentifier": "com.trustilock.wallet"
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#0B1120"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0B1628"
       },
-      "package": "com.trustvault.wallet",
+      "package": "com.trustilock.wallet",
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.USE_BIOMETRIC",
@@ -43,14 +46,14 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "TrustVault needs camera access to scan QR codes."
+          "cameraPermission": "TrustiLock needs camera access to scan QR codes."
         }
       ],
       "expo-secure-store",
       [
         "expo-local-authentication",
         {
-          "faceIDPermission": "TrustVault uses Face ID to unlock the wallet."
+          "faceIDPermission": "TrustiLock uses Face ID to unlock the wallet."
         }
       ]
     ],

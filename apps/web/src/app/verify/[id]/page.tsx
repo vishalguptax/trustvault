@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { ShieldCheck, Check, Clock, Warning } from '@phosphor-icons/react';
+import { TrustiLockLogo } from '@/components/ui/trustilock-logo';
+import { API_BASE_URL } from '@/lib/constants';
 import { QRDisplay } from '@/components/qr/qr-display';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -35,8 +37,7 @@ export default function ShareableVerificationPage() {
   useEffect(() => {
     async function fetchDetails() {
       try {
-        const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-        const res = await fetch(`${apiBase}/verifier/presentations/${id}/details`);
+        const res = await fetch(`${API_BASE_URL}/verifier/presentations/${id}/details`);
         if (!res.ok) {
           throw new Error(res.status === 404 ? 'Verification request not found' : 'Failed to load verification request');
         }
@@ -67,7 +68,7 @@ export default function ShareableVerificationPage() {
   if (error || !details) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <div className="bg-card rounded-2xl shadow-[var(--shadow-card)] p-8 max-w-md w-full text-center">
+        <div className="glass-card rounded-2xl p-8 max-w-md w-full text-center">
           <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-4">
             <Warning size={32} className="text-destructive" />
           </div>
@@ -85,12 +86,12 @@ export default function ShareableVerificationPage() {
       {/* Header */}
       <div className="flex items-center gap-2 mb-8">
         <div className="w-8 h-8 bg-primary/20 rounded-lg flex items-center justify-center flex-shrink-0">
-          <span className="text-primary text-sm font-bold">TV</span>
+          <TrustiLockLogo size={20} className="text-primary" />
         </div>
-        <span className="text-foreground font-semibold text-sm">TrustVault</span>
+        <span className="text-foreground font-semibold text-sm">TrustiLock</span>
       </div>
 
-      <div className="bg-card rounded-2xl shadow-[var(--shadow-card)] p-8 max-w-md w-full">
+      <div className="glass-card rounded-2xl p-8 max-w-md w-full">
         {/* Title */}
         <div className="text-center mb-6">
           <div className={cn(
@@ -172,7 +173,7 @@ export default function ShareableVerificationPage() {
               <>
                 <div className="border-t border-border/50 pt-6">
                   <p className="text-sm text-muted-foreground text-center mb-4">
-                    Scan with TrustVault Wallet to present your credentials
+                    Scan with TrustiLock Wallet to present your credentials
                   </p>
                   <QRDisplay value={details.requestUri} size={240} waiting />
                 </div>
@@ -185,7 +186,7 @@ export default function ShareableVerificationPage() {
                       window.location.href = details.requestUri;
                     }}
                   >
-                    Open in TrustVault Wallet
+                    Open in TrustiLock Wallet
                   </Button>
                 </div>
 
@@ -206,7 +207,7 @@ export default function ShareableVerificationPage() {
 
       {/* Footer */}
       <p className="text-xs text-muted-foreground mt-6">
-        Powered by TrustVault — Verifiable Credential Ecosystem
+        Powered by TrustiLock — Verifiable Credential Ecosystem
       </p>
     </div>
   );

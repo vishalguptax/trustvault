@@ -410,6 +410,43 @@ export class IssuerService {
     };
   }
 
+  async listOffers() {
+    const offers = await this.prisma.credentialOffer.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const baseUrl = this.configService.get<string>('issuer.baseUrl');
+
+    return offers.map((offer) => {
+      const claims = offer.claims as Record<string, unknown>;
+      const isExpired = offer.status === 'pending' && new Date() > offer.expiresAt;
+
+      const credentialOfferPayload = {
+        credential_issuer: baseUrl,
+        credential_configuration_ids: [offer.schemaTypeUri],
+        grants: {
+          'urn:ietf:params:oauth:grant-type:pre-authorized_code': {
+            'pre-authorized_code': offer.preAuthorizedCode,
+            user_pin_required: offer.pinRequired,
+          },
+        },
+        subject_did: 'pending',
+      };
+      const credentialOfferUri = `openid-credential-offer://?credential_offer=${encodeURIComponent(JSON.stringify(credentialOfferPayload))}`;
+
+      return {
+        id: offer.id,
+        schemaTypeUri: offer.schemaTypeUri,
+        status: isExpired ? 'expired' : offer.status,
+        claims,
+        credentialOfferUri: (offer.status === 'pending' && !isExpired) ? credentialOfferUri : null,
+        preAuthorizedCode: offer.preAuthorizedCode,
+        createdAt: offer.createdAt,
+        expiresAt: offer.expiresAt,
+      };
+    });
+  }
+
   async listIssuedCredentials(issuerDid?: string) {
     const where = issuerDid ? { issuerDid } : {};
     const credentials = await this.prisma.issuedCredential.findMany({

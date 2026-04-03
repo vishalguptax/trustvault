@@ -1,5 +1,6 @@
 import { View, Text, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { TrustiLockLogo } from '@/components/trustilock-logo';
 import { useRouter } from 'expo-router';
 import { useTheme, cardShadow, cardShadowDark } from '@/lib/theme';
 import { TABS } from '@/lib/routes';
@@ -24,7 +25,7 @@ export function EmptyState() {
           marginBottom: 28,
         }}
       >
-        <Ionicons name="shield-checkmark" size={44} color={colors.primary} />
+        <TrustiLockLogo size={52} color={colors.primary} />
       </View>
       <Text
         style={{

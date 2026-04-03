@@ -9,93 +9,13 @@ import {
 } from '@phosphor-icons/react';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
-import { useAuthStore } from '@/lib/auth/auth-store';
 import { schemaTypeToAccent, getAccentStyles } from '@/lib/credential-styles';
 import { Button } from '@/components/ui/button';
+import { FALLBACK_SCHEMAS } from '@/lib/schema-fallbacks';
+import { useSchemas, useIssuerAuthorization } from '@/hooks/use-issuer';
+import type { Schema } from '@/lib/api/issuer';
 
-/* ------------------------------------------------------------------ */
-/* Schema definitions                                                  */
-/* ------------------------------------------------------------------ */
-
-interface SchemaDefinition {
-  id: string;
-  type: string;
-  name: string;
-  description: string;
-  claims: ClaimDefinition[];
-}
-
-interface ClaimDefinition {
-  key: string;
-  label: string;
-  type: 'string' | 'number' | 'date' | 'boolean';
-  required: boolean;
-  selectivelyDisclosable: boolean;
-}
-
-const FALLBACK_SCHEMAS: SchemaDefinition[] = [
-  {
-    id: 'education',
-    type: 'VerifiableEducationCredential',
-    name: 'Education Credential',
-    description: 'Issue academic credentials such as degrees, diplomas, and certificates.',
-    claims: [
-      { key: 'documentName', label: 'Document Name', type: 'string', required: true, selectivelyDisclosable: false },
-      { key: 'candidateName', label: 'Candidate Name', type: 'string', required: true, selectivelyDisclosable: false },
-      { key: 'institutionName', label: 'Issuing Organization', type: 'string', required: true, selectivelyDisclosable: false },
-      { key: 'degree', label: 'Degree / Certificate Title', type: 'string', required: false, selectivelyDisclosable: false },
-      { key: 'fieldOfStudy', label: 'Field of Study', type: 'string', required: false, selectivelyDisclosable: true },
-      { key: 'graduationDate', label: 'Date of Completion', type: 'date', required: false, selectivelyDisclosable: true },
-      { key: 'gpa', label: 'GPA / CGPA', type: 'number', required: false, selectivelyDisclosable: true },
-      { key: 'percentage', label: 'Percentage', type: 'number', required: false, selectivelyDisclosable: true },
-      { key: 'grade', label: 'Grade', type: 'string', required: false, selectivelyDisclosable: true },
-      { key: 'studentId', label: 'Student / Roll Number', type: 'string', required: false, selectivelyDisclosable: true },
-      { key: 'semester', label: 'Semester / Year', type: 'string', required: false, selectivelyDisclosable: true },
-      { key: 'boardName', label: 'Board / University Name', type: 'string', required: false, selectivelyDisclosable: false },
-      { key: 'registrationNumber', label: 'Registration Number', type: 'string', required: false, selectivelyDisclosable: true },
-    ],
-  },
-  {
-    id: 'income',
-    type: 'VerifiableIncomeCredential',
-    name: 'Income Credential',
-    description: 'Issue income and employment verification credentials.',
-    claims: [
-      { key: 'documentName', label: 'Document Name', type: 'string', required: true, selectivelyDisclosable: false },
-      { key: 'employeeName', label: 'Employee Name', type: 'string', required: true, selectivelyDisclosable: false },
-      { key: 'employerName', label: 'Issuing Organization', type: 'string', required: true, selectivelyDisclosable: false },
-      { key: 'jobTitle', label: 'Job Title / Designation', type: 'string', required: false, selectivelyDisclosable: true },
-      { key: 'department', label: 'Department', type: 'string', required: false, selectivelyDisclosable: true },
-      { key: 'annualIncome', label: 'Annual Income', type: 'number', required: false, selectivelyDisclosable: true },
-      { key: 'monthlySalary', label: 'Monthly Salary', type: 'number', required: false, selectivelyDisclosable: true },
-      { key: 'currency', label: 'Currency', type: 'string', required: false, selectivelyDisclosable: false },
-      { key: 'employmentStartDate', label: 'Employment Start Date', type: 'date', required: false, selectivelyDisclosable: true },
-      { key: 'employmentEndDate', label: 'Employment End Date', type: 'date', required: false, selectivelyDisclosable: true },
-      { key: 'employeeId', label: 'Employee ID', type: 'string', required: false, selectivelyDisclosable: true },
-      { key: 'employmentType', label: 'Employment Type', type: 'string', required: false, selectivelyDisclosable: true },
-    ],
-  },
-  {
-    id: 'identity',
-    type: 'VerifiableIdentityCredential',
-    name: 'Identity Credential',
-    description: 'Issue government-backed identity verification credentials.',
-    claims: [
-      { key: 'documentName', label: 'Document Name', type: 'string', required: true, selectivelyDisclosable: false },
-      { key: 'fullName', label: 'Full Name', type: 'string', required: true, selectivelyDisclosable: false },
-      { key: 'dateOfBirth', label: 'Date of Birth', type: 'date', required: false, selectivelyDisclosable: true },
-      { key: 'nationality', label: 'Nationality', type: 'string', required: false, selectivelyDisclosable: true },
-      { key: 'documentNumber', label: 'Document Number', type: 'string', required: false, selectivelyDisclosable: true },
-      { key: 'address', label: 'Address', type: 'string', required: false, selectivelyDisclosable: true },
-      { key: 'gender', label: 'Gender', type: 'string', required: false, selectivelyDisclosable: true },
-      { key: 'issuingAuthority', label: 'Issuing Authority', type: 'string', required: false, selectivelyDisclosable: false },
-      { key: 'validUntil', label: 'Valid Until', type: 'date', required: false, selectivelyDisclosable: true },
-      { key: 'placeOfBirth', label: 'Place of Birth', type: 'string', required: false, selectivelyDisclosable: true },
-      { key: 'fatherName', label: "Father's Name", type: 'string', required: false, selectivelyDisclosable: true },
-      { key: 'bloodGroup', label: 'Blood Group', type: 'string', required: false, selectivelyDisclosable: true },
-    ],
-  },
-];
+type SchemaDefinition = Schema;
 
 const schemaIcons: Record<string, React.ReactNode> = {
   VerifiableEducationCredential: <GraduationCap size={32} weight="duotone" />,
@@ -142,43 +62,18 @@ interface BatchResult {
 
 export default function BulkIssuePage() {
   const [step, setStep] = useState(1);
-  const [schemas, setSchemas] = useState<SchemaDefinition[]>(FALLBACK_SCHEMAS);
   const [selectedSchema, setSelectedSchema] = useState<SchemaDefinition | null>(null);
   const [parsedRows, setParsedRows] = useState<Record<string, string>[]>([]);
   const [csvText, setCsvText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [results, setResults] = useState<BatchResult | null>(null);
-  const [authorizedTypes, setAuthorizedTypes] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const user = useAuthStore((s) => s.user);
 
-  useEffect(() => {
-    async function fetchSchemas() {
-      try {
-        const data = await api.get<SchemaDefinition[]>('/issuer/schemas');
-        if (data && data.length > 0) {
-          setSchemas(data);
-        }
-      } catch {
-        // Use fallback schemas
-      }
-    }
-    fetchSchemas();
-  }, []);
+  const { data: fetchedSchemas } = useSchemas();
+  const { data: authorization } = useIssuerAuthorization();
 
-  useEffect(() => {
-    async function fetchAuthorization() {
-      try {
-        const result = await api.get<{ authorized: boolean; credentialTypes: string[]; issuer: { did: string; name: string } | null }>('/trust/issuers/me');
-        if (result.authorized && result.credentialTypes.length > 0) {
-          setAuthorizedTypes(result.credentialTypes);
-        }
-      } catch {
-        // If fetch fails, show all schemas
-      }
-    }
-    fetchAuthorization();
-  }, []);
+  const schemas = fetchedSchemas && fetchedSchemas.length > 0 ? fetchedSchemas : FALLBACK_SCHEMAS;
+  const authorizedTypes = authorization?.authorized ? authorization.credentialTypes : [];
 
   const displaySchemas = authorizedTypes.length > 0
     ? schemas.filter((s) => authorizedTypes.includes(s.type))
@@ -382,7 +277,7 @@ export default function BulkIssuePage() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
           >
-            <div className="bg-card rounded-2xl shadow-[var(--shadow-card)] p-6 space-y-6">
+            <div className="glass-card rounded-2xl p-6 space-y-6">
               <div className="flex items-center gap-3 mb-2">
                 <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center', getAccentStyles(schemaTypeToAccent[selectedSchema.type] ?? 'primary').iconBg)}>
                   {schemaIcons[selectedSchema.type]}
@@ -480,7 +375,7 @@ export default function BulkIssuePage() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
           >
-            <div className="bg-card rounded-2xl shadow-[var(--shadow-card)] p-6">
+            <div className="glass-card rounded-2xl p-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <Table size={20} className="text-muted-foreground" />
@@ -586,7 +481,7 @@ export default function BulkIssuePage() {
             animate={{ opacity: 1, scale: 1 }}
             className="flex flex-col items-center"
           >
-            <div className="bg-card rounded-2xl shadow-[var(--shadow-card)] p-8 w-full max-w-2xl mx-auto">
+            <div className="glass-card rounded-2xl p-8 w-full max-w-2xl mx-auto">
               {/* Summary */}
               <div className="text-center mb-6">
                 <div className={cn(

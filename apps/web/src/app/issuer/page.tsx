@@ -1,32 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'motion/react';
-import { toast } from 'sonner';
 import { File, CheckCircle, XCircle } from '@phosphor-icons/react';
 import { CopyableDid } from '@/components/ui/copyable-did';
-import { api } from '@/lib/api/client';
-import { cn, truncateDid, formatDate } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
 import { StatCard, StatCardSkeleton } from '@/components/dashboard/stat-card';
 import { StatusBadge } from '@/components/credential/status-badge';
+import { CredentialTypeBadge } from '@/components/credential/credential-type-badge';
 import { Button } from '@/components/ui/button';
-
-interface Credential {
-  id: string;
-  type: string;
-  subjectDid: string;
-  issuerDid: string;
-  status: 'active' | 'revoked' | 'suspended' | 'expired';
-  issuedAt: string;
-}
-
-interface IssuerStats {
-  total: number;
-  active: number;
-  revoked: number;
-  recentTrend: Array<{ value: number }>;
-}
+import { useCredentials } from '@/hooks/use-issuer';
 
 function generateMockTrend(base: number): Array<{ value: number }> {
   return Array.from({ length: 7 }, (_, i) => ({
@@ -35,36 +18,11 @@ function generateMockTrend(base: number): Array<{ value: number }> {
 }
 
 export default function IssuerDashboard() {
-  const [credentials, setCredentials] = useState<Credential[]>([]);
-  const [stats, setStats] = useState<IssuerStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: credentials = [], isLoading: loading, error: queryError, refetch } = useCredentials();
+  const error = queryError ? (queryError instanceof Error ? queryError.message : 'Failed to fetch credentials') : null;
 
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        const data = await api.get<Credential[]>('/issuer/credentials');
-        setCredentials(data);
-        const active = data.filter((c) => c.status === 'active').length;
-        const revoked = data.filter((c) => c.status === 'revoked').length;
-        setStats({
-          total: data.length,
-          active,
-          revoked,
-          recentTrend: generateMockTrend(data.length),
-        });
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to fetch credentials';
-        setError(message);
-        // Provide fallback data for demo
-        setStats({ total: 0, active: 0, revoked: 0, recentTrend: [] });
-        setCredentials([]);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchData();
-  }, []);
+  const active = credentials.filter((c) => c.status === 'active').length;
+  const revoked = credentials.filter((c) => c.status === 'revoked').length;
 
   return (
     <div>
@@ -86,27 +44,27 @@ export default function IssuerDashboard() {
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}>
               <StatCard
                 label="Total Issued"
-                value={stats?.total ?? 0}
+                value={credentials.length}
                 icon={<File size={20} weight="duotone" />}
-                trend={stats ? { data: stats.recentTrend, color: 'hsl(174, 58%, 40%)' } : undefined}
+                trend={{ data: generateMockTrend(credentials.length), color: 'hsl(174, 58%, 40%)' }}
                 accentColor="primary"
               />
             </motion.div>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
               <StatCard
                 label="Active"
-                value={stats?.active ?? 0}
+                value={active}
                 icon={<CheckCircle size={20} weight="duotone" />}
-                trend={stats ? { data: generateMockTrend(stats.active), color: 'hsl(160, 60%, 45%)' } : undefined}
+                trend={{ data: generateMockTrend(active), color: 'hsl(160, 60%, 45%)' }}
                 accentColor="success"
               />
             </motion.div>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
               <StatCard
                 label="Revoked"
-                value={stats?.revoked ?? 0}
+                value={revoked}
                 icon={<XCircle size={20} weight="duotone" />}
-                trend={stats ? { data: generateMockTrend(stats.revoked), color: 'hsl(0, 84%, 60%)' } : undefined}
+                trend={{ data: generateMockTrend(revoked), color: 'hsl(0, 84%, 60%)' }}
                 accentColor="destructive"
               />
             </motion.div>
@@ -121,26 +79,7 @@ export default function IssuerDashboard() {
             <p className="text-warning text-sm font-medium">API Unavailable</p>
             <p className="text-warning/70 text-xs mt-1">{error}. Showing empty state.</p>
           </div>
-          <Button
-            variant="link"
-            size="sm"
-            className="text-warning"
-            onClick={() => {
-              setError(null);
-              setLoading(true);
-              api.get<Credential[]>('/issuer/credentials').then((data) => {
-                setCredentials(data);
-                const active = data.filter((c) => c.status === 'active').length;
-                const revoked = data.filter((c) => c.status === 'revoked').length;
-                setStats({ total: data.length, active, revoked, recentTrend: generateMockTrend(data.length) });
-              }).catch((err) => {
-                const message = err instanceof Error ? err.message : 'Failed to fetch credentials';
-                setError(message);
-                setStats({ total: 0, active: 0, revoked: 0, recentTrend: [] });
-                setCredentials([]);
-              }).finally(() => setLoading(false));
-            }}
-          >
+          <Button variant="link" size="sm" className="text-warning" onClick={() => refetch()}>
             Retry
           </Button>
         </div>
@@ -151,7 +90,7 @@ export default function IssuerDashboard() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
-        className="bg-card rounded-2xl shadow-[var(--shadow-card)] overflow-hidden"
+        className="glass-card rounded-2xl overflow-hidden"
       >
         <div className="px-6 py-4 border-b border-border/50 flex items-center justify-between">
           <h3 className="text-lg font-semibold">Recent Issuances</h3>
@@ -216,25 +155,5 @@ export default function IssuerDashboard() {
         )}
       </motion.div>
     </div>
-  );
-}
-
-function CredentialTypeBadge({ type }: { type: string }) {
-  const safeType = type ?? '';
-  const isEducation = safeType.includes('Education');
-  const isIncome = safeType.includes('Income');
-  const displayName = safeType.replace('Verifiable', '').replace('Credential', '').trim() || 'Unknown';
-
-  return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium',
-        isEducation && 'bg-credential-education/10 text-credential-education',
-        isIncome && 'bg-credential-income/10 text-credential-income',
-        !isEducation && !isIncome && 'bg-credential-identity/10 text-credential-identity'
-      )}
-    >
-      {displayName}
-    </span>
   );
 }

@@ -1,5 +1,5 @@
 /**
- * TrustVault Email Templates
+ * TrustiLock Email Templates
  *
  * Professional, trust-focused HTML email templates.
  * All styles are inline for maximum email client compatibility.
@@ -23,7 +23,7 @@ function layout(content: string): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TrustVault</title>
+  <title>TrustiLock</title>
 </head>
 <body style="margin:0;padding:0;background-color:${BRAND.background};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BRAND.background};">
@@ -36,7 +36,7 @@ function layout(content: string): string {
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                 <tr>
                   <td>
-                    <span style="font-size:22px;font-weight:700;color:${BRAND.white};letter-spacing:0.5px;">TrustVault</span>
+                    <span style="font-size:22px;font-weight:700;color:${BRAND.white};letter-spacing:0.5px;">TrustiLock</span>
                   </td>
                   <td align="right">
                     <span style="font-size:12px;color:rgba(255,255,255,0.6);letter-spacing:1px;text-transform:uppercase;">Verifiable Credentials</span>
@@ -55,7 +55,7 @@ function layout(content: string): string {
           <tr>
             <td style="padding:20px 32px;border-top:1px solid ${BRAND.border};background-color:${BRAND.background};">
               <p style="margin:0;font-size:12px;color:${BRAND.textSecondary};line-height:1.5;text-align:center;">
-                This is an automated message from TrustVault. Do not reply to this email.
+                This is an automated message from TrustiLock. Do not reply to this email.
               </p>
             </td>
           </tr>
@@ -79,7 +79,7 @@ function roleLabel(role: string): string {
 
 export function welcomeEmail(params: { name: string; role: string }): { subject: string; html: string } {
   const content = `
-    <h1 style="margin:0 0 8px;font-size:24px;font-weight:700;color:${BRAND.primary};">Welcome to TrustVault</h1>
+    <h1 style="margin:0 0 8px;font-size:24px;font-weight:700;color:${BRAND.primary};">Welcome to TrustiLock</h1>
     <p style="margin:0 0 24px;font-size:15px;color:${BRAND.textSecondary};line-height:1.6;">
       Your account has been created successfully.
     </p>
@@ -93,11 +93,11 @@ export function welcomeEmail(params: { name: string; role: string }): { subject:
       </tr>
     </table>
     <p style="margin:24px 0 0;font-size:14px;color:${BRAND.textSecondary};line-height:1.6;">
-      You can now sign in and start using TrustVault to manage verifiable credentials securely.
+      You can now sign in and start using TrustiLock to manage verifiable credentials securely.
     </p>`;
 
   return {
-    subject: 'Welcome to TrustVault',
+    subject: 'Welcome to TrustiLock',
     html: layout(content),
   };
 }
@@ -133,7 +133,7 @@ export function credentialIssuedEmail(params: {
       </tr>
     </table>
     <p style="margin:24px 0 0;font-size:14px;color:${BRAND.textSecondary};line-height:1.6;">
-      Open TrustVault to view the full credential details and manage selective disclosure settings.
+      Open TrustiLock to view the full credential details and manage selective disclosure settings.
     </p>`;
 
   return {
@@ -190,7 +190,7 @@ export function onboardingEmail(params: {
   loginUrl: string;
 }): { subject: string; html: string } {
   const content = `
-    <h1 style="margin:0 0 8px;font-size:24px;font-weight:700;color:${BRAND.primary};">You have been invited to TrustVault</h1>
+    <h1 style="margin:0 0 8px;font-size:24px;font-weight:700;color:${BRAND.primary};">You have been invited to TrustiLock</h1>
     <p style="margin:0 0 24px;font-size:15px;color:${BRAND.textSecondary};line-height:1.6;">
       An administrator has created a <strong>${roleLabel(params.role)}</strong> account for you. Use the credentials below to sign in.
     </p>
@@ -230,7 +230,7 @@ export function onboardingEmail(params: {
       <tr>
         <td align="center">
           <a href="${params.loginUrl}" style="display:inline-block;background-color:${BRAND.accent};color:${BRAND.white};font-size:15px;font-weight:600;text-decoration:none;padding:12px 32px;border-radius:6px;">
-            Sign In to TrustVault
+            Sign In to TrustiLock
           </a>
         </td>
       </tr>
@@ -240,7 +240,7 @@ export function onboardingEmail(params: {
     </p>`;
 
   return {
-    subject: 'You have been invited to TrustVault',
+    subject: 'You have been invited to TrustiLock',
     html: layout(content),
   };
 }
@@ -278,7 +278,7 @@ export function passwordResetEmail(params: {
     </table>`;
 
   return {
-    subject: 'TrustVault Password Reset Code',
+    subject: 'TrustiLock Password Reset Code',
     html: layout(content),
   };
 }

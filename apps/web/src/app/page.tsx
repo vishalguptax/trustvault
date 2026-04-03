@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { motion } from 'motion/react';
-import { Sun, Moon, ShieldCheck, MagnifyingGlass, Gear, Certificate, ArrowRight } from '@phosphor-icons/react';
+import { Sun, Moon, MagnifyingGlass, Gear, Certificate, ArrowRight } from '@phosphor-icons/react';
+import { TrustiLockLogo } from '@/components/ui/trustilock-logo';
 import { useTheme } from '@/components/layout/theme-provider';
 import { useAuthStore, ROLE_REDIRECTS } from '@/lib/auth/auth-store';
 import { Button } from '@/components/ui/button';
@@ -53,19 +54,14 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen flex flex-col relative overflow-hidden">
-      {/* Background mesh gradient */}
-      <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-info/5 rounded-full blur-3xl" />
-      </div>
 
       {/* Top bar */}
       <header className="relative z-10 flex items-center justify-between px-6 py-4">
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 bg-primary/15 rounded-xl flex items-center justify-center ring-1 ring-primary/20">
-            <ShieldCheck size={20} className="text-primary" weight="fill" />
+            <TrustiLockLogo size={22} className="text-primary" />
           </div>
-          <span className="font-semibold text-sm tracking-tight">TrustVault</span>
+          <span className="font-semibold text-sm tracking-tight">TrustiLock</span>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
@@ -98,7 +94,7 @@ export default function LandingPage() {
           transition={{ delay: 0.2, duration: 0.5 }}
           className="w-16 h-16 bg-gradient-to-br from-primary/25 to-primary/5 rounded-2xl flex items-center justify-center mb-8 ring-1 ring-primary/15"
         >
-          <ShieldCheck size={32} className="text-primary" weight="fill" />
+          <TrustiLockLogo size={36} className="text-primary" />
         </motion.div>
 
         <motion.h1
@@ -134,7 +130,7 @@ export default function LandingPage() {
             <motion.div key={portal.title} variants={itemVariants} className="h-full">
               <Link href={portal.href} className="block h-full group">
                 <div
-                  className={`bg-card border border-border/60 rounded-2xl p-6 transition-all duration-300 h-full shadow-[var(--shadow-card)] group-hover:shadow-[var(--shadow-card-hover)] group-hover:-translate-y-1 ${portal.hoverBorder}`}
+                  className={`glass-card rounded-2xl p-6 transition-all duration-300 h-full group-hover:shadow-[var(--shadow-card-hover)] group-hover:-translate-y-1 ${portal.hoverBorder}`}
                 >
                   <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ring-1 transition-all duration-300 group-hover:ring-2 ${portal.iconBg}`}>
                     {portal.icon}
@@ -161,16 +157,16 @@ export default function LandingPage() {
         className="relative z-10 border-t border-border/60 py-12 px-4 md:px-6"
       >
         <div className="max-w-2xl mx-auto text-center">
-          <h2 className="text-2xl font-semibold mb-3 tracking-tight">TrustVault Wallet</h2>
+          <h2 className="text-2xl font-semibold mb-3 tracking-tight">TrustiLock Wallet</h2>
           <p className="text-muted-foreground mb-6">
             Download Expo Go on your phone and scan the QR code from the development server
-            to run the TrustVault mobile wallet.
+            to run the TrustiLock mobile wallet.
           </p>
           <div className="flex items-center justify-center gap-4">
-            <div className="bg-card border border-border/60 rounded-xl px-4 py-2.5 text-sm text-muted-foreground shadow-[var(--shadow-card)]">
+            <div className="glass-card rounded-xl px-4 py-2.5 text-sm text-muted-foreground">
               iOS: App Store → Expo Go
             </div>
-            <div className="bg-card border border-border/60 rounded-xl px-4 py-2.5 text-sm text-muted-foreground shadow-[var(--shadow-card)]">
+            <div className="glass-card rounded-xl px-4 py-2.5 text-sm text-muted-foreground">
               Android: Play Store → Expo Go
             </div>
           </div>
@@ -178,8 +174,19 @@ export default function LandingPage() {
       </motion.section>
 
       {/* Footer */}
-      <footer className="relative z-10 border-t border-border/60 py-6 px-4 md:px-6 text-center text-muted-foreground text-sm">
-        TrustVault — Verifiable Credential Ecosystem Prototype
+      <footer className="relative z-10 border-t border-border/60 py-6 px-4 md:px-6 text-center text-sm">
+        <p className="text-muted-foreground">TrustiLock — Verifiable Credential Ecosystem Prototype</p>
+        <p className="text-muted-foreground/70 mt-2">
+          Built by{' '}
+          <a
+            href="https://www.linkedin.com/in/sandhya-sharmaaa"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary font-medium hover:underline underline-offset-2"
+          >
+            Sandhya Sharma
+          </a>
+        </p>
       </footer>
     </div>
   );

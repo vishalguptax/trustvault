@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { setAuthHelpers } from '@/lib/api/client';
+import { API_BASE_URL } from '@/lib/constants';
 
 interface User {
   id: string;
@@ -30,10 +31,8 @@ interface AuthState {
   getAccessToken: () => string | null;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-
 async function authFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers: { 'Content-Type': 'application/json', ...options.headers },
   });
@@ -61,7 +60,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   getAccessToken: () => get().accessToken,
 
   init: async () => {
-    const storedRefresh = localStorage.getItem('trustvault-refresh-token');
+    const storedRefresh = localStorage.getItem('trustilock-refresh-token');
     if (!storedRefresh) {
       set({ isLoading: false });
       return;
@@ -75,7 +74,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const user = await authFetch<User>('/auth/me', {
         headers: { Authorization: `Bearer ${tokens.access_token}` },
       });
-      localStorage.setItem('trustvault-refresh-token', tokens.refresh_token);
+      localStorage.setItem('trustilock-refresh-token', tokens.refresh_token);
       set({
         user,
         accessToken: tokens.access_token,
@@ -84,7 +83,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isLoading: false,
       });
     } catch {
-      localStorage.removeItem('trustvault-refresh-token');
+      localStorage.removeItem('trustilock-refresh-token');
       set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false, isLoading: false });
     }
   },
@@ -94,7 +93,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       '/auth/login',
       { method: 'POST', body: JSON.stringify({ email, password }) },
     );
-    localStorage.setItem('trustvault-refresh-token', data.refresh_token);
+    localStorage.setItem('trustilock-refresh-token', data.refresh_token);
     set({
       user: data.user,
       accessToken: data.access_token,
@@ -109,7 +108,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       '/auth/register',
       { method: 'POST', body: JSON.stringify({ email, password, name, role }) },
     );
-    localStorage.setItem('trustvault-refresh-token', data.refresh_token);
+    localStorage.setItem('trustilock-refresh-token', data.refresh_token);
     set({
       user: data.user,
       accessToken: data.access_token,
@@ -131,7 +130,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         // Logout locally even if API call fails
       }
     }
-    localStorage.removeItem('trustvault-refresh-token');
+    localStorage.removeItem('trustilock-refresh-token');
     set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
   },
 }));
@@ -148,7 +147,7 @@ setAuthHelpers(
         method: 'POST',
         body: JSON.stringify({ refresh_token: refreshToken }),
       });
-      localStorage.setItem('trustvault-refresh-token', tokens.refresh_token);
+      localStorage.setItem('trustilock-refresh-token', tokens.refresh_token);
       useAuthStore.setState({
         accessToken: tokens.access_token,
         refreshToken: tokens.refresh_token,
@@ -160,7 +159,7 @@ setAuthHelpers(
   },
   () => {
     // Final fallback: clear auth and redirect to login
-    localStorage.removeItem('trustvault-refresh-token');
+    localStorage.removeItem('trustilock-refresh-token');
     useAuthStore.setState({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
   },
 );

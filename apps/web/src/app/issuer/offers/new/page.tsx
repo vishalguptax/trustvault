@@ -7,103 +7,16 @@ import { z } from 'zod';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { GraduationCap, CurrencyDollar, IdentificationCard, Lock, LockOpen, Check, Plus, Trash } from '@phosphor-icons/react';
-import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
-import { useAuthStore } from '@/lib/auth/auth-store';
 import { schemaTypeToAccent, getAccentStyles } from '@/lib/credential-styles';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { QRDisplay } from '@/components/qr/qr-display';
+import { FALLBACK_SCHEMAS } from '@/lib/schema-fallbacks';
+import { useSchemas, useIssuerAuthorization, useCreateOffer } from '@/hooks/use-issuer';
+import type { Schema, ClaimDefinition } from '@/lib/api/issuer';
 
-/* ------------------------------------------------------------------ */
-/* Schema definitions                                                  */
-/* ------------------------------------------------------------------ */
-
-interface SchemaDefinition {
-  id: string;
-  type: string;
-  name: string;
-  description: string;
-  claims: ClaimDefinition[];
-}
-
-interface ClaimDefinition {
-  key: string;
-  label: string;
-  type: 'string' | 'number' | 'date' | 'boolean';
-  required: boolean;
-  selectivelyDisclosable: boolean;
-}
-
-const FALLBACK_SCHEMAS: SchemaDefinition[] = [
-  {
-    id: 'education',
-    type: 'VerifiableEducationCredential',
-    name: 'Education Credential',
-    description: 'Issue academic credentials such as degrees, diplomas, and certificates.',
-    claims: [
-      // Required — always shown
-      { key: 'documentName', label: 'Document Name', type: 'string', required: true, selectivelyDisclosable: false },
-      { key: 'candidateName', label: 'Candidate Name', type: 'string', required: true, selectivelyDisclosable: false },
-      { key: 'institutionName', label: 'Issuing Organization', type: 'string', required: true, selectivelyDisclosable: false },
-      // Optional — issuer toggles on/off based on document type
-      { key: 'degree', label: 'Degree / Certificate Title', type: 'string', required: false, selectivelyDisclosable: false },
-      { key: 'fieldOfStudy', label: 'Field of Study', type: 'string', required: false, selectivelyDisclosable: true },
-      { key: 'graduationDate', label: 'Date of Completion', type: 'date', required: false, selectivelyDisclosable: true },
-      { key: 'gpa', label: 'GPA / CGPA', type: 'number', required: false, selectivelyDisclosable: true },
-      { key: 'percentage', label: 'Percentage', type: 'number', required: false, selectivelyDisclosable: true },
-      { key: 'grade', label: 'Grade', type: 'string', required: false, selectivelyDisclosable: true },
-      { key: 'studentId', label: 'Student / Roll Number', type: 'string', required: false, selectivelyDisclosable: true },
-      { key: 'semester', label: 'Semester / Year', type: 'string', required: false, selectivelyDisclosable: true },
-      { key: 'boardName', label: 'Board / University Name', type: 'string', required: false, selectivelyDisclosable: false },
-      { key: 'registrationNumber', label: 'Registration Number', type: 'string', required: false, selectivelyDisclosable: true },
-    ],
-  },
-  {
-    id: 'income',
-    type: 'VerifiableIncomeCredential',
-    name: 'Income Credential',
-    description: 'Issue income and employment verification credentials.',
-    claims: [
-      // Required
-      { key: 'documentName', label: 'Document Name', type: 'string', required: true, selectivelyDisclosable: false },
-      { key: 'employeeName', label: 'Employee Name', type: 'string', required: true, selectivelyDisclosable: false },
-      { key: 'employerName', label: 'Issuing Organization', type: 'string', required: true, selectivelyDisclosable: false },
-      // Optional
-      { key: 'jobTitle', label: 'Job Title / Designation', type: 'string', required: false, selectivelyDisclosable: true },
-      { key: 'department', label: 'Department', type: 'string', required: false, selectivelyDisclosable: true },
-      { key: 'annualIncome', label: 'Annual Income', type: 'number', required: false, selectivelyDisclosable: true },
-      { key: 'monthlySalary', label: 'Monthly Salary', type: 'number', required: false, selectivelyDisclosable: true },
-      { key: 'currency', label: 'Currency', type: 'string', required: false, selectivelyDisclosable: false },
-      { key: 'employmentStartDate', label: 'Employment Start Date', type: 'date', required: false, selectivelyDisclosable: true },
-      { key: 'employmentEndDate', label: 'Employment End Date', type: 'date', required: false, selectivelyDisclosable: true },
-      { key: 'employeeId', label: 'Employee ID', type: 'string', required: false, selectivelyDisclosable: true },
-      { key: 'employmentType', label: 'Employment Type', type: 'string', required: false, selectivelyDisclosable: true },
-    ],
-  },
-  {
-    id: 'identity',
-    type: 'VerifiableIdentityCredential',
-    name: 'Identity Credential',
-    description: 'Issue government-backed identity verification credentials.',
-    claims: [
-      // Required
-      { key: 'documentName', label: 'Document Name', type: 'string', required: true, selectivelyDisclosable: false },
-      { key: 'fullName', label: 'Full Name', type: 'string', required: true, selectivelyDisclosable: false },
-      // Optional
-      { key: 'dateOfBirth', label: 'Date of Birth', type: 'date', required: false, selectivelyDisclosable: true },
-      { key: 'nationality', label: 'Nationality', type: 'string', required: false, selectivelyDisclosable: true },
-      { key: 'documentNumber', label: 'Document Number', type: 'string', required: false, selectivelyDisclosable: true },
-      { key: 'address', label: 'Address', type: 'string', required: false, selectivelyDisclosable: true },
-      { key: 'gender', label: 'Gender', type: 'string', required: false, selectivelyDisclosable: true },
-      { key: 'issuingAuthority', label: 'Issuing Authority', type: 'string', required: false, selectivelyDisclosable: false },
-      { key: 'validUntil', label: 'Valid Until', type: 'date', required: false, selectivelyDisclosable: true },
-      { key: 'placeOfBirth', label: 'Place of Birth', type: 'string', required: false, selectivelyDisclosable: true },
-      { key: 'fatherName', label: 'Father\'s Name', type: 'string', required: false, selectivelyDisclosable: true },
-      { key: 'bloodGroup', label: 'Blood Group', type: 'string', required: false, selectivelyDisclosable: true },
-    ],
-  },
-];
+type SchemaDefinition = Schema;
 
 function buildZodSchema(claims: ClaimDefinition[]) {
   const shape: Record<string, z.ZodTypeAny> = {};
@@ -147,43 +60,18 @@ const schemaIcons: Record<string, React.ReactNode> = {
 
 export default function NewOfferPage() {
   const [step, setStep] = useState(1);
-  const [schemas, setSchemas] = useState<SchemaDefinition[]>(FALLBACK_SCHEMAS);
   const [selectedSchema, setSelectedSchema] = useState<SchemaDefinition | null>(null);
   const [offerUri, setOfferUri] = useState<string | null>(null);
   const [expiresAt, setExpiresAt] = useState<Date | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [authorizedTypes, setAuthorizedTypes] = useState<string[]>([]);
   const [enabledOptional, setEnabledOptional] = useState<Set<string>>(new Set());
   const [customFields, setCustomFields] = useState<Array<{ key: string; label: string; value: string }>>([]);
-  const user = useAuthStore((s) => s.user);
 
-  useEffect(() => {
-    async function fetchSchemas() {
-      try {
-        const data = await api.get<SchemaDefinition[]>('/issuer/schemas');
-        if (data && data.length > 0) {
-          setSchemas(data);
-        }
-      } catch {
-        // Use fallback schemas
-      }
-    }
-    fetchSchemas();
-  }, []);
+  const { data: fetchedSchemas } = useSchemas();
+  const { data: authorization } = useIssuerAuthorization();
+  const createOffer = useCreateOffer();
 
-  useEffect(() => {
-    async function fetchAuthorization() {
-      try {
-        const result = await api.get<{ authorized: boolean; credentialTypes: string[]; issuer: { did: string; name: string } | null }>('/trust/issuers/me');
-        if (result.authorized && result.credentialTypes.length > 0) {
-          setAuthorizedTypes(result.credentialTypes);
-        }
-      } catch {
-        // If fetch fails (admin user or no link), show all schemas
-      }
-    }
-    fetchAuthorization();
-  }, []);
+  const schemas = fetchedSchemas && fetchedSchemas.length > 0 ? fetchedSchemas : FALLBACK_SCHEMAS;
+  const authorizedTypes = authorization?.authorized ? authorization.credentialTypes : [];
 
   const displaySchemas = authorizedTypes.length > 0
     ? schemas.filter((s) => authorizedTypes.includes(s.type))
@@ -244,7 +132,7 @@ export default function NewOfferPage() {
     setCustomFields((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
-  async function handleSubmit(values: FormValues) {
+  function handleSubmit(values: FormValues) {
     if (!selectedSchema) return;
 
     // Merge form values + custom fields into a single claims object
@@ -255,22 +143,21 @@ export default function NewOfferPage() {
       }
     }
 
-    setSubmitting(true);
-    try {
-      const response = await api.post<{ offerId: string; credentialOfferUri: string; preAuthorizedCode: string }>('/issuer/offers', {
-        schemaTypeUri: selectedSchema.type,
-        claims,
-      });
-      setOfferUri(response.credentialOfferUri);
-      setExpiresAt(new Date(Date.now() + 10 * 60 * 1000));
-      setStep(3);
-      toast.success('Credential offer created');
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to create offer';
-      toast.error(message);
-    } finally {
-      setSubmitting(false);
-    }
+    createOffer.mutate(
+      { schemaTypeUri: selectedSchema.type, claims },
+      {
+        onSuccess: (response) => {
+          setOfferUri(response.credentialOfferUri);
+          setExpiresAt(new Date(Date.now() + 10 * 60 * 1000));
+          setStep(3);
+          toast.success('Credential offer created');
+        },
+        onError: (err) => {
+          const message = err instanceof Error ? err.message : 'Failed to create offer';
+          toast.error(message);
+        },
+      },
+    );
   }
 
   return (
@@ -393,7 +280,7 @@ export default function NewOfferPage() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
           >
-            <div className="bg-card rounded-2xl shadow-[var(--shadow-card)] p-6">
+            <div className="glass-card rounded-2xl p-6">
               <div className="flex items-center gap-3 mb-6">
                 <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center', getAccentStyles(schemaTypeToAccent[selectedSchema.type] ?? 'primary').iconBg)}>
                   {schemaIcons[selectedSchema.type]}
@@ -494,9 +381,9 @@ export default function NewOfferPage() {
                   </Button>
                   <Button
                     type="submit"
-                    disabled={submitting}
+                    disabled={createOffer.isPending}
                   >
-                    {submitting ? 'Creating...' : 'Generate Offer'}
+                    {createOffer.isPending ? 'Creating...' : 'Generate Offer'}
                   </Button>
                 </div>
               </form>
@@ -518,10 +405,10 @@ export default function NewOfferPage() {
             animate={{ opacity: 1, scale: 1 }}
             className="flex flex-col items-center"
           >
-            <div className="bg-card rounded-2xl shadow-[var(--shadow-card)] p-8 w-full max-w-md mx-auto">
+            <div className="glass-card rounded-2xl p-8 w-full max-w-md mx-auto">
               <h3 className="text-lg font-semibold text-center mb-2">Scan to Receive Credential</h3>
               <p className="text-sm text-muted-foreground text-center mb-6">
-                Open TrustVault Wallet and scan this QR code
+                Open TrustiLock Wallet and scan this QR code
               </p>
 
               <QRDisplay value={offerUri} size={280} waiting />

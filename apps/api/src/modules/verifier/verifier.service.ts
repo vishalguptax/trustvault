@@ -56,8 +56,7 @@ export class VerifierService {
       },
     });
 
-    const port = this.configService.get<number>('port') || 8000;
-    const apiBaseUrl = process.env.API_BASE_URL || `http://localhost:${port}`;
+    const apiBaseUrl = this.configService.get<string>('apiBaseUrl');
     const requestUri = `${apiBaseUrl}/verifier/presentations/${request.id}`;
 
     const uriParams = new URLSearchParams();
@@ -96,7 +95,7 @@ export class VerifierService {
       throw new NotFoundException(`Verification request not found: ${id}`);
     }
 
-    const apiBaseUrl = `${process.env.API_BASE_URL || `http://localhost:${this.configService.get('port') ?? 8000}`}`;
+    const apiBaseUrl = this.configService.get<string>('apiBaseUrl');
     const requestUri = `${apiBaseUrl}/verifier/presentations/${request.id}`;
 
     // Rebuild the openid4vp:// URI for the share page

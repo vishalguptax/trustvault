@@ -1,45 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'motion/react';
 import { Check, X, ArrowLeft } from '@phosphor-icons/react';
-import { api } from '@/lib/api/client';
 import { cn, truncateDid, formatDate } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { VerificationPipeline } from '@/components/verification/pipeline';
 import { schemaTypeToAccent, getAccentStyles } from '@/lib/credential-styles';
-
-interface PipelineCheck {
-  name: string;
-  label: string;
-  passed: boolean;
-}
-
-interface DisclosedClaim {
-  key: string;
-  label: string;
-  value: string;
-}
-
-interface CredentialPresentation {
-  type: string;
-  issuerDid: string;
-  subjectDid: string;
-  disclosedClaims: DisclosedClaim[];
-}
-
-interface VerificationDetail {
-  id: string;
-  result: 'verified' | 'rejected';
-  checks: PipelineCheck[];
-  credentials: CredentialPresentation[];
-  verifierDid: string;
-  nonce: string;
-  timestamp: string;
-  policies: string[];
-}
+import { usePresentation } from '@/hooks/use-verifier';
+import type { VerificationDetail } from '@/lib/api/verifier';
 
 const FALLBACK_DETAIL: VerificationDetail = {
   id: 'demo-result-001',
@@ -73,26 +43,10 @@ export default function VerificationResultDetailPage() {
   const params = useParams();
   const id = params.id as string;
 
-  const [detail, setDetail] = useState<VerificationDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: fetchedDetail, isLoading: loading, error: queryError, refetch } = usePresentation(id);
+  const error = queryError ? (queryError instanceof Error ? queryError.message : 'Failed to fetch result') : null;
 
-  useEffect(() => {
-    async function fetchDetail() {
-      try {
-        const data = await api.get<VerificationDetail>(`/verifier/presentations/${id}`);
-        setDetail(data);
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to fetch result';
-        setError(message);
-        // Use fallback for demo
-        setDetail({ ...FALLBACK_DETAIL, id });
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchDetail();
-  }, [id]);
+  const detail = fetchedDetail ?? (error ? { ...FALLBACK_DETAIL, id } : null);
 
   if (loading) {
     return (
@@ -136,23 +90,7 @@ export default function VerificationResultDetailPage() {
       {error && (
         <div className="bg-warning/10 border border-warning/20 rounded-xl p-3 flex items-center justify-between">
           <p className="text-warning text-xs">{error}. Showing demo data.</p>
-          <Button
-            variant="link"
-            size="sm"
-            className="text-warning"
-            onClick={() => {
-              setError(null);
-              setLoading(true);
-              api.get<VerificationDetail>(`/verifier/presentations/${id}`).then((data) => {
-                setDetail(data);
-                setError(null);
-              }).catch((err) => {
-                const message = err instanceof Error ? err.message : 'Failed to fetch result';
-                setError(message);
-                setDetail({ ...FALLBACK_DETAIL, id });
-              }).finally(() => setLoading(false));
-            }}
-          >
+          <Button variant="link" size="sm" className="text-warning" onClick={() => refetch()}>
             Retry
           </Button>
         </div>
@@ -168,7 +106,7 @@ export default function VerificationResultDetailPage() {
         <motion.div
           className={cn(
             'w-24 h-24 rounded-2xl flex items-center justify-center mb-4',
-            isVerified ? 'bg-success/10 border-2 border-success' : 'bg-destructive/10 border-2 border-destructive'
+            isVerified ? 'bg-success/10 border-2 border-success' : 'bg-destructive/10 border-2 border-destructive',
           )}
           initial={{ rotate: -10 }}
           animate={{ rotate: 0 }}

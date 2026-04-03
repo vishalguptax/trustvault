@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: trustvault-api
+    name: trustilock-api
     runtime: docker
     dockerfilePath: apps/api/Dockerfile
     dockerContext: .

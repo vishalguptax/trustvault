@@ -4,9 +4,9 @@ import * as SecureStore from 'expo-secure-store';
 import * as LocalAuthentication from 'expo-local-authentication';
 
 const TAG = '[LockStore]';
-const MPIN_HASH_KEY = 'trustvault_mpin_hash';
-const LOCK_ENABLED_KEY = 'trustvault_lock_enabled';
-const BIOMETRIC_ENABLED_KEY = 'trustvault_biometric_enabled';
+const MPIN_HASH_KEY = 'trustilock_mpin_hash';
+const LOCK_ENABLED_KEY = 'trustilock_lock_enabled';
+const BIOMETRIC_ENABLED_KEY = 'trustilock_biometric_enabled';
 
 // ── Storage helpers ──────────────────────────────────────────────
 
@@ -108,7 +108,7 @@ export async function isBiometricAvailable(): Promise<boolean> {
 export async function authenticateWithBiometric(): Promise<boolean> {
   if (Platform.OS === 'web') return false;
   const result = await LocalAuthentication.authenticateAsync({
-    promptMessage: 'Unlock TrustVault',
+    promptMessage: 'Unlock TrustiLock',
     cancelLabel: 'Use PIN',
     fallbackLabel: 'Use PIN',
     disableDeviceFallback: false,
