@@ -6,12 +6,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
-import { GraduationCap, CurrencyDollar, IdentificationCard, Lock, LockOpen, Check } from '@phosphor-icons/react';
+import { GraduationCap, CurrencyDollar, IdentificationCard, Lock, LockOpen, Check, Plus, Trash } from '@phosphor-icons/react';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/lib/auth/auth-store';
 import { schemaTypeToAccent, getAccentStyles } from '@/lib/credential-styles';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { QRDisplay } from '@/components/qr/qr-display';
 
 /* ------------------------------------------------------------------ */
@@ -41,13 +42,20 @@ const FALLBACK_SCHEMAS: SchemaDefinition[] = [
     name: 'Education Credential',
     description: 'Issue academic credentials such as degrees, diplomas, and certificates.',
     claims: [
+      // Required — always shown
       { key: 'documentName', label: 'Document Name', type: 'string', required: true, selectivelyDisclosable: false },
       { key: 'institutionName', label: 'Issuing Organization', type: 'string', required: true, selectivelyDisclosable: false },
-      { key: 'degree', label: 'Degree', type: 'string', required: true, selectivelyDisclosable: false },
-      { key: 'fieldOfStudy', label: 'Field of Study', type: 'string', required: true, selectivelyDisclosable: true },
-      { key: 'graduationDate', label: 'Graduation Date', type: 'date', required: true, selectivelyDisclosable: true },
-      { key: 'gpa', label: 'GPA', type: 'number', required: false, selectivelyDisclosable: true },
-      { key: 'studentId', label: 'Student ID', type: 'string', required: false, selectivelyDisclosable: true },
+      // Optional — issuer toggles on/off based on document type
+      { key: 'degree', label: 'Degree / Certificate Title', type: 'string', required: false, selectivelyDisclosable: false },
+      { key: 'fieldOfStudy', label: 'Field of Study', type: 'string', required: false, selectivelyDisclosable: true },
+      { key: 'graduationDate', label: 'Date of Completion', type: 'date', required: false, selectivelyDisclosable: true },
+      { key: 'gpa', label: 'GPA / CGPA', type: 'number', required: false, selectivelyDisclosable: true },
+      { key: 'percentage', label: 'Percentage', type: 'number', required: false, selectivelyDisclosable: true },
+      { key: 'grade', label: 'Grade', type: 'string', required: false, selectivelyDisclosable: true },
+      { key: 'studentId', label: 'Student / Roll Number', type: 'string', required: false, selectivelyDisclosable: true },
+      { key: 'semester', label: 'Semester / Year', type: 'string', required: false, selectivelyDisclosable: true },
+      { key: 'boardName', label: 'Board / University Name', type: 'string', required: false, selectivelyDisclosable: false },
+      { key: 'registrationNumber', label: 'Registration Number', type: 'string', required: false, selectivelyDisclosable: true },
     ],
   },
   {
@@ -56,13 +64,19 @@ const FALLBACK_SCHEMAS: SchemaDefinition[] = [
     name: 'Income Credential',
     description: 'Issue income and employment verification credentials.',
     claims: [
+      // Required
       { key: 'documentName', label: 'Document Name', type: 'string', required: true, selectivelyDisclosable: false },
       { key: 'employerName', label: 'Issuing Organization', type: 'string', required: true, selectivelyDisclosable: false },
-      { key: 'jobTitle', label: 'Job Title', type: 'string', required: true, selectivelyDisclosable: true },
-      { key: 'annualIncome', label: 'Annual Income', type: 'number', required: true, selectivelyDisclosable: true },
-      { key: 'currency', label: 'Currency', type: 'string', required: true, selectivelyDisclosable: false },
-      { key: 'employmentStartDate', label: 'Employment Start Date', type: 'date', required: true, selectivelyDisclosable: true },
+      // Optional
+      { key: 'jobTitle', label: 'Job Title / Designation', type: 'string', required: false, selectivelyDisclosable: true },
+      { key: 'department', label: 'Department', type: 'string', required: false, selectivelyDisclosable: true },
+      { key: 'annualIncome', label: 'Annual Income', type: 'number', required: false, selectivelyDisclosable: true },
+      { key: 'monthlySalary', label: 'Monthly Salary', type: 'number', required: false, selectivelyDisclosable: true },
+      { key: 'currency', label: 'Currency', type: 'string', required: false, selectivelyDisclosable: false },
+      { key: 'employmentStartDate', label: 'Employment Start Date', type: 'date', required: false, selectivelyDisclosable: true },
+      { key: 'employmentEndDate', label: 'Employment End Date', type: 'date', required: false, selectivelyDisclosable: true },
       { key: 'employeeId', label: 'Employee ID', type: 'string', required: false, selectivelyDisclosable: true },
+      { key: 'employmentType', label: 'Employment Type', type: 'string', required: false, selectivelyDisclosable: true },
     ],
   },
   {
@@ -71,13 +85,20 @@ const FALLBACK_SCHEMAS: SchemaDefinition[] = [
     name: 'Identity Credential',
     description: 'Issue government-backed identity verification credentials.',
     claims: [
+      // Required
       { key: 'documentName', label: 'Document Name', type: 'string', required: true, selectivelyDisclosable: false },
       { key: 'fullName', label: 'Full Name', type: 'string', required: true, selectivelyDisclosable: false },
-      { key: 'dateOfBirth', label: 'Date of Birth', type: 'date', required: true, selectivelyDisclosable: true },
-      { key: 'nationality', label: 'Nationality', type: 'string', required: true, selectivelyDisclosable: true },
-      { key: 'documentNumber', label: 'Document Number', type: 'string', required: true, selectivelyDisclosable: true },
+      // Optional
+      { key: 'dateOfBirth', label: 'Date of Birth', type: 'date', required: false, selectivelyDisclosable: true },
+      { key: 'nationality', label: 'Nationality', type: 'string', required: false, selectivelyDisclosable: true },
+      { key: 'documentNumber', label: 'Document Number', type: 'string', required: false, selectivelyDisclosable: true },
       { key: 'address', label: 'Address', type: 'string', required: false, selectivelyDisclosable: true },
       { key: 'gender', label: 'Gender', type: 'string', required: false, selectivelyDisclosable: true },
+      { key: 'issuingAuthority', label: 'Issuing Authority', type: 'string', required: false, selectivelyDisclosable: false },
+      { key: 'validUntil', label: 'Valid Until', type: 'date', required: false, selectivelyDisclosable: true },
+      { key: 'placeOfBirth', label: 'Place of Birth', type: 'string', required: false, selectivelyDisclosable: true },
+      { key: 'fatherName', label: 'Father\'s Name', type: 'string', required: false, selectivelyDisclosable: true },
+      { key: 'bloodGroup', label: 'Blood Group', type: 'string', required: false, selectivelyDisclosable: true },
     ],
   },
 ];
@@ -130,6 +151,8 @@ export default function NewOfferPage() {
   const [expiresAt, setExpiresAt] = useState<Date | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [authorizedTypes, setAuthorizedTypes] = useState<string[]>([]);
+  const [enabledOptional, setEnabledOptional] = useState<Set<string>>(new Set());
+  const [customFields, setCustomFields] = useState<Array<{ key: string; label: string; value: string }>>([]);
   const user = useAuthStore((s) => s.user);
 
   useEffect(() => {
@@ -164,13 +187,17 @@ export default function NewOfferPage() {
     ? schemas.filter((s) => authorizedTypes.includes(s.type))
     : schemas;
 
-  const currentClaims = selectedSchema?.claims ?? [];
-  const zodSchema = buildZodSchema(currentClaims);
+  const allClaims = selectedSchema?.claims ?? [];
+  const requiredClaims = allClaims.filter((c) => c.required);
+  const optionalClaims = allClaims.filter((c) => !c.required);
+  // Active claims = required + enabled optional
+  const activeClaims = [...requiredClaims, ...optionalClaims.filter((c) => enabledOptional.has(c.key))];
+  const zodSchema = buildZodSchema(activeClaims);
   type FormValues = z.infer<typeof zodSchema>;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(zodSchema),
-    defaultValues: currentClaims.reduce<Record<string, string>>((acc, c) => {
+    defaultValues: activeClaims.reduce<Record<string, string>>((acc, c) => {
       acc[c.key] = '';
       return acc;
     }, {}),
@@ -178,23 +205,59 @@ export default function NewOfferPage() {
 
   const handleSchemaSelect = useCallback((schema: SchemaDefinition) => {
     setSelectedSchema(schema);
+    setEnabledOptional(new Set());
+    setCustomFields([]);
     form.reset(
-      (schema.claims ?? []).reduce<Record<string, string>>((acc, c) => {
+      (schema.claims ?? []).filter((c) => c.required).reduce<Record<string, string>>((acc, c) => {
         acc[c.key] = '';
         return acc;
       }, {})
     );
   }, [form]);
 
+  const toggleOptionalField = useCallback((key: string) => {
+    setEnabledOptional((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+        form.unregister(key);
+      } else {
+        next.add(key);
+        form.register(key);
+        form.setValue(key, '');
+      }
+      return next;
+    });
+  }, [form]);
+
+  const addCustomField = useCallback(() => {
+    setCustomFields((prev) => [...prev, { key: '', label: '', value: '' }]);
+  }, []);
+
+  const updateCustomField = useCallback((index: number, field: 'key' | 'label' | 'value', val: string) => {
+    setCustomFields((prev) => prev.map((f, i) => i === index ? { ...f, [field]: val } : f));
+  }, []);
+
+  const removeCustomField = useCallback((index: number) => {
+    setCustomFields((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
   async function handleSubmit(values: FormValues) {
     if (!selectedSchema) return;
+
+    // Merge form values + custom fields into a single claims object
+    const claims: Record<string, unknown> = { ...values };
+    for (const cf of customFields) {
+      if (cf.key.trim()) {
+        claims[cf.key.trim()] = cf.value;
+      }
+    }
 
     setSubmitting(true);
     try {
       const response = await api.post<{ offerId: string; credentialOfferUri: string; preAuthorizedCode: string }>('/issuer/offers', {
         schemaTypeUri: selectedSchema.type,
-        // subjectDid is omitted — the holder DID is resolved server-side during the OID4VCI flow
-        claims: values,
+        claims,
       });
       setOfferUri(response.credentialOfferUri);
       setExpiresAt(new Date(Date.now() + 10 * 60 * 1000));
@@ -339,33 +402,84 @@ export default function NewOfferPage() {
                 </div>
               </div>
 
-              <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-                {currentClaims.map((claim) => (
-                  <div key={claim.key}>
-                    <label className="flex items-center gap-2 text-sm font-medium mb-1.5">
-                      <span>{claim.label}</span>
-                      {claim.required && <span className="text-destructive">*</span>}
-                      <span className="ml-auto" title={claim.selectivelyDisclosable ? 'Selectively disclosable' : 'Always disclosed'}>
-                        {claim.selectivelyDisclosable ? <LockOpen size={14} className="text-primary" /> : <Lock size={14} className="text-muted-foreground" />}
-                      </span>
-                    </label>
-                    <input
-                      type={claim.type === 'date' ? 'date' : claim.type === 'number' ? 'number' : 'text'}
-                      step={claim.type === 'number' ? 'any' : undefined}
-                      {...form.register(claim.key)}
-                      className={cn(
-                        'w-full bg-background border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all',
-                        form.formState.errors[claim.key] ? 'border-destructive' : 'border-border'
-                      )}
-                      placeholder={`Enter ${claim.label.toLowerCase()}`}
-                    />
-                    {form.formState.errors[claim.key] && (
-                      <p className="text-destructive text-xs mt-1">
-                        {form.formState.errors[claim.key]?.message as string}
-                      </p>
-                    )}
+              <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-5">
+                {/* Required Fields */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Required Fields</h4>
+                  {requiredClaims.map((claim) => (
+                    <ClaimInput key={claim.key} claim={claim} form={form} />
+                  ))}
+                </div>
+
+                {/* Optional Fields — toggle on/off */}
+                {optionalClaims.length > 0 && (
+                  <div className="space-y-3 pt-2">
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Optional Fields — select what applies</h4>
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {optionalClaims.map((claim) => (
+                        <button
+                          key={claim.key}
+                          type="button"
+                          onClick={() => toggleOptionalField(claim.key)}
+                          className={cn(
+                            'px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors',
+                            enabledOptional.has(claim.key)
+                              ? 'bg-primary/10 text-primary border-primary/30'
+                              : 'bg-card text-muted-foreground border-border hover:border-primary/30 hover:text-foreground'
+                          )}
+                        >
+                          {claim.label}
+                        </button>
+                      ))}
+                    </div>
+                    {optionalClaims.filter((c) => enabledOptional.has(c.key)).map((claim) => (
+                      <ClaimInput key={claim.key} claim={claim} form={form} />
+                    ))}
                   </div>
-                ))}
+                )}
+
+                {/* Custom Fields */}
+                <div className="space-y-3 pt-2">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Custom Fields</h4>
+                    <button
+                      type="button"
+                      onClick={addCustomField}
+                      className="inline-flex items-center gap-1 text-xs text-primary font-medium hover:underline"
+                    >
+                      <Plus size={12} /> Add Field
+                    </button>
+                  </div>
+                  {customFields.map((cf, index) => (
+                    <div key={index} className="flex gap-2 items-start">
+                      <Input
+                        value={cf.label}
+                        onChange={(e) => {
+                          updateCustomField(index, 'label', e.target.value);
+                          updateCustomField(index, 'key', e.target.value.replace(/\s+/g, '').replace(/^./, (c) => c.toLowerCase()));
+                        }}
+                        placeholder="Field name"
+                        className="w-1/3"
+                      />
+                      <Input
+                        value={cf.value}
+                        onChange={(e) => updateCustomField(index, 'value', e.target.value)}
+                        placeholder="Value"
+                        className="flex-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeCustomField(index)}
+                        className="text-muted-foreground hover:text-destructive shrink-0"
+                        aria-label="Remove field"
+                      >
+                        <Trash size={16} />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
 
                 <div className="flex items-center justify-between pt-4 border-t border-border/50">
                   <Button
@@ -465,6 +579,36 @@ function ExpiryCountdown({ expiresAt }: { expiresAt: Date }) {
         <span>Offer expired. Create a new one.</span>
       ) : (
         <span>Expires in <span className="font-mono font-medium text-foreground">{remaining}</span></span>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Claim Input Field                                                    */
+/* ------------------------------------------------------------------ */
+
+function ClaimInput({ claim, form }: { claim: ClaimDefinition; form: ReturnType<typeof useForm> }) {
+  return (
+    <div className="space-y-2">
+      <label className="flex items-center gap-2 text-sm font-medium">
+        <span>{claim.label}</span>
+        {claim.required && <span className="text-destructive">*</span>}
+        <span className="ml-auto" title={claim.selectivelyDisclosable ? 'Selectively disclosable' : 'Always disclosed'}>
+          {claim.selectivelyDisclosable ? <LockOpen size={14} className="text-primary" /> : <Lock size={14} className="text-muted-foreground" />}
+        </span>
+      </label>
+      <Input
+        type={claim.type === 'date' ? 'date' : claim.type === 'number' ? 'number' : 'text'}
+        step={claim.type === 'number' ? 'any' : undefined}
+        {...form.register(claim.key)}
+        className={form.formState.errors[claim.key] ? 'border-destructive' : ''}
+        placeholder={`Enter ${claim.label.toLowerCase()}`}
+      />
+      {form.formState.errors[claim.key] && (
+        <p className="text-destructive text-xs mt-1">
+          {form.formState.errors[claim.key]?.message as string}
+        </p>
       )}
     </div>
   );
