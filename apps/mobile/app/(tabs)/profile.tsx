@@ -1,4 +1,4 @@
-import { View, Text, Pressable, ScrollView } from 'react-native';
+import { View, Text, Pressable, ScrollView, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useState, useCallback } from 'react';
@@ -188,12 +188,34 @@ export default function ProfileScreen() {
 
       {/* About */}
       <SectionLabel colors={colors}>About</SectionLabel>
-      <View style={{ backgroundColor: colors.surface, borderRadius: 18, marginBottom: 28, overflow: 'hidden', ...shadow }}>
-        <InfoRow label="API Server" value={API_BASE_URL} colors={colors} />
-        <Divider colors={colors} />
+      <View style={{ backgroundColor: colors.surface, borderRadius: 18, marginBottom: 20, overflow: 'hidden', ...shadow }}>
         <InfoRow label="App Version" value="0.1.0" colors={colors} />
         <Divider colors={colors} />
         <InfoRow label="SDK" value="Expo SDK 55" colors={colors} />
+      </View>
+
+      {/* Credits */}
+      <SectionLabel colors={colors}>Credits</SectionLabel>
+      <View style={{ backgroundColor: colors.surface, borderRadius: 18, marginBottom: 28, overflow: 'hidden', ...shadow }}>
+        <View style={{ paddingHorizontal: 18, paddingVertical: 14 }}>
+          <Text style={{ color: colors.mutedText, fontSize: 12, marginBottom: 4 }}>Built by</Text>
+          <Text style={{ color: colors.foreground, fontSize: 15, fontWeight: '600' }}>Sandhya Sharma</Text>
+        </View>
+        <Divider colors={colors} />
+        <Pressable
+          onPress={() => Linking.openURL('https://www.linkedin.com/in/sandhya-sharmaaa')}
+          style={({ pressed }) => ({
+            flexDirection: 'row', alignItems: 'center',
+            paddingHorizontal: 18, paddingVertical: 14,
+            backgroundColor: pressed ? colors.muted : 'transparent',
+          })}
+          accessibilityLabel="Open LinkedIn profile of Sandhya Sharma"
+          accessibilityRole="link"
+        >
+          <Ionicons name="logo-linkedin" size={18} color={colors.info} style={{ marginRight: 12 }} />
+          <Text style={{ color: colors.info, fontSize: 14, fontWeight: '500', flex: 1 }}>LinkedIn</Text>
+          <Ionicons name="open-outline" size={14} color={colors.mutedText} />
+        </Pressable>
       </View>
 
       {/* Sign out */}

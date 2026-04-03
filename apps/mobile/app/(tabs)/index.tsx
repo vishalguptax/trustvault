@@ -97,27 +97,27 @@ export default function WalletHome() {
         }}>
           {/* Dark header zone */}
           <View style={{
-            backgroundColor: isDark ? colors.muted : colors.foreground,
+            backgroundColor: colors.muted,
             paddingHorizontal: 20, paddingTop: 22, paddingBottom: 20,
           }}>
             {/* Greeting + date */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
               <View>
                 <Text style={{
-                  color: isDark ? colors.mutedText : `${colors.bg}AA`,
+                  color: colors.mutedText,
                   fontSize: 13, fontWeight: '500',
                 }}>
                   {getGreeting()},
                 </Text>
                 <Text style={{
-                  color: isDark ? colors.foreground : colors.bg,
+                  color: colors.foreground,
                   fontSize: 24, fontWeight: '700', marginTop: 2, letterSpacing: -0.5,
                 }}>
                   {firstName}
                 </Text>
               </View>
               <Text style={{
-                color: isDark ? colors.mutedText : `${colors.bg}88`,
+                color: colors.mutedText,
                 fontSize: 11, marginTop: 4,
               }}>
                 {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
@@ -127,7 +127,7 @@ export default function WalletHome() {
             {/* Stats row inside dark zone */}
             <View style={{ flexDirection: 'row', gap: 10 }}>
               <View style={{
-                flex: 1, backgroundColor: isDark ? `${colors.surface}80` : 'rgba(255,255,255,0.12)',
+                flex: 1, backgroundColor: colors.surface,
                 borderRadius: 14, padding: 14,
               }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
@@ -139,14 +139,14 @@ export default function WalletHome() {
                     <Ionicons name="wallet" size={12} color={colors.primary} />
                   </View>
                   <Text style={{
-                    color: isDark ? colors.mutedText : `${colors.bg}99`,
+                    color: colors.mutedText,
                     fontSize: 11, fontWeight: '600',
                   }}>
                     Total
                   </Text>
                 </View>
                 <Text style={{
-                  color: isDark ? colors.foreground : colors.bg,
+                  color: colors.foreground,
                   fontSize: 28, fontWeight: '800', letterSpacing: -1,
                 }}>
                   {uniqueCredentials.length}
@@ -156,21 +156,21 @@ export default function WalletHome() {
               <View style={{ flex: 1, gap: 8 }}>
                 {/* Active mini card */}
                 <View style={{
-                  flex: 1, backgroundColor: isDark ? `${colors.surface}80` : 'rgba(255,255,255,0.12)',
+                  flex: 1, backgroundColor: colors.surface,
                   borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10,
                   flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
                 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.success }} />
                     <Text style={{
-                      color: isDark ? colors.mutedText : `${colors.bg}99`,
+                      color: colors.mutedText,
                       fontSize: 11, fontWeight: '600',
                     }}>
                       Active
                     </Text>
                   </View>
                   <Text style={{
-                    color: isDark ? colors.foreground : colors.bg,
+                    color: colors.foreground,
                     fontSize: 18, fontWeight: '700',
                   }}>
                     {activeCount}
@@ -179,7 +179,7 @@ export default function WalletHome() {
 
                 {/* Expired mini card */}
                 <View style={{
-                  flex: 1, backgroundColor: isDark ? `${colors.surface}80` : 'rgba(255,255,255,0.12)',
+                  flex: 1, backgroundColor: colors.surface,
                   borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10,
                   flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
                 }}>
@@ -189,14 +189,14 @@ export default function WalletHome() {
                       backgroundColor: revokedCount > 0 ? colors.danger : colors.mutedText,
                     }} />
                     <Text style={{
-                      color: isDark ? colors.mutedText : `${colors.bg}99`,
+                      color: colors.mutedText,
                       fontSize: 11, fontWeight: '600',
                     }}>
                       Expired
                     </Text>
                   </View>
                   <Text style={{
-                    color: isDark ? colors.foreground : colors.bg,
+                    color: colors.foreground,
                     fontSize: 18, fontWeight: '700',
                   }}>
                     {revokedCount}

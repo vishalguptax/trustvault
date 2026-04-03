@@ -56,7 +56,7 @@ export function QRDisplay({ value, size = 256, label, waiting = false, className
           size={size}
           level="M"
           bgColor="#FFFFFF"
-          fgColor="#1A2B1A"
+          fgColor="#1A1D23"
         />
       </motion.div>
 
