@@ -34,6 +34,7 @@ const FALLBACK_SCHEMAS: Schema[] = [
     description: 'Academic credentials such as degrees, diplomas, and certificates.',
     claims: [
       { key: 'documentName', label: 'Document Name', type: 'string', required: true, selectivelyDisclosable: false },
+      { key: 'candidateName', label: 'Candidate Name', type: 'string', required: true, selectivelyDisclosable: false },
       { key: 'institutionName', label: 'Issuing Organization', type: 'string', required: true, selectivelyDisclosable: false },
       { key: 'degree', label: 'Degree / Certificate Title', type: 'string', required: false, selectivelyDisclosable: false },
       { key: 'fieldOfStudy', label: 'Field of Study', type: 'string', required: false, selectivelyDisclosable: true },
@@ -54,6 +55,7 @@ const FALLBACK_SCHEMAS: Schema[] = [
     description: 'Income and employment verification credentials.',
     claims: [
       { key: 'documentName', label: 'Document Name', type: 'string', required: true, selectivelyDisclosable: false },
+      { key: 'employeeName', label: 'Employee Name', type: 'string', required: true, selectivelyDisclosable: false },
       { key: 'employerName', label: 'Issuing Organization', type: 'string', required: true, selectivelyDisclosable: false },
       { key: 'jobTitle', label: 'Job Title / Designation', type: 'string', required: false, selectivelyDisclosable: true },
       { key: 'department', label: 'Department', type: 'string', required: false, selectivelyDisclosable: true },

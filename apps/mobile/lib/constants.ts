@@ -39,6 +39,7 @@ export const CLAIM_LABELS: Record<string, string> = {
   // Common
   documentName: 'Document Name',
   // Education
+  candidateName: 'Candidate Name',
   institutionName: 'Issuing Organization',
   degree: 'Degree / Certificate Title',
   fieldOfStudy: 'Field of Study',
@@ -51,6 +52,7 @@ export const CLAIM_LABELS: Record<string, string> = {
   boardName: 'Board / University Name',
   registrationNumber: 'Registration Number',
   // Income & Employment
+  employeeName: 'Employee Name',
   employerName: 'Issuing Organization',
   jobTitle: 'Job Title / Designation',
   department: 'Department',

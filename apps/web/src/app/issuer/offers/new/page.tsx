@@ -44,6 +44,7 @@ const FALLBACK_SCHEMAS: SchemaDefinition[] = [
     claims: [
       // Required — always shown
       { key: 'documentName', label: 'Document Name', type: 'string', required: true, selectivelyDisclosable: false },
+      { key: 'candidateName', label: 'Candidate Name', type: 'string', required: true, selectivelyDisclosable: false },
       { key: 'institutionName', label: 'Issuing Organization', type: 'string', required: true, selectivelyDisclosable: false },
       // Optional — issuer toggles on/off based on document type
       { key: 'degree', label: 'Degree / Certificate Title', type: 'string', required: false, selectivelyDisclosable: false },
@@ -66,6 +67,7 @@ const FALLBACK_SCHEMAS: SchemaDefinition[] = [
     claims: [
       // Required
       { key: 'documentName', label: 'Document Name', type: 'string', required: true, selectivelyDisclosable: false },
+      { key: 'employeeName', label: 'Employee Name', type: 'string', required: true, selectivelyDisclosable: false },
       { key: 'employerName', label: 'Issuing Organization', type: 'string', required: true, selectivelyDisclosable: false },
       // Optional
       { key: 'jobTitle', label: 'Job Title / Designation', type: 'string', required: false, selectivelyDisclosable: true },
