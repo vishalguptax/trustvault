@@ -10,7 +10,7 @@ export default function ConsentHistory() {
 
   if (history.length === 0) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
         <View style={{
           width: 96, height: 96, borderRadius: 48,
           backgroundColor: `${colors.primary}14`,
@@ -31,7 +31,7 @@ export default function ConsentHistory() {
 
   return (
     <FlatList
-      style={{ flex: 1, backgroundColor: colors.bg }}
+      style={{ flex: 1 }}
       data={history}
       keyExtractor={(item) => item.id}
       contentContainerStyle={{ padding: 20 }}

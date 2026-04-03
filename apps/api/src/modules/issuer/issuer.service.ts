@@ -87,7 +87,7 @@ export class IssuerService {
       credential_configurations_supported: credentialConfigurations,
       display: [
         {
-          name: 'TrustVault Issuer',
+          name: 'TrustiLock Issuer',
           locale: 'en-US',
         },
       ],
@@ -277,6 +277,7 @@ export class IssuerService {
     }
 
     let holderPublicKey: JWK | undefined;
+    let holderDid: string | undefined;
     if (proof?.jwt) {
       try {
         const decoded = jose.decodeJwt(proof.jwt);
@@ -285,6 +286,9 @@ export class IssuerService {
         if (header.jwk) {
           holderPublicKey = header.jwk as JWK;
         }
+        if (decoded.iss) {
+          holderDid = decoded.iss as string;
+        }
       } catch {
         throw new BadRequestException('Invalid proof JWT');
       }
@@ -292,13 +296,14 @@ export class IssuerService {
 
     const issuerKeyPair = await this.didService.getKeyPair(offer.issuerDid);
     const claims = offer.claims as Record<string, unknown>;
+    const subjectDid = holderDid || (claims.subjectDid as string) || 'unknown';
 
     const expiryDays = this.configService.get<number>('credential.defaultExpiryDays') || 365;
     const expiresAt = new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000);
 
     const sdJwtVc = await this.sdJwtService.issue({
       issuerDid: offer.issuerDid,
-      subjectDid: (offer.claims as Record<string, unknown>).subjectDid as string || 'unknown',
+      subjectDid,
       credentialType: offer.schemaTypeUri,
       claims,
       disclosableClaims: schema.sdClaims,
@@ -313,7 +318,7 @@ export class IssuerService {
     await this.prisma.issuedCredential.create({
       data: {
         issuerDid: offer.issuerDid,
-        subjectDid: (claims.subjectDid as string) || 'unknown',
+        subjectDid,
         schemaTypeUri: offer.schemaTypeUri,
         credentialHash,
         status: 'active',
@@ -369,6 +374,40 @@ export class IssuerService {
       throw new NotFoundException(`Schema not found: ${id}`);
     }
     return this.toSchemaDto(schema);
+  }
+
+  async getOfferPreview(preAuthorizedCode: string) {
+    const offer = await this.prisma.credentialOffer.findUnique({
+      where: { preAuthorizedCode },
+    });
+    if (!offer) {
+      throw new NotFoundException('Credential offer not found');
+    }
+
+    const schema = await this.prisma.credentialSchema.findUnique({
+      where: { typeUri: offer.schemaTypeUri },
+    });
+
+    const trustedIssuer = await this.prisma.trustedIssuer.findFirst({
+      where: { did: offer.issuerDid },
+    });
+
+    const claims = offer.claims as Record<string, unknown>;
+    const claimKeys = Object.keys(claims).filter(
+      (k) => !['subjectDid', 'documentName'].includes(k),
+    );
+
+    return {
+      issuerName: trustedIssuer?.name ?? null,
+      issuerDid: offer.issuerDid,
+      credentialType: offer.schemaTypeUri,
+      credentialTypeName: schema?.name ?? offer.schemaTypeUri,
+      documentName: (claims.documentName as string) ?? null,
+      claims: claimKeys,
+      claimValues: claims,
+      status: offer.status,
+      expiresAt: offer.expiresAt,
+    };
   }
 
   async listIssuedCredentials(issuerDid?: string) {

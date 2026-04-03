@@ -32,12 +32,11 @@ export default function WalletHome() {
     setRefreshing(false);
   }, [refresh]);
 
-  const handleFabPress = useCallback(() => {
+  const handleScan = useCallback(() => {
     impactMedium();
     router.push(TABS.SCANNER);
   }, [router]);
 
-  // Deduplicate
   const uniqueCredentials = useMemo(() => {
     return credentials.filter(
       (cred, index, self) => self.findIndex((c) => c.id === cred.id) === index,
@@ -45,8 +44,10 @@ export default function WalletHome() {
   }, [credentials]);
 
   const activeCount = uniqueCredentials.filter((c) => c.status === 'active').length;
+  const revokedCount = uniqueCredentials.filter(
+    (c) => c.status === 'revoked' || c.status === 'expired',
+  ).length;
 
-  // Last 3 recent credentials (sorted by issuedAt desc)
   const recentCredentials = useMemo(() => {
     return [...uniqueCredentials]
       .sort((a, b) => new Date(b.issuedAt).getTime() - new Date(a.issuedAt).getTime())
@@ -55,19 +56,19 @@ export default function WalletHome() {
 
   if (loading && uniqueCredentials.length === 0 && !error) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator size="large" color={colors.primary} />
         <Text style={{ color: colors.mutedText, fontSize: 14, marginTop: 12 }}>
-          Loading credentials...
+          Loading your wallet...
         </Text>
       </View>
     );
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+    <View style={{ flex: 1 }}>
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 18, paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -79,178 +80,261 @@ export default function WalletHome() {
           />
         }
       >
-        {/* Greeting */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 20 }}>
-          <View>
-            <Text style={{ color: colors.mutedText, fontSize: 14 }}>
-              {getGreeting()},
-            </Text>
-            <Text style={{ color: colors.foreground, fontSize: 24, fontWeight: '700', marginTop: 2 }}>
-              {firstName}
-            </Text>
-          </View>
-          <Text style={{ color: colors.mutedText, fontSize: 12 }}>
-            {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-          </Text>
-        </View>
-
-        {/* Stats row */}
-        <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20 }}>
-          <Pressable
-            onPress={() => router.push(TABS.CREDENTIALS)}
-            style={({ pressed }) => ({
-              flex: 1, backgroundColor: colors.surface, borderRadius: 16, padding: 16,
-              borderWidth: 1, borderColor: colors.border,
-              opacity: pressed ? 0.9 : 1,
-            })}
-            accessibilityLabel={`${uniqueCredentials.length} total credentials. Tap to view all.`}
-            accessibilityRole="button"
-          >
-            <View style={{
-              width: 36, height: 36, borderRadius: 12,
-              backgroundColor: `${colors.primary}14`, alignItems: 'center', justifyContent: 'center',
-              marginBottom: 10,
-            }}>
-              <Ionicons name="wallet-outline" size={18} color={colors.primary} />
-            </View>
-            <Text style={{ color: colors.foreground, fontSize: 22, fontWeight: '700' }}>
-              {uniqueCredentials.length}
-            </Text>
-            <Text style={{ color: colors.mutedText, fontSize: 12, marginTop: 2 }}>
-              Total Credentials
-            </Text>
-          </Pressable>
-
+        {/* ════════════════════════════════════════════
+            HERO WALLET CARD
+            Inspired by fintech wallet patterns —
+            single card with greeting, balance-like stats,
+            and quick actions baked in.
+            ════════════════════════════════════════════ */}
+        <View style={{
+          marginHorizontal: 16, marginTop: 12, marginBottom: 20,
+          backgroundColor: colors.surface,
+          borderRadius: 24,
+          borderWidth: 1,
+          borderColor: colors.border,
+          overflow: 'hidden',
+          ...shadow,
+        }}>
+          {/* Dark header zone */}
           <View style={{
-            flex: 1, backgroundColor: colors.surface, borderRadius: 16, padding: 16,
-            borderWidth: 1, borderColor: colors.border,
+            backgroundColor: isDark ? colors.muted : colors.foreground,
+            paddingHorizontal: 20, paddingTop: 22, paddingBottom: 20,
           }}>
-            <View style={{
-              width: 36, height: 36, borderRadius: 12,
-              backgroundColor: `${colors.success}14`, alignItems: 'center', justifyContent: 'center',
-              marginBottom: 10,
-            }}>
-              <Ionicons name="checkmark-circle-outline" size={18} color={colors.success} />
+            {/* Greeting + date */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+              <View>
+                <Text style={{
+                  color: isDark ? colors.mutedText : `${colors.bg}AA`,
+                  fontSize: 13, fontWeight: '500',
+                }}>
+                  {getGreeting()},
+                </Text>
+                <Text style={{
+                  color: isDark ? colors.foreground : colors.bg,
+                  fontSize: 24, fontWeight: '700', marginTop: 2, letterSpacing: -0.5,
+                }}>
+                  {firstName}
+                </Text>
+              </View>
+              <Text style={{
+                color: isDark ? colors.mutedText : `${colors.bg}88`,
+                fontSize: 11, marginTop: 4,
+              }}>
+                {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+              </Text>
             </View>
-            <Text style={{ color: colors.foreground, fontSize: 22, fontWeight: '700' }}>
-              {activeCount}
-            </Text>
-            <Text style={{ color: colors.mutedText, fontSize: 12, marginTop: 2 }}>
-              Active
-            </Text>
+
+            {/* Stats row inside dark zone */}
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <View style={{
+                flex: 1, backgroundColor: isDark ? `${colors.surface}80` : 'rgba(255,255,255,0.12)',
+                borderRadius: 14, padding: 14,
+              }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                  <View style={{
+                    width: 24, height: 24, borderRadius: 8,
+                    backgroundColor: `${colors.primary}30`,
+                    alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <Ionicons name="wallet" size={12} color={colors.primary} />
+                  </View>
+                  <Text style={{
+                    color: isDark ? colors.mutedText : `${colors.bg}99`,
+                    fontSize: 11, fontWeight: '600',
+                  }}>
+                    Total
+                  </Text>
+                </View>
+                <Text style={{
+                  color: isDark ? colors.foreground : colors.bg,
+                  fontSize: 28, fontWeight: '800', letterSpacing: -1,
+                }}>
+                  {uniqueCredentials.length}
+                </Text>
+              </View>
+
+              <View style={{ flex: 1, gap: 8 }}>
+                {/* Active mini card */}
+                <View style={{
+                  flex: 1, backgroundColor: isDark ? `${colors.surface}80` : 'rgba(255,255,255,0.12)',
+                  borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10,
+                  flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.success }} />
+                    <Text style={{
+                      color: isDark ? colors.mutedText : `${colors.bg}99`,
+                      fontSize: 11, fontWeight: '600',
+                    }}>
+                      Active
+                    </Text>
+                  </View>
+                  <Text style={{
+                    color: isDark ? colors.foreground : colors.bg,
+                    fontSize: 18, fontWeight: '700',
+                  }}>
+                    {activeCount}
+                  </Text>
+                </View>
+
+                {/* Expired mini card */}
+                <View style={{
+                  flex: 1, backgroundColor: isDark ? `${colors.surface}80` : 'rgba(255,255,255,0.12)',
+                  borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10,
+                  flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <View style={{
+                      width: 6, height: 6, borderRadius: 3,
+                      backgroundColor: revokedCount > 0 ? colors.danger : colors.mutedText,
+                    }} />
+                    <Text style={{
+                      color: isDark ? colors.mutedText : `${colors.bg}99`,
+                      fontSize: 11, fontWeight: '600',
+                    }}>
+                      Expired
+                    </Text>
+                  </View>
+                  <Text style={{
+                    color: isDark ? colors.foreground : colors.bg,
+                    fontSize: 18, fontWeight: '700',
+                  }}>
+                    {revokedCount}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+
+          {/* Quick actions row — inside card, light zone */}
+          <View style={{
+            flexDirection: 'row',
+            paddingHorizontal: 12, paddingVertical: 14,
+            gap: 4,
+          }}>
+            <QuickAction icon="qr-code-outline" label="Scan" accent={colors.primary} colors={colors} onPress={handleScan} />
+            <QuickAction icon="time-outline" label="History" accent={colors.info} colors={colors} onPress={() => router.push(TABS.HISTORY)} />
+            <QuickAction icon="person-outline" label="Profile" accent={colors.mutedText} colors={colors} onPress={() => router.push(TABS.PROFILE)} />
+            <QuickAction icon="list-outline" label="All" accent={colors.success} colors={colors} onPress={() => router.push(TABS.CREDENTIALS)} />
           </View>
         </View>
 
-        {/* Quick actions */}
-        <View style={{ flexDirection: 'row', gap: 10, marginBottom: 24 }}>
-          <QuickAction
-            icon="qr-code-outline"
-            label="Scan"
-            onPress={handleFabPress}
-            colors={colors}
-          />
-          <QuickAction
-            icon="time-outline"
-            label="History"
-            onPress={() => router.push(TABS.HISTORY)}
-            colors={colors}
-          />
-          <QuickAction
-            icon="person-outline"
-            label="Profile"
-            onPress={() => router.push(TABS.PROFILE)}
-            colors={colors}
-          />
-        </View>
-
+        {/* ════════════════════════════════════════════
+            ERROR BANNER
+            ════════════════════════════════════════════ */}
         {error ? (
           <View style={{
-            backgroundColor: `${colors.warning}14`, borderRadius: 12,
+            flexDirection: 'row', alignItems: 'center', gap: 8,
+            marginHorizontal: 16,
+            backgroundColor: `${colors.warning}12`, borderRadius: 12,
+            borderWidth: 1, borderColor: `${colors.warning}30`,
             paddingHorizontal: 14, paddingVertical: 10, marginBottom: 16,
           }}>
-            <Text style={{ color: colors.warning, fontSize: 12 }}>
+            <Ionicons name="warning-outline" size={16} color={colors.warning} />
+            <Text style={{ color: colors.warning, fontSize: 12, flex: 1 }}>
               {error} — showing cached data
             </Text>
           </View>
         ) : null}
 
-        {/* Recent Credentials */}
-        {uniqueCredentials.length === 0 && !loading ? (
-          <EmptyState />
-        ) : recentCredentials.length > 0 ? (
-          <>
-            <View style={{
-              flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-              marginBottom: 14,
-            }}>
-              <Text style={{ color: colors.foreground, fontSize: 16, fontWeight: '600' }}>
-                Recent Credentials
-              </Text>
+        {/* ════════════════════════════════════════════
+            CREDENTIALS SECTION
+            ════════════════════════════════════════════ */}
+        <View style={{ paddingHorizontal: 16 }}>
+          {uniqueCredentials.length === 0 && !loading ? (
+            <EmptyState />
+          ) : recentCredentials.length > 0 ? (
+            <>
+              {/* Section header */}
+              <View style={{
+                flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+                marginBottom: 14,
+              }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <View style={{
+                    width: 3, height: 16, borderRadius: 2,
+                    backgroundColor: colors.primary,
+                  }} />
+                  <Text style={{
+                    color: colors.foreground, fontSize: 17, fontWeight: '700',
+                    letterSpacing: -0.3,
+                  }}>
+                    Recent Credentials
+                  </Text>
+                </View>
+                {uniqueCredentials.length > 3 && (
+                  <Pressable
+                    onPress={() => router.push(TABS.CREDENTIALS)}
+                    hitSlop={8}
+                    style={({ pressed }) => ({
+                      flexDirection: 'row', alignItems: 'center', gap: 2,
+                      opacity: pressed ? 0.7 : 1,
+                      paddingVertical: 4, paddingHorizontal: 4,
+                    })}
+                    accessibilityLabel="See all credentials"
+                    accessibilityRole="button"
+                  >
+                    <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '600' }}>
+                      See All
+                    </Text>
+                    <Ionicons name="chevron-forward" size={14} color={colors.primary} />
+                  </Pressable>
+                )}
+              </View>
+
+              {/* Credential cards */}
+              <View style={{ gap: 12 }}>
+                {recentCredentials.map((cred) => (
+                  <CredentialCard
+                    key={cred.id}
+                    credential={cred}
+                    onPress={() => router.push(TABS.CREDENTIAL(cred.id))}
+                  />
+                ))}
+              </View>
+
+              {/* View all CTA */}
               {uniqueCredentials.length > 3 && (
                 <Pressable
                   onPress={() => router.push(TABS.CREDENTIALS)}
                   style={({ pressed }) => ({
-                    flexDirection: 'row', alignItems: 'center', gap: 4,
-                    opacity: pressed ? 0.7 : 1,
-                    paddingVertical: 4, paddingHorizontal: 8,
+                    marginTop: 16,
+                    paddingVertical: 14,
+                    borderRadius: 14,
+                    alignItems: 'center',
+                    backgroundColor: colors.surface,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    flexDirection: 'row',
+                    justifyContent: 'center',
+                    gap: 6,
+                    opacity: pressed ? 0.9 : 1,
                   })}
-                  accessibilityLabel="See all credentials"
+                  accessibilityLabel="View all credentials"
                   accessibilityRole="button"
                 >
-                  <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '600' }}>
-                    See All
+                  <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 14 }}>
+                    View All {uniqueCredentials.length} Credentials
                   </Text>
-                  <Ionicons name="chevron-forward" size={14} color={colors.primary} />
+                  <Ionicons name="arrow-forward" size={14} color={colors.primary} />
                 </Pressable>
               )}
-            </View>
-
-            {recentCredentials.map((cred, index) => (
-              <View key={cred.id} style={{ marginBottom: index < recentCredentials.length - 1 ? 12 : 0 }}>
-                <CredentialCard
-                  credential={cred}
-                  onPress={() => router.push(TABS.CREDENTIAL(cred.id))}
-                />
-              </View>
-            ))}
-
-            {/* View all button at bottom */}
-            {uniqueCredentials.length > 3 && (
-              <Pressable
-                onPress={() => router.push(TABS.CREDENTIALS)}
-                style={({ pressed }) => ({
-                  marginTop: 16,
-                  paddingVertical: 14,
-                  borderRadius: 14,
-                  alignItems: 'center',
-                  backgroundColor: colors.surface,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  opacity: pressed ? 0.9 : 1,
-                })}
-                accessibilityLabel="View all credentials"
-                accessibilityRole="button"
-              >
-                <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 14 }}>
-                  View All {uniqueCredentials.length} Credentials
-                </Text>
-              </Pressable>
-            )}
-          </>
-        ) : null}
+            </>
+          ) : null}
+        </View>
       </ScrollView>
 
-      {/* FAB */}
+      {/* ── FAB ── */}
       <View style={{ position: 'absolute', bottom: 32, right: 20 }}>
         <Pressable
-          onPress={handleFabPress}
+          onPress={handleScan}
           style={({ pressed }) => ({
             backgroundColor: colors.primary,
             opacity: pressed ? 0.9 : 1,
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'center',
-            paddingHorizontal: 20,
+            paddingHorizontal: 22,
             paddingVertical: 14,
             borderRadius: 28,
             gap: 8,
@@ -270,37 +354,41 @@ export default function WalletHome() {
   );
 }
 
+/* ── Quick Action (compact, inside hero card) ── */
+
 interface QuickActionProps {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   onPress: () => void;
-  colors: { surface: string; primary: string; foreground: string; border: string };
+  colors: { foreground: string; muted: string };
+  accent: string;
 }
 
-function QuickAction({ icon, label, onPress, colors }: QuickActionProps) {
+function QuickAction({ icon, label, onPress, colors, accent }: QuickActionProps) {
   return (
     <Pressable
-      onPress={() => {
-        impactMedium();
-        onPress();
-      }}
+      onPress={() => { impactMedium(); onPress(); }}
       style={({ pressed }) => ({
         flex: 1,
-        backgroundColor: colors.surface,
-        borderRadius: 14,
-        borderWidth: 1,
-        borderColor: colors.border,
-        paddingVertical: 14,
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 6,
+        paddingVertical: 10,
+        borderRadius: 12,
+        backgroundColor: pressed ? colors.muted : 'transparent',
         opacity: pressed ? 0.85 : 1,
+        gap: 6,
       })}
       accessibilityLabel={label}
       accessibilityRole="button"
     >
-      <Ionicons name={icon} size={20} color={colors.primary} />
-      <Text style={{ color: colors.foreground, fontSize: 12, fontWeight: '600' }}>
+      <View style={{
+        width: 40, height: 40, borderRadius: 14,
+        backgroundColor: `${accent}14`,
+        alignItems: 'center', justifyContent: 'center',
+      }}>
+        <Ionicons name={icon} size={19} color={accent} />
+      </View>
+      <Text style={{ color: colors.foreground, fontSize: 11, fontWeight: '600' }}>
         {label}
       </Text>
     </Pressable>

@@ -14,6 +14,7 @@ interface WalletCredentialApi {
   format: string;
   credentialType: string;
   issuerDid: string;
+  subjectDid?: string;
   claims: Record<string, unknown>;
   sdClaims: string[];
   issuedAt: string;
@@ -60,7 +61,7 @@ function mapToStoredCredential(item: WalletCredentialApi): StoredCredential {
     typeName: item.typeName ?? typeConfig?.name ?? item.credentialType,
     issuerDid: item.issuerDid,
     issuerName: item.issuerName ?? null,
-    subjectDid: (claimsObj.sub as string) ?? '',
+    subjectDid: item.subjectDid ?? (claimsObj.sub as string) ?? '',
     status: 'active',
     claims: item.claims,
     sdClaims: item.sdClaims ?? [],

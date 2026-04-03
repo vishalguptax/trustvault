@@ -40,6 +40,7 @@ export const API = {
   },
   ISSUER: {
     METADATA: (baseUrl: string) => `${baseUrl}/.well-known/openid-credential-issuer`,
+    OFFER_PREVIEW: (code: string) => `/issuer/offers/preview/${code}`,
   },
   HEALTH: '/health',
 } as const;

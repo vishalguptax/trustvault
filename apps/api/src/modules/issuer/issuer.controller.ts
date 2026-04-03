@@ -119,6 +119,16 @@ export class IssuerController {
     return { data: schema };
   }
 
+  @Get('offers/preview/:code')
+  @Public()
+  @ApiOperation({ summary: 'Preview a credential offer by pre-authorized code' })
+  @ApiResponse({ status: 200, description: 'Offer preview with claims and issuer info' })
+  @ApiResponse({ status: 404, description: 'Offer not found' })
+  async getOfferPreview(@Param('code') code: string) {
+    const preview = await this.issuerService.getOfferPreview(code);
+    return { data: preview };
+  }
+
   @Get('credentials')
   @Roles('issuer', 'admin')
   @ApiBearerAuth()

@@ -317,7 +317,7 @@ export default function PresentScreen() {
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: colors.bg }}
+      style={{ flex: 1 }}
       contentContainerStyle={{ padding: 16 }}
     >
       <StepIndicator

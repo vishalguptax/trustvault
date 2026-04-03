@@ -1,29 +1,33 @@
 import { Stack, useRouter } from 'expo-router';
 import { Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { TrustiLockLogo } from '@/components/trustilock-logo';
+import { MeshGradient } from '@/components/mesh-gradient';
 import { useTheme } from '@/lib/theme';
 import { useAuth } from '@/lib/auth/auth-context';
 import { TABS } from '@/lib/routes';
 
 export default function TabsLayout() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const router = useRouter();
   const { user } = useAuth();
   const initial = user?.name?.charAt(0)?.toUpperCase() ?? 'U';
 
   return (
-    <Stack
-      screenOptions={{
-        headerStyle: {
-          backgroundColor: colors.surface,
-        },
-        headerShadowVisible: true,
-        headerTintColor: colors.foreground,
-        headerTitleStyle: { fontWeight: '600', fontSize: 17 },
-        contentStyle: { backgroundColor: colors.bg },
-        animation: 'slide_from_right',
-      }}
-    >
+    <View style={{ flex: 1 }}>
+      <MeshGradient />
+      <Stack
+        screenOptions={{
+          headerStyle: { backgroundColor: 'transparent', elevation: 0, shadowOpacity: 0 },
+          headerShadowVisible: false,
+          headerTintColor: colors.foreground,
+          headerTitleStyle: { fontWeight: '600', fontSize: 17 },
+          headerBackTitleVisible: false,
+          headerTitleAlign: 'left',
+          contentStyle: { backgroundColor: 'transparent' },
+          animation: 'slide_from_right',
+        }}
+      >
       <Stack.Screen
         name="index"
         options={{
@@ -34,10 +38,10 @@ export default function TabsLayout() {
                 backgroundColor: `${colors.primary}18`,
                 alignItems: 'center', justifyContent: 'center',
               }}>
-                <Ionicons name="shield-checkmark" size={16} color={colors.primary} />
+                <TrustiLockLogo size={20} color={colors.primary} />
               </View>
               <Text style={{ color: colors.foreground, fontSize: 17, fontWeight: '700' }}>
-                TrustVault
+                TrustiLock
               </Text>
             </View>
           ),
@@ -68,6 +72,7 @@ export default function TabsLayout() {
       <Stack.Screen name="scanner" options={{ title: 'Scan QR Code', presentation: 'fullScreenModal' }} />
       <Stack.Screen name="history" options={{ title: 'Consent History' }} />
       <Stack.Screen name="profile" options={{ title: 'Profile & Settings' }} />
-    </Stack>
+      </Stack>
+    </View>
   );
 }

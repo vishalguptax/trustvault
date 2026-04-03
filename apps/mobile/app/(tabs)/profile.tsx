@@ -85,7 +85,7 @@ export default function ProfileScreen() {
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: colors.bg }}
+      style={{ flex: 1 }}
       contentContainerStyle={{ padding: 20, paddingBottom: 48 }}
     >
       {/* User card */}
