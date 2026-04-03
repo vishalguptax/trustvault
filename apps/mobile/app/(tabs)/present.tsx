@@ -15,7 +15,8 @@ import { AnimatedCheck } from '@/components/animated-check';
 import { ConsentSheet } from '@/components/consent-sheet';
 import { useCredentialStore, StoredCredential } from '@/lib/store';
 import { api } from '@/lib/api';
-import { CREDENTIAL_TYPE_CONFIG, getClaimLabel } from '@/lib/constants';
+import { CREDENTIAL_TYPE_CONFIG, getClaimLabel, formatCredentialType, getDocumentTitle } from '@/lib/constants';
+import { filterUserClaims, didDisplayName } from '@/lib/format';
 import { useTheme, cardShadow, cardShadowDark } from '@/lib/theme';
 import { TABS, API } from '@/lib/routes';
 
@@ -109,15 +110,9 @@ export default function PresentScreen() {
   const stepIndex =
     step === 'loading' || step === 'select'
       ? 0
-      : step === 'disclose'
+      : step === 'disclose' || step === 'consent'
         ? 1
-        : step === 'consent'
-          ? 2
-          : step === 'submitting'
-            ? 3
-            : step === 'error'
-              ? 3
-              : 4;
+        : 2;
 
   // Parse the verification request URI
   useEffect(() => {
@@ -160,26 +155,38 @@ export default function PresentScreen() {
   );
 
   const allDisclosableClaims = useMemo(() => {
-    const claims: { key: string; credentialId: string; credentialType: string; required: boolean }[] = [];
+    const claims: { key: string; credentialId: string; credentialType: string; required: boolean; isSD: boolean }[] = [];
     selectedCredentials.forEach((cred) => {
+      const userClaims = filterUserClaims(cred.claims);
+      const userClaimKeys = Object.keys(userClaims);
+      const seen = new Set<string>();
+
+      // SD claims (selectively disclosable — user can toggle)
       cred.sdClaims.forEach((claim) => {
+        if (seen.has(claim)) return;
+        // Only include if it is a user-facing claim
+        if (!userClaimKeys.includes(claim) && !userClaims[claim]) return;
+        seen.add(claim);
         claims.push({
           key: claim,
           credentialId: cred.id,
           credentialType: cred.typeName,
           required: requiredClaimKeys.has(claim),
+          isSD: true,
         });
       });
-      // Also include non-SD claims (always disclosed)
-      Object.keys(cred.claims).forEach((claim) => {
-        if (!cred.sdClaims.includes(claim)) {
-          claims.push({
-            key: claim,
-            credentialId: cred.id,
-            credentialType: cred.typeName,
-            required: true,
-          });
-        }
+
+      // Non-SD claims (always disclosed, cannot toggle)
+      userClaimKeys.forEach((claim) => {
+        if (seen.has(claim)) return;
+        seen.add(claim);
+        claims.push({
+          key: claim,
+          credentialId: cred.id,
+          credentialType: cred.typeName,
+          required: true,
+          isSD: false,
+        });
       });
     });
     return claims;
@@ -318,10 +325,10 @@ export default function PresentScreen() {
   return (
     <ScrollView
       style={{ flex: 1 }}
-      contentContainerStyle={{ padding: 16 }}
+      contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
     >
       <StepIndicator
-        steps={['Select', 'Disclose', 'Consent', 'Submit', 'Result']}
+        steps={['Select', 'Review', 'Done']}
         currentStep={stepIndex}
       />
 
@@ -335,149 +342,176 @@ export default function PresentScreen() {
       )}
 
       {step === 'select' && (
-        <View style={{ marginTop: 24 }}>
-          <Text
-            style={{
-              color: colors.foreground,
-              fontSize: 18,
-              fontWeight: '600',
-              marginBottom: 8,
-            }}
-          >
+        <View style={{ marginTop: 20 }}>
+          {/* Verifier info card */}
+          {verificationRequest && (
+            <View style={{
+              backgroundColor: colors.surface, borderRadius: 16,
+              borderWidth: 1, borderColor: colors.border,
+              padding: 16, marginBottom: 20,
+              ...shadow,
+            }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <View style={{
+                  width: 40, height: 40, borderRadius: 12,
+                  backgroundColor: `${colors.info}14`,
+                  alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Ionicons name="shield-checkmark-outline" size={20} color={colors.info} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: colors.foreground, fontSize: 15, fontWeight: '700' }}>
+                    {verificationRequest.verifierName}
+                  </Text>
+                  <Text style={{ color: colors.mutedText, fontSize: 12, marginTop: 2 }}>
+                    {verificationRequest.purpose}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* Section title */}
+          <Text style={{ color: colors.foreground, fontSize: 17, fontWeight: '700', marginBottom: 4 }}>
             Select Credentials
           </Text>
-          <Text style={{ color: colors.mutedText, fontSize: 14, marginBottom: 16 }}>
+          <Text style={{ color: colors.mutedText, fontSize: 13, marginBottom: 16, lineHeight: 18 }}>
             {verificationRequest?.requiredCredentialTypes.length
-              ? `The verifier requests: ${verificationRequest.requiredCredentialTypes.join(', ')}`
-              : 'Choose which credentials to present to the verifier.'}
+              ? `Required: ${verificationRequest.requiredCredentialTypes.map(t => formatCredentialType(t) || t).join(', ')}`
+              : 'Choose which credentials to present.'}
           </Text>
 
           {credentials.length === 0 ? (
-            <View
-              style={{
-                backgroundColor: colors.surface,
-                borderRadius: 12,
-                padding: 24,
-                alignItems: 'center',
-              }}
-            >
-              <Text style={{ color: colors.mutedText, fontSize: 14, textAlign: 'center' }}>
-                No credentials in your wallet. Receive a credential first.
+            <View style={{
+              backgroundColor: colors.surface, borderRadius: 16,
+              borderWidth: 1, borderColor: colors.border,
+              padding: 32, alignItems: 'center',
+            }}>
+              <Ionicons name="wallet-outline" size={36} color={colors.mutedText} />
+              <Text style={{ color: colors.mutedText, fontSize: 14, textAlign: 'center', marginTop: 12 }}>
+                No credentials in your wallet.{'\n'}Receive a credential first.
               </Text>
             </View>
           ) : (
-            credentials.map((cred) => {
-              const isSelected = selectedIds.includes(cred.id);
-              const accent = getAccentColor(cred.type);
+            <View style={{ gap: 10 }}>
+              {credentials.map((cred) => {
+                const isSelected = selectedIds.includes(cred.id);
+                const accent = getAccentColor(cred.type);
 
-              return (
-                <Pressable
-                  key={cred.id}
-                  onPress={() => toggleCredential(cred.id)}
-                  style={({ pressed }) => ({
-                    backgroundColor: colors.surface,
-                    borderRadius: 18,
-                    borderWidth: isSelected ? 2 : 1,
-                    borderColor: isSelected ? accent : colors.border,
-                    padding: isSelected ? 17 : 18,
-                    marginBottom: 12,
-                    opacity: pressed ? 0.8 : 1,
-                  })}
-                  accessibilityLabel={`${isSelected ? 'Deselect' : 'Select'} ${cred.typeName} from ${cred.issuerName}`}
-                  accessibilityRole="checkbox"
-                  accessibilityState={{ checked: isSelected }}
-                >
-                  <View
-                    style={{
+                return (
+                  <Pressable
+                    key={cred.id}
+                    onPress={() => toggleCredential(cred.id)}
+                    style={({ pressed }) => ({
+                      backgroundColor: colors.surface,
+                      borderRadius: 16,
+                      borderWidth: isSelected ? 2 : 1,
+                      borderColor: isSelected ? accent : colors.border,
+                      padding: isSelected ? 15 : 16,
+                      opacity: pressed ? 0.9 : 1,
                       flexDirection: 'row',
                       alignItems: 'center',
-                      justifyContent: 'space-between',
-                    }}
+                      gap: 14,
+                      ...shadow,
+                    })}
+                    accessibilityLabel={`${isSelected ? 'Deselect' : 'Select'} ${cred.typeName}`}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: isSelected }}
                   >
-                    <View style={{ flex: 1 }}>
-                      <Text
-                        style={{ color: colors.foreground, fontWeight: '500', fontSize: 15 }}
-                      >
-                        {cred.typeName}
-                      </Text>
-                      <Text style={{ color: colors.mutedText, fontSize: 12, marginTop: 2 }}>
-                        {cred.issuerName}
-                      </Text>
+                    {/* Checkbox */}
+                    <View style={{
+                      width: 24, height: 24, borderRadius: 12,
+                      borderWidth: 2,
+                      borderColor: isSelected ? accent : colors.border,
+                      backgroundColor: isSelected ? accent : 'transparent',
+                      alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0,
+                    }}>
+                      {isSelected && <Ionicons name="checkmark" size={14} color={colors.primaryFg} />}
                     </View>
-                    <View
-                      style={{
-                        width: 24,
-                        height: 24,
-                        borderRadius: 12,
-                        borderWidth: 2,
-                        borderColor: isSelected ? accent : colors.muted,
-                        backgroundColor: isSelected ? accent : 'transparent',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      {isSelected && (
-                        <Ionicons name="checkmark" size={14} color={colors.primaryFg} />
-                      )}
+
+                    {/* Credential info */}
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={{ color: colors.foreground, fontWeight: '600', fontSize: 15 }} numberOfLines={2}>
+                        {getDocumentTitle(cred.type, cred.claims)}
+                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: accent }} />
+                        <Text style={{ color: accent, fontSize: 11, fontWeight: '600' }}>
+                          {formatCredentialType(cred.type) || cred.typeName}
+                        </Text>
+                        <Text style={{ color: colors.border, fontSize: 11 }}>·</Text>
+                        <Text style={{ color: colors.mutedText, fontSize: 11, flex: 1 }} numberOfLines={1}>
+                          {cred.issuerName && !cred.issuerName.startsWith('did:')
+                            ? cred.issuerName
+                            : didDisplayName(cred.issuerDid)}
+                        </Text>
+                      </View>
                     </View>
-                  </View>
-                </Pressable>
-              );
-            })
+                  </Pressable>
+                );
+              })}
+            </View>
           )}
 
+          {/* Next button */}
           <Pressable
-            onPress={() => {
-              if (selectedIds.length > 0) setStep('disclose');
-            }}
+            onPress={() => { if (selectedIds.length > 0) { impactMedium(); setStep('disclose'); } }}
             disabled={selectedIds.length === 0}
             style={({ pressed }) => ({
-              marginTop: 16,
-              paddingVertical: 14,
-              borderRadius: 16,
+              marginTop: 20,
+              paddingVertical: 15,
+              borderRadius: 14,
               alignItems: 'center',
-              minHeight: 48,
-              backgroundColor:
-                selectedIds.length > 0
-                  ? colors.primary
-                  : colors.muted,
+              justifyContent: 'center',
+              flexDirection: 'row',
+              gap: 8,
+              minHeight: 50,
+              backgroundColor: selectedIds.length > 0 ? colors.primary : colors.muted,
               opacity: selectedIds.length > 0 && pressed ? 0.85 : 1,
             })}
             accessibilityLabel="Proceed to disclosure selection"
             accessibilityRole="button"
           >
-            <Text
-              style={{
-                fontWeight: selectedIds.length > 0 ? '700' : '500',
-                fontSize: 15,
-                color: selectedIds.length > 0 ? colors.primaryFg : colors.mutedText,
-              }}
-            >
-              Next
+            <Text style={{
+              fontWeight: selectedIds.length > 0 ? '700' : '500', fontSize: 15,
+              color: selectedIds.length > 0 ? colors.primaryFg : colors.mutedText,
+            }}>
+              Review Disclosures
             </Text>
+            {selectedIds.length > 0 && <Ionicons name="arrow-forward" size={16} color={colors.primaryFg} />}
           </Pressable>
         </View>
       )}
 
       {step === 'disclose' && (
-        <View style={{ marginTop: 24 }}>
-          <Text
-            style={{
-              color: colors.foreground,
-              fontSize: 18,
-              fontWeight: '600',
-              marginBottom: 8,
-            }}
-          >
-            Choose Disclosures
+        <View style={{ marginTop: 20 }}>
+          {/* Header */}
+          <Text style={{ color: colors.foreground, fontSize: 17, fontWeight: '700', marginBottom: 4 }}>
+            Review Disclosures
           </Text>
-          <Text style={{ color: colors.mutedText, fontSize: 14, marginBottom: 16 }}>
-            Toggle which claims to reveal. Required claims cannot be turned off.
+          <Text style={{ color: colors.mutedText, fontSize: 13, marginBottom: 16, lineHeight: 18 }}>
+            Control which claims are shared. Required claims cannot be hidden.
           </Text>
 
+          {/* Legend */}
+          <View style={{
+            flexDirection: 'row', gap: 16, marginBottom: 14,
+            paddingHorizontal: 4,
+          }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+              <Ionicons name="eye-outline" size={13} color={colors.primary} />
+              <Text style={{ color: colors.mutedText, fontSize: 11 }}>Optional</Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+              <Ionicons name="lock-closed-outline" size={13} color={colors.mutedText} />
+              <Text style={{ color: colors.mutedText, fontSize: 11 }}>Always shared</Text>
+            </View>
+          </View>
+
           {allDisclosableClaims.map((claim) => {
-            const isRequired = claim.required;
             const isOn = disclosures[claim.key] ?? true;
+            const canToggle = claim.isSD && !claim.required;
 
             return (
               <View
@@ -495,50 +529,92 @@ export default function PresentScreen() {
                   marginBottom: 10,
                 }}
               >
-                <View style={{ flex: 1 }}>
-                  <Text
-                    style={{
-                      color: colors.foreground,
-                      fontSize: 14,
-                    }}
-                  >
-                    {getClaimLabel(claim.key)}
-                  </Text>
-                  <Text style={{ color: colors.mutedText, fontSize: 11, marginTop: 2 }}>
-                    {claim.credentialType}
-                    {isRequired ? ' (required)' : ''}
-                  </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 12 }}>
+                  <Ionicons
+                    name={claim.isSD ? 'eye-outline' : 'lock-closed-outline'}
+                    size={16}
+                    color={claim.isSD ? colors.primary : colors.mutedText}
+                    style={{ marginRight: 12 }}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: colors.foreground, fontSize: 14, fontWeight: '500' }}>
+                      {getClaimLabel(claim.key)}
+                    </Text>
+                    <Text style={{ color: colors.mutedText, fontSize: 11, marginTop: 2 }}>
+                      {claim.isSD
+                        ? (claim.required ? 'Required by verifier' : 'Optional — you choose')
+                        : 'Always shared'}
+                    </Text>
+                  </View>
                 </View>
-                <Switch
-                  value={isOn}
-                  onValueChange={() => toggleDisclosure(claim.key)}
-                  disabled={isRequired}
-                  trackColor={{ false: colors.border, true: colors.primary }}
-                  thumbColor="#FFFFFF"
-                  accessibilityLabel={`${isOn ? 'Hide' : 'Reveal'} ${getClaimLabel(claim.key)}`}
-                />
+                {canToggle ? (
+                  <Switch
+                    value={isOn}
+                    onValueChange={() => toggleDisclosure(claim.key)}
+                    trackColor={{ false: colors.border, true: colors.primary }}
+                    thumbColor="#FFFFFF"
+                    accessibilityLabel={`${isOn ? 'Hide' : 'Reveal'} ${getClaimLabel(claim.key)}`}
+                  />
+                ) : (
+                  <View style={{
+                    backgroundColor: claim.required ? `${colors.primary}14` : colors.muted,
+                    borderRadius: 8,
+                    paddingHorizontal: 10, paddingVertical: 4,
+                  }}>
+                    <Text style={{
+                      color: claim.required ? colors.primary : colors.mutedText,
+                      fontSize: 11, fontWeight: '600',
+                    }}>
+                      {claim.required ? 'Required' : 'Shared'}
+                    </Text>
+                  </View>
+                )}
               </View>
             );
           })}
 
-          <Pressable
-            onPress={handleShowConsent}
-            style={({ pressed }) => ({
-              marginTop: 16,
-              paddingVertical: 14,
-              borderRadius: 16,
-              alignItems: 'center',
-              minHeight: 48,
-              backgroundColor: colors.primary,
-              opacity: pressed ? 0.85 : 1,
-            })}
-            accessibilityLabel="Review and provide consent"
-            accessibilityRole="button"
-          >
-            <Text style={{ color: colors.primaryFg, fontWeight: '700', fontSize: 15 }}>
-              Review & Consent
-            </Text>
-          </Pressable>
+          {/* Action buttons */}
+          <View style={{ flexDirection: 'row', gap: 12, marginTop: 20 }}>
+            <Pressable
+              onPress={() => setStep('select')}
+              style={({ pressed }) => ({
+                flex: 1,
+                backgroundColor: colors.muted,
+                paddingVertical: 15,
+                borderRadius: 14,
+                alignItems: 'center',
+                justifyContent: 'center',
+                minHeight: 50,
+                opacity: pressed ? 0.85 : 1,
+              })}
+              accessibilityLabel="Go back to credential selection"
+              accessibilityRole="button"
+            >
+              <Text style={{ color: colors.foreground, fontWeight: '600', fontSize: 15 }}>Back</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => { impactMedium(); handleShowConsent(); }}
+              style={({ pressed }) => ({
+                flex: 1.4,
+                backgroundColor: colors.primary,
+                paddingVertical: 15,
+                borderRadius: 14,
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexDirection: 'row',
+                gap: 8,
+                minHeight: 50,
+                opacity: pressed ? 0.85 : 1,
+              })}
+              accessibilityLabel="Submit presentation"
+              accessibilityRole="button"
+            >
+              <Ionicons name="send" size={16} color={colors.primaryFg} />
+              <Text style={{ color: colors.primaryFg, fontWeight: '700', fontSize: 15 }}>
+                Present
+              </Text>
+            </Pressable>
+          </View>
         </View>
       )}
 
@@ -575,43 +651,61 @@ export default function PresentScreen() {
             type={result === 'verified' ? 'success' : 'error'}
             size={80}
           />
-          <Text
-            style={{
-              color: colors.foreground,
-              fontSize: 22,
-              fontWeight: '700',
-              marginTop: 20,
-              marginBottom: 8,
-            }}
-          >
-            {result === 'verified' ? 'Verified' : 'Rejected'}
+          <Text style={{
+            color: colors.foreground, fontSize: 22, fontWeight: '700',
+            marginTop: 20, marginBottom: 8,
+          }}>
+            {result === 'verified' ? 'Verified Successfully' : 'Verification Rejected'}
           </Text>
-          <Text
-            style={{
-              color: colors.mutedText,
-              fontSize: 14,
-              textAlign: 'center',
-              marginBottom: 32,
-              paddingHorizontal: 16,
-            }}
-          >
+          <Text style={{
+            color: colors.mutedText, fontSize: 14, textAlign: 'center',
+            marginBottom: 12, paddingHorizontal: 16, lineHeight: 20,
+          }}>
             {result === 'verified'
-              ? 'Your credentials have been successfully verified.'
-              : 'The verification was rejected. Please check your credentials.'}
+              ? 'Your credentials were successfully verified by the verifier.'
+              : 'The verifier could not verify your credentials. This may be due to trust policy or expired credentials.'}
           </Text>
+
+          {/* Summary card */}
+          <View style={{
+            backgroundColor: colors.surface, borderRadius: 14,
+            borderWidth: 1, borderColor: colors.border,
+            padding: 14, width: '100%', marginBottom: 28,
+            ...shadow,
+          }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+              <Text style={{ color: colors.mutedText, fontSize: 12 }}>Verifier</Text>
+              <Text style={{ color: colors.foreground, fontSize: 12, fontWeight: '600' }}>
+                {verificationRequest?.verifierName ?? 'Verifier'}
+              </Text>
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+              <Text style={{ color: colors.mutedText, fontSize: 12 }}>Credentials</Text>
+              <Text style={{ color: colors.foreground, fontSize: 12, fontWeight: '600' }}>
+                {selectedIds.length}
+              </Text>
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text style={{ color: colors.mutedText, fontSize: 12 }}>Claims shared</Text>
+              <Text style={{ color: colors.foreground, fontSize: 12, fontWeight: '600' }}>
+                {disclosedClaimsList.length}
+              </Text>
+            </View>
+          </View>
+
           <Pressable
             onPress={() => router.replace(TABS.HOME)}
             style={({ pressed }) => ({
               backgroundColor: colors.primary,
               opacity: pressed ? 0.85 : 1,
-              paddingHorizontal: 32,
-              paddingVertical: 14,
-              borderRadius: 12,
-              minHeight: 44,
+              paddingHorizontal: 32, paddingVertical: 14,
+              borderRadius: 14, minHeight: 48,
+              flexDirection: 'row', alignItems: 'center', gap: 8,
             })}
             accessibilityLabel="Return to wallet"
             accessibilityRole="button"
           >
+            <Ionicons name="wallet-outline" size={18} color={colors.primaryFg} />
             <Text style={{ color: colors.primaryFg, fontWeight: '700', fontSize: 15 }}>
               Back to Wallet
             </Text>
@@ -622,45 +716,46 @@ export default function PresentScreen() {
       {step === 'error' && (
         <View style={{ marginTop: 48, alignItems: 'center' }}>
           <AnimatedCheck type="error" size={80} />
-          <Text
-            style={{
-              color: colors.foreground,
-              fontSize: 20,
-              fontWeight: '700',
-              marginTop: 20,
-              marginBottom: 8,
-            }}
-          >
+          <Text style={{
+            color: colors.foreground, fontSize: 20, fontWeight: '700',
+            marginTop: 20, marginBottom: 8,
+          }}>
             Presentation Failed
           </Text>
-          <Text
-            style={{
-              color: colors.mutedText,
-              fontSize: 14,
-              textAlign: 'center',
-              marginBottom: 32,
-              paddingHorizontal: 16,
-            }}
-          >
+          <Text style={{
+            color: colors.mutedText, fontSize: 14, textAlign: 'center',
+            marginBottom: 32, paddingHorizontal: 16, lineHeight: 20,
+          }}>
             {errorMessage}
           </Text>
-          <Pressable
-            onPress={() => router.replace(TABS.HOME)}
-            style={({ pressed }) => ({
-              backgroundColor: colors.muted,
-              opacity: pressed ? 0.85 : 1,
-              paddingHorizontal: 32,
-              paddingVertical: 14,
-              borderRadius: 12,
-              minHeight: 44,
-            })}
-            accessibilityLabel="Return to wallet"
-            accessibilityRole="button"
-          >
-            <Text style={{ color: colors.foreground, fontWeight: '500', fontSize: 15 }}>
-              Back to Wallet
-            </Text>
-          </Pressable>
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <Pressable
+              onPress={() => router.replace(TABS.HOME)}
+              style={({ pressed }) => ({
+                backgroundColor: colors.muted,
+                opacity: pressed ? 0.85 : 1,
+                paddingHorizontal: 24, paddingVertical: 14,
+                borderRadius: 12, minHeight: 44,
+              })}
+              accessibilityLabel="Return to wallet"
+              accessibilityRole="button"
+            >
+              <Text style={{ color: colors.foreground, fontWeight: '500' }}>Back to Wallet</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => { setStep('select'); setErrorMessage(''); }}
+              style={({ pressed }) => ({
+                backgroundColor: colors.primary,
+                opacity: pressed ? 0.85 : 1,
+                paddingHorizontal: 24, paddingVertical: 14,
+                borderRadius: 12, minHeight: 44,
+              })}
+              accessibilityLabel="Try again"
+              accessibilityRole="button"
+            >
+              <Text style={{ color: colors.primaryFg, fontWeight: '700' }}>Try Again</Text>
+            </Pressable>
+          </View>
         </View>
       )}
 
