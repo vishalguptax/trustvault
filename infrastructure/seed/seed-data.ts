@@ -683,8 +683,8 @@ async function seed() {
               keys: [{
                 kid: `${did}#key-1`,
                 type: 'ES256',
-                publicKeyJwk: keys.publicKey,
-                privateKeyJwk: keys.privateKey,
+                publicKeyJwk: keys.publicKey as unknown as Record<string, string>,
+                privateKeyJwk: keys.privateKey as unknown as Record<string, string>,
                 purposes: ['assertionMethod', 'authentication'],
               }],
               active: true,
