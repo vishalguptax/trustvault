@@ -158,7 +158,7 @@ export default function OnboardPage() {
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="bg-card border border-border rounded-xl p-6 space-y-4"
+                  className="glass-card rounded-xl p-6 space-y-4"
                 >
                   <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Trust Registry (Issuer Only)</h3>
                   <p className="text-xs text-muted-foreground">A DID (Decentralized Identifier) will be auto-generated for this issuer.</p>

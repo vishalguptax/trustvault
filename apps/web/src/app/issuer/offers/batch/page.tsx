@@ -7,12 +7,11 @@ import {
   GraduationCap, CurrencyDollar, IdentificationCard, Check,
   UploadSimple, Table, PaperPlaneTilt, DownloadSimple, Trash, Copy,
 } from '@phosphor-icons/react';
-import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { schemaTypeToAccent, getAccentStyles } from '@/lib/credential-styles';
 import { Button } from '@/components/ui/button';
 import { FALLBACK_SCHEMAS } from '@/lib/schema-fallbacks';
-import { useSchemas, useIssuerAuthorization } from '@/hooks/use-issuer';
+import { useSchemas, useIssuerAuthorization, useCreateBulkOffers } from '@/hooks/use-issuer';
 import type { Schema } from '@/lib/api/issuer';
 
 type SchemaDefinition = Schema;
@@ -61,6 +60,7 @@ interface BatchResult {
 /* ------------------------------------------------------------------ */
 
 export default function BulkIssuePage() {
+  const createBulkOffers = useCreateBulkOffers();
   const [step, setStep] = useState(1);
   const [selectedSchema, setSelectedSchema] = useState<SchemaDefinition | null>(null);
   const [parsedRows, setParsedRows] = useState<Record<string, string>[]>([]);
@@ -75,7 +75,8 @@ export default function BulkIssuePage() {
   const schemas = fetchedSchemas && fetchedSchemas.length > 0 ? fetchedSchemas : FALLBACK_SCHEMAS;
   const authorizedTypes = authorization?.authorized ? authorization.credentialTypes : [];
 
-  const displaySchemas = authorizedTypes.length > 0
+  const isAuthorized = authorization?.authorized === true;
+  const displaySchemas = isAuthorized
     ? schemas.filter((s) => authorizedTypes.includes(s.type))
     : schemas;
 
@@ -120,24 +121,25 @@ export default function BulkIssuePage() {
     setParsedRows((prev) => prev.filter((_, i) => i !== index));
   }
 
-  async function handleSubmit() {
+  function handleSubmit() {
     if (!selectedSchema) return;
     setSubmitting(true);
 
-    try {
-      const response = await api.post<BatchResult>('/issuer/offers/batch', {
-        schemaTypeUri: selectedSchema.type,
-        offers: validRows.map((claims) => ({ claims })),
-      });
-      setResults(response);
-      setStep(4);
-      toast.success(`Batch complete: ${response.successful} successful, ${response.failed} failed`);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Batch issuance failed';
-      toast.error(message);
-    } finally {
-      setSubmitting(false);
-    }
+    createBulkOffers.mutate(
+      { schemaTypeUri: selectedSchema.type, offers: validRows.map((claims) => ({ claims })) },
+      {
+        onSuccess: (response) => {
+          setResults(response);
+          setStep(4);
+          toast.success(`Batch complete: ${response.successful} successful, ${response.failed} failed`);
+        },
+        onError: (err) => {
+          const message = err instanceof Error ? err.message : 'Batch issuance failed';
+          toast.error(message);
+        },
+        onSettled: () => setSubmitting(false),
+      },
+    );
   }
 
   function downloadResultsCSV() {
@@ -220,7 +222,7 @@ export default function BulkIssuePage() {
                   key={schema.id}
                   onClick={() => setSelectedSchema(schema)}
                   className={cn(
-                    'w-full text-left bg-card border rounded-2xl p-5 transition-all',
+                    'w-full text-left glass-card rounded-2xl p-5 transition-all',
                     isSelected
                       ? `${styles.selectedBorder} ring-1 ${styles.selectedRing}`
                       : 'border-border hover:border-muted-foreground/30'

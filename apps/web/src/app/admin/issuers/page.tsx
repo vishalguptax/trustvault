@@ -153,7 +153,6 @@ export default function TrustedIssuersPage() {
       header: 'Actions',
       cell: ({ row }) => (
         <div className="flex items-center gap-1">
-          <Button variant="outline" size="sm" className="text-xs h-7 px-2.5">Edit</Button>
           <Button variant="outline" size="sm" onClick={() => setRemoveTarget(row.original)} className="text-xs h-7 px-2.5 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive">Remove</Button>
         </div>
       ),

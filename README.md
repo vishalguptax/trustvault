@@ -48,19 +48,25 @@ All documentation lives in [`docs/`](docs/README.md):
 ## Quick Start
 
 ```bash
-# 1. Install all dependencies (root installs all workspaces)
+# 1. Clone and install (Prisma client auto-generates via postinstall)
+git clone <repo-url> && cd trustilock
 pnpm install
 
 # 2. Copy environment files
-cp apps/api/.env.example apps/api/.env        # Set DATABASE_URL
+cp apps/api/.env.example apps/api/.env        # Set DATABASE_URL, JWT_SECRET
 cp apps/mobile/.env.example apps/mobile/.env  # Set LAN IP
 
-# 3. Set up database
-npx prisma generate --schema=apps/api/prisma/schema.prisma
-npx prisma db push --schema=apps/api/prisma/schema.prisma
+# 3. Push schema to database
+pnpm --filter @trustilock/api prisma:push
 
 # 4. Start everything
 pnpm dev
+```
+
+Or use the one-command setup (installs + generates Prisma):
+
+```bash
+pnpm setup
 ```
 
 ## Monorepo Scripts

@@ -68,7 +68,7 @@ export const verifierApi = {
     policies?: string[];
     verifierName?: string;
     purpose?: string;
-  }) => api.post<PresentationRequest>('/verifier/presentations', data),
+  }) => api.post<PresentationRequest>('/verifier/presentations/request', data),
 
   listPolicies: async () => {
     const raw = await api.get<RawPolicy[]>('/verifier/policies');

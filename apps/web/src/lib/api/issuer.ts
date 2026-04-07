@@ -61,6 +61,9 @@ export const issuerApi = {
   createOffer: (data: { schemaTypeUri: string; claims: Record<string, unknown> }) =>
     api.post<OfferResult>('/issuer/offers', data),
 
+  createBulkOffers: (data: { schemaTypeUri: string; offers: Array<{ claims: Record<string, string> }> }) =>
+    api.post<{ total: number; successful: number; failed: number; results: Array<{ offerId?: string; credentialOfferUri?: string; error?: string }> }>('/issuer/offers/batch', data),
+
   revokeCredential: (credentialId: string, reason: string) =>
     api.post<void>('/status/revoke', { credentialId, reason }),
 };

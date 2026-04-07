@@ -58,8 +58,8 @@ export default function VerificationResultDetailPage() {
             <div className="h-4 w-32 bg-muted rounded" />
           </div>
         </div>
-        <div className="h-32 bg-card border border-border rounded-xl animate-pulse" />
-        <div className="h-48 bg-card border border-border rounded-xl animate-pulse" />
+        <div className="h-32 glass-card rounded-xl animate-pulse" />
+        <div className="h-48 glass-card rounded-xl animate-pulse" />
       </div>
     );
   }
@@ -142,7 +142,7 @@ export default function VerificationResultDetailPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5 }}
-        className="bg-card border border-border rounded-xl p-8"
+        className="glass-card rounded-xl p-8"
       >
         <h3 className="text-lg font-semibold text-center mb-6">Verification Pipeline</h3>
         <VerificationPipeline checks={detail.checks ?? []} />
@@ -168,7 +168,7 @@ export default function VerificationResultDetailPage() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.8 + i * 0.1 }}
-              className="bg-card border border-border rounded-xl overflow-hidden"
+              className="glass-card rounded-xl overflow-hidden"
             >
               <div className={cn('h-1', styles.bar)} />
               <div className="p-6">
@@ -203,7 +203,7 @@ export default function VerificationResultDetailPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.9 }}
-        className="bg-card border border-border rounded-xl p-6"
+        className="glass-card rounded-xl p-6"
       >
         <h3 className="text-lg font-semibold mb-4">Verification Metadata</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

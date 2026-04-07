@@ -1,4 +1,4 @@
-import { View, StyleSheet, useWindowDimensions } from 'react-native';
+import { View, StyleSheet, Platform, useWindowDimensions } from 'react-native';
 import Svg, { Defs, RadialGradient, Stop, Rect } from 'react-native-svg';
 import { useTheme } from '@/lib/theme';
 
@@ -13,6 +13,18 @@ import { useTheme } from '@/lib/theme';
 export function MeshGradient() {
   const { colors, isDark } = useTheme();
   const { width, height } = useWindowDimensions();
+
+  // On web, skip SVG mesh — use simple CSS background to avoid rendering issues
+  if (Platform.OS === 'web') {
+    return (
+      <View
+        style={[StyleSheet.absoluteFill, { backgroundColor: colors.bg, zIndex: -1 }]}
+        pointerEvents="none"
+      />
+    );
+  }
+
+  if (width === 0 || height === 0) return null;
 
   const blobs = isDark
     ? [
@@ -41,7 +53,7 @@ export function MeshGradient() {
       ];
 
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+    <View style={[StyleSheet.absoluteFill, { zIndex: -1 }]} pointerEvents="none">
       <Svg width={width} height={height}>
         <Defs>
           {blobs.map((blob, i) => (

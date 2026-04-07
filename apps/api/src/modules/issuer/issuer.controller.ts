@@ -5,6 +5,7 @@ import {
   Body,
   Param,
   Headers,
+  Req,
   HttpCode,
   HttpStatus,
   BadRequestException,
@@ -40,12 +41,16 @@ export class IssuerController {
   @ApiResponse({ status: 201, description: 'Credential offer created' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden — requires issuer or admin role' })
-  async createOffer(@Body() dto: CreateOfferDto) {
+  async createOffer(
+    @Body() dto: CreateOfferDto,
+    @Req() req: { user?: { id: string } },
+  ) {
     const result = await this.issuerService.createOffer(
       dto.schemaTypeUri,
       dto.subjectDid || 'pending',
       dto.claims,
       dto.pinRequired,
+      req.user?.id,
     );
     return { data: result };
   }
@@ -57,10 +62,14 @@ export class IssuerController {
   @ApiResponse({ status: 201, description: 'Batch offers created' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @HttpCode(HttpStatus.CREATED)
-  async createBulkOffers(@Body() dto: CreateBulkOffersDto) {
+  async createBulkOffers(
+    @Body() dto: CreateBulkOffersDto,
+    @Req() req: { user?: { id: string } },
+  ) {
     const result = await this.issuerService.createBulkOffers(
       dto.schemaTypeUri,
       dto.offers,
+      req.user?.id,
     );
     return { data: result };
   }

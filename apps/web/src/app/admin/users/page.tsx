@@ -343,7 +343,7 @@ export default function UsersPage() {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-card border border-border rounded-xl p-6 max-w-sm w-full mx-4 shadow-lg"
+              className="glass-card rounded-xl p-6 max-w-sm w-full mx-4 shadow-lg"
               onClick={(e) => e.stopPropagation()}
               onKeyDown={trapFocus}
             >
@@ -386,7 +386,7 @@ export default function UsersPage() {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-card border border-border rounded-xl p-6 max-w-sm w-full mx-4 shadow-lg"
+              className="glass-card rounded-xl p-6 max-w-sm w-full mx-4 shadow-lg"
               onClick={(e) => e.stopPropagation()}
               onKeyDown={trapFocus}
             >

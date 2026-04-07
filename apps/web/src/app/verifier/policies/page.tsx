@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Users, ShieldCheck, Clock, PenNib, LockKey } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { usePolicies, useTogglePolicy } from '@/hooks/use-verifier';
 import type { Policy } from '@/lib/api/verifier';
 
@@ -148,23 +149,12 @@ export default function PoliciesPage() {
                     {policy.description}
                   </p>
                 </div>
-                <button
-                  onClick={() => handleToggle(policy)}
-                  className={cn(
-                    'relative w-12 h-6 rounded-full transition-colors flex-shrink-0 cursor-pointer focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none',
-                    policy.enabled ? 'bg-info' : 'bg-muted',
-                  )}
-                  role="switch"
-                  aria-checked={policy.enabled}
+                <Switch
+                  checked={policy.enabled}
+                  onCheckedChange={() => handleToggle(policy)}
+                  className={cn(policy.enabled && 'data-[state=checked]:bg-info')}
                   aria-label={`${policy.name}: ${policy.enabled ? 'enabled' : 'disabled'}`}
-                >
-                  <div
-                    className={cn(
-                      'absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform',
-                      policy.enabled ? 'translate-x-6' : 'translate-x-0.5',
-                    )}
-                  />
-                </button>
+                />
               </div>
             </motion.div>
           ))}

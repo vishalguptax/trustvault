@@ -14,7 +14,7 @@ export default function TabsLayout() {
   const initial = user?.name?.charAt(0)?.toUpperCase() ?? 'U';
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <MeshGradient />
       <Stack
         screenOptions={{

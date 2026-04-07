@@ -141,11 +141,9 @@ export default function IssuerDashboard() {
                       <span className="text-xs text-muted-foreground">{formatDate(cred.issuedAt)}</span>
                     </td>
                     <td className="px-6 py-3">
-                      {cred.status === 'active' ? (
-                        <Button variant="outline" size="sm" className="text-xs h-7 px-2.5 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive">Revoke</Button>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      )}
+                      <Button variant="outline" size="sm" className="text-xs h-7 px-2.5" asChild>
+                        <Link href="/issuer/credentials">View</Link>
+                      </Button>
                     </td>
                   </tr>
                 ))}

@@ -31,8 +31,23 @@ export function useIssuerAuthorization() {
 }
 
 export function useCreateOffer() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: issuerApi.createOffer,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['issuer', 'offers'] });
+    },
+  });
+}
+
+export function useCreateBulkOffers() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: issuerApi.createBulkOffers,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['issuer', 'offers'] });
+      queryClient.invalidateQueries({ queryKey: ['issuer', 'credentials'] });
+    },
   });
 }
 

@@ -3,8 +3,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
-import { api } from '@/lib/api/client';
 import { API_BASE_URL } from '@/lib/constants';
+import { useCreatePresentationRequest } from '@/hooks/use-verifier';
 import { Check, Copy, ShareNetwork } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -74,6 +74,7 @@ const FALLBACK_POLICIES: PolicyDefinition[] = [
 ];
 
 export default function NewVerificationRequestPage() {
+  const createRequest = useCreatePresentationRequest();
   const [step, setStep] = useState(1);
   const [policies] = useState<PolicyDefinition[]>(FALLBACK_POLICIES);
 
@@ -143,24 +144,29 @@ export default function NewVerificationRequestPage() {
     );
   }
 
-  async function handleSubmit() {
+  function handleSubmit() {
     setSubmitting(true);
-    try {
-      const response = await api.post<{ requestUri: string; requestId: string }>('/verifier/presentations/request', {
+    createRequest.mutate(
+      {
+        verifierDid: '',
         credentialTypes: selectedTypes,
         requiredClaims: selectedClaims,
         policies: selectedPolicies,
-      });
-      setRequestUri(response.requestUri);
-      setRequestId(response.requestId);
-      setStep(4);
-      toast.success('Verification request created');
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to create request';
-      toast.error(message);
-    } finally {
-      setSubmitting(false);
-    }
+      },
+      {
+        onSuccess: (response) => {
+          setRequestUri(response.authorizationRequestUri ?? (response as unknown as { requestUri: string }).requestUri);
+          setRequestId(response.requestId);
+          setStep(4);
+          toast.success('Verification request created');
+        },
+        onError: (err) => {
+          const message = err instanceof Error ? err.message : 'Failed to create request';
+          toast.error(message);
+        },
+        onSettled: () => setSubmitting(false),
+      },
+    );
   }
 
   const stepLabels = ['Select Types', 'Select Claims', 'Policies', 'QR Code'];
@@ -216,7 +222,7 @@ export default function NewVerificationRequestPage() {
                   key={schema.id}
                   onClick={() => toggleType(schema.type)}
                   className={cn(
-                    'w-full text-left bg-card border rounded-2xl p-5 transition-all',
+                    'w-full text-left glass-card rounded-2xl p-5 transition-all',
                     isSelected ? `${styles.selectedBorder} ring-1 ${styles.selectedRing}` : 'border-border hover:border-muted-foreground/30'
                   )}
                 >
@@ -313,7 +319,7 @@ export default function NewVerificationRequestPage() {
                   key={policy.id}
                   onClick={() => togglePolicy(policy.id)}
                   className={cn(
-                    'w-full text-left bg-card border rounded-2xl p-5 transition-all',
+                    'w-full text-left glass-card rounded-2xl p-5 transition-all',
                     isSelected ? 'border-info ring-1 ring-info/30' : 'border-border hover:border-muted-foreground/30'
                   )}
                 >

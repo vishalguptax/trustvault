@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   UnauthorizedException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomBytes, createHash } from 'crypto';
@@ -95,16 +96,53 @@ export class IssuerService {
     };
   }
 
+  /**
+   * Verify that the calling user is authorized to issue the given credential type.
+   * Admins bypass this check. Issuers must be linked to a trusted issuer entry
+   * that includes the requested credential type.
+   */
+  async verifyIssuerAuthorization(
+    userId: string,
+    schemaTypeUri: string,
+  ): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new ForbiddenException('User not found');
+    }
+    if (user.role === 'admin') {
+      return; // Admins can issue any credential type
+    }
+    if (!user.trustedIssuerId) {
+      throw new ForbiddenException('You are not linked to a trusted issuer. Contact an administrator.');
+    }
+    const issuer = await this.prisma.trustedIssuer.findUnique({
+      where: { id: user.trustedIssuerId },
+    });
+    if (!issuer || issuer.status !== 'active') {
+      throw new ForbiddenException('Your issuer account is not active in the trust registry.');
+    }
+    if (!issuer.credentialTypes.includes(schemaTypeUri)) {
+      throw new ForbiddenException(
+        `You are not authorized to issue ${schemaTypeUri}. Authorized types: ${issuer.credentialTypes.join(', ')}`,
+      );
+    }
+  }
+
   async createOffer(
     schemaTypeUri: string,
     subjectDid: string,
     claims: Record<string, unknown>,
     pinRequired: boolean = false,
+    userId?: string,
   ): Promise<{
     offerId: string;
     credentialOfferUri: string;
     preAuthorizedCode: string;
   }> {
+    if (userId) {
+      await this.verifyIssuerAuthorization(userId, schemaTypeUri);
+    }
+
     const schema = await this.prisma.credentialSchema.findUnique({
       where: { typeUri: schemaTypeUri },
     });
@@ -152,6 +190,7 @@ export class IssuerService {
   async createBulkOffers(
     schemaTypeUri: string,
     offers: Array<{ claims: Record<string, unknown> }>,
+    userId?: string,
   ) {
     const results: Array<{
       index: number;
@@ -163,6 +202,11 @@ export class IssuerService {
     let successful = 0;
     let failed = 0;
 
+    // Verify authorization once for the entire batch
+    if (userId) {
+      await this.verifyIssuerAuthorization(userId, schemaTypeUri);
+    }
+
     for (let i = 0; i < offers.length; i++) {
       try {
         const result = await this.createOffer(
@@ -170,6 +214,7 @@ export class IssuerService {
           'pending', // subjectDid — resolved during OID4VCI flow
           offers[i].claims,
           false, // pinRequired
+          // Skip per-offer auth check since we already verified above
         );
         results.push({
           index: i,

@@ -73,7 +73,8 @@ export default function NewOfferPage() {
   const schemas = fetchedSchemas && fetchedSchemas.length > 0 ? fetchedSchemas : FALLBACK_SCHEMAS;
   const authorizedTypes = authorization?.authorized ? authorization.credentialTypes : [];
 
-  const displaySchemas = authorizedTypes.length > 0
+  const isAuthorized = authorization?.authorized === true;
+  const displaySchemas = isAuthorized
     ? schemas.filter((s) => authorizedTypes.includes(s.type))
     : schemas;
 
@@ -223,7 +224,7 @@ export default function NewOfferPage() {
                   key={schema.id}
                   onClick={() => handleSchemaSelect(schema)}
                   className={cn(
-                    'w-full text-left bg-card border rounded-2xl p-5 transition-all',
+                    'w-full text-left glass-card rounded-2xl p-5 transition-all',
                     isSelected
                       ? `${styles.selectedBorder} ring-1 ${styles.selectedRing}`
                       : 'border-border hover:border-muted-foreground/30'
