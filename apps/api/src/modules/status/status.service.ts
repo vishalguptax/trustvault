@@ -33,7 +33,8 @@ export class StatusService {
       statusList = created.toObject();
     }
 
-    return { ...statusList, id: statusList._id.toString() };
+    const { _id, ...rest } = statusList as any;
+    return { ...rest, id: _id.toString() };
   }
 
   async allocateIndex(issuerDid: string): Promise<{ statusListId: string; index: number }> {

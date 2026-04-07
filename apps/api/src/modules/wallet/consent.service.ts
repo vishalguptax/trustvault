@@ -1,10 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
 
-function withId<T extends { _id: any }>(doc: T): T & { id: string } {
-  const plain = doc as any;
-  plain.id = plain._id.toString();
-  return plain;
+function withId<T extends { _id: any }>(doc: T): Omit<T, '_id'> & { id: string } {
+  const { _id, ...rest } = doc as any;
+  return { ...rest, id: _id.toString() };
 }
 
 @Injectable()

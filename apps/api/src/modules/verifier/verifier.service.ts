@@ -230,12 +230,13 @@ export class VerifierService {
       active: true,
     });
     const doc = policy.toObject();
-    return { ...doc, id: doc._id.toString() };
+    const { _id, ...rest } = doc;
+    return { ...rest, id: _id.toString() };
   }
 
   async listPolicies() {
     const policies = await this.db.verifierPolicy.find({ active: true }).lean();
-    return policies.map((p) => ({ ...p, id: p._id.toString() }));
+    return policies.map((p) => { const { _id, ...rest } = p; return { ...rest, id: _id.toString() }; });
   }
 
   async updatePolicy(id: string, enabled: boolean) {
@@ -247,6 +248,7 @@ export class VerifierService {
     if (!updated) {
       throw new NotFoundException(`Policy not found: ${id}`);
     }
-    return { ...updated, id: updated._id.toString() };
+    const { _id: uid, ...urest } = updated;
+    return { ...urest, id: uid.toString() };
   }
 }

@@ -161,10 +161,11 @@ export class WalletService {
     const issuerMap = new Map(trustedIssuers.map((i) => [i.did, i.name]));
 
     const enriched = credentials.map((c) => {
+      const { _id, ...crest } = c;
       const storedClaims = c.claims as Record<string, unknown> || {};
       return {
-        ...c,
-        id: c._id.toString(),
+        ...crest,
+        id: _id.toString(),
         subjectDid: (storedClaims.sub as string) || '',
         typeName: schemaMap.get(c.credentialType) || c.credentialType,
         issuerName: issuerMap.get(c.issuerDid) || null,
@@ -179,7 +180,8 @@ export class WalletService {
     if (!credential) {
       throw new NotFoundException(`Credential not found: ${id}`);
     }
-    return { ...credential, id: credential._id.toString() };
+    const { _id, ...rest } = credential;
+    return { ...rest, id: _id.toString() };
   }
 
   async getCredentialClaims(id: string) {
@@ -219,8 +221,8 @@ export class WalletService {
   }
 
   async deleteCredential(id: string) {
-    const credential = await this.getCredential(id);
-    await this.db.walletCredential.deleteOne({ _id: credential._id });
+    await this.getCredential(id);
+    await this.db.walletCredential.deleteOne({ _id: id });
     return { deleted: true };
   }
 
