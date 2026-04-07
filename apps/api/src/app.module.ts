@@ -3,7 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { configuration } from './config/configuration';
-import { PrismaModule } from './prisma/prisma.module';
+import { DatabaseModule } from './database/database.module';
 import { DidModule } from './modules/did/did.module';
 import { CryptoModule } from './modules/crypto/crypto.module';
 import { IssuerModule } from './modules/issuer/issuer.module';
@@ -29,7 +29,7 @@ import { CorrelationIdMiddleware } from './common/middleware/correlation-id.midd
       ttl: 60000,
       limit: 60,
     }]),
-    PrismaModule,
+    DatabaseModule,
     MailModule,
     DidModule,
     CryptoModule,

@@ -1,9 +1,15 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
+import { DatabaseService } from '../../database/database.service';
+
+function withId<T extends { _id: any }>(doc: T): T & { id: string } {
+  const plain = doc as any;
+  plain.id = plain._id.toString();
+  return plain;
+}
 
 @Injectable()
 export class TrustService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly db: DatabaseService) {}
 
   async registerIssuer(
     did: string,
@@ -11,72 +17,67 @@ export class TrustService {
     credentialTypes: string[],
     description?: string,
   ) {
-    const existing = await this.prisma.trustedIssuer.findUnique({ where: { did } });
+    const existing = await this.db.trustedIssuer.findOne({ did }).lean();
     if (existing) {
       throw new ConflictException(`Issuer already registered: ${did}`);
     }
 
-    return this.prisma.trustedIssuer.create({
-      data: { did, name, credentialTypes, description, status: 'active' },
+    const created = await this.db.trustedIssuer.create({
+      did, name, credentialTypes, description, status: 'active',
     });
+    return withId(created.toObject());
   }
 
   async listIssuers() {
-    return this.prisma.trustedIssuer.findMany({ orderBy: { createdAt: 'desc' } });
+    const records = await this.db.trustedIssuer.find({}).sort({ createdAt: -1 }).lean();
+    return records.map((r) => withId(r));
   }
 
   async getIssuer(did: string) {
-    const issuer = await this.prisma.trustedIssuer.findUnique({ where: { did } });
+    const issuer = await this.db.trustedIssuer.findOne({ did }).lean();
     if (!issuer) {
       return { trusted: false, issuer: null };
     }
-    return { trusted: issuer.status === 'active', issuer };
+    return { trusted: issuer.status === 'active', issuer: withId(issuer) };
   }
 
   async updateIssuer(
     did: string,
     updates: { name?: string; credentialTypes?: string[]; status?: string },
   ) {
-    const issuer = await this.prisma.trustedIssuer.findUnique({ where: { did } });
+    const issuer = await this.db.trustedIssuer.findOne({ did }).lean();
     if (!issuer) {
       throw new NotFoundException(`Issuer not found: ${did}`);
     }
 
-    await this.prisma.trustedIssuer.update({
-      where: { did },
-      data: updates,
-    });
+    await this.db.trustedIssuer.updateOne({ did }, { $set: updates });
 
     return { updated: true };
   }
 
   async removeIssuer(did: string) {
-    const issuer = await this.prisma.trustedIssuer.findUnique({ where: { did } });
+    const issuer = await this.db.trustedIssuer.findOne({ did }).lean();
     if (!issuer) {
       throw new NotFoundException(`Issuer not found: ${did}`);
     }
 
-    await this.prisma.trustedIssuer.delete({ where: { did } });
+    await this.db.trustedIssuer.deleteOne({ did });
     return { removed: true };
   }
 
   /** Link a user account to a trusted issuer entry */
   async linkUserToIssuer(email: string, trustedIssuerId: string) {
-    await this.prisma.user.update({
-      where: { email },
-      data: { trustedIssuerId },
-    });
+    await this.db.user.updateOne({ email }, { $set: { trustedIssuerId } });
   }
 
   /** Get the trusted issuer entry for a user by their trustedIssuerId */
   async getIssuerForUser(trustedIssuerId: string) {
-    return this.prisma.trustedIssuer.findUnique({
-      where: { id: trustedIssuerId },
-    });
+    const result = await this.db.trustedIssuer.findById(trustedIssuerId).lean();
+    return result ? withId(result) : null;
   }
 
   async verifyTrust(issuerDid: string, credentialType: string): Promise<{ trusted: boolean; reason?: string }> {
-    const issuer = await this.prisma.trustedIssuer.findUnique({ where: { did: issuerDid } });
+    const issuer = await this.db.trustedIssuer.findOne({ did: issuerDid }).lean();
 
     if (!issuer) {
       return { trusted: false, reason: 'Issuer not found in trust registry' };

@@ -4,11 +4,11 @@ import { PolicyEngineService } from '../../src/modules/verifier/policy-engine.se
 describe('PolicyEngineService', () => {
   let service: PolicyEngineService;
 
-  const mockPrisma = {};
+  const mockDb = {};
 
   beforeEach(() => {
     vi.clearAllMocks();
-    service = new PolicyEngineService(mockPrisma as any);
+    service = new PolicyEngineService(mockDb as any);
   });
 
   describe('evaluatePolicy', () => {

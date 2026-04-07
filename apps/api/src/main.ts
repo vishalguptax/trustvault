@@ -9,7 +9,7 @@ import compression from 'compression';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
-import { PrismaService } from './prisma/prisma.service';
+import { DatabaseService } from './database/database.service';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -19,9 +19,9 @@ async function bootstrap() {
   });
 
   // --- Database connection ---
-  const prisma = app.get(PrismaService);
-  await prisma.connect();
-  if (!prisma.isConnected()) {
+  const db = app.get(DatabaseService);
+  await db.connect();
+  if (!db.isConnected()) {
     logger.error('Database is not connected. Exiting.');
     logger.error('Ensure DATABASE_URL is set in apps/api/.env');
     await app.close();

@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../../prisma/prisma.service';
+import { DatabaseService } from '../../database/database.service';
 import { BitstringStatusListService } from './bitstring-status-list.service';
 import { MailService } from '../mail/mail.service';
 
@@ -9,33 +9,31 @@ export class StatusService {
   private readonly logger = new Logger(StatusService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly db: DatabaseService,
     private readonly bitstringService: BitstringStatusListService,
     private readonly configService: ConfigService,
     private readonly mailService: MailService,
   ) {}
 
   async getOrCreateStatusList(issuerDid: string, purpose: string = 'revocation') {
-    let statusList = await this.prisma.statusList.findFirst({
-      where: { issuerDid, purpose },
-    });
+    let statusList = await this.db.statusList.findOne({ issuerDid, purpose }).lean();
 
     if (!statusList) {
       const size = this.configService.get<number>('credential.statusListSize') || 131072;
       const encodedList = this.bitstringService.createEmptyList(size);
 
-      statusList = await this.prisma.statusList.create({
-        data: {
-          issuerDid,
-          purpose,
-          encodedList,
-          currentIndex: 0,
-          size,
-        },
+      const created = await this.db.statusList.create({
+        issuerDid,
+        purpose,
+        encodedList,
+        currentIndex: 0,
+        size,
       });
+
+      statusList = created.toObject();
     }
 
-    return statusList;
+    return { ...statusList, id: statusList._id.toString() };
   }
 
   async allocateIndex(issuerDid: string): Promise<{ statusListId: string; index: number }> {
@@ -47,27 +45,23 @@ export class StatusService {
 
     const index = statusList.currentIndex;
 
-    await this.prisma.statusList.update({
-      where: { id: statusList.id },
-      data: { currentIndex: index + 1 },
-    });
+    await this.db.statusList.updateOne(
+      { _id: statusList._id },
+      { $set: { currentIndex: index + 1 } },
+    );
 
     return { statusListId: statusList.id, index };
   }
 
   async revokeCredential(credentialId: string, reason?: string) {
-    const credential = await this.prisma.issuedCredential.findUnique({
-      where: { id: credentialId },
-    });
+    const credential = await this.db.issuedCredential.findById(credentialId).lean();
 
     if (!credential) {
       throw new NotFoundException(`Credential not found: ${credentialId}`);
     }
 
     if (credential.statusListId && credential.statusListIndex !== null) {
-      const statusList = await this.prisma.statusList.findUnique({
-        where: { id: credential.statusListId },
-      });
+      const statusList = await this.db.statusList.findById(credential.statusListId).lean();
 
       if (statusList) {
         const updatedList = this.bitstringService.setBit(
@@ -76,17 +70,17 @@ export class StatusService {
           true,
         );
 
-        await this.prisma.statusList.update({
-          where: { id: statusList.id },
-          data: { encodedList: updatedList },
-        });
+        await this.db.statusList.updateOne(
+          { _id: statusList._id },
+          { $set: { encodedList: updatedList } },
+        );
       }
     }
 
-    await this.prisma.issuedCredential.update({
-      where: { id: credentialId },
-      data: { status: 'revoked' },
-    });
+    await this.db.issuedCredential.updateOne(
+      { _id: credentialId },
+      { $set: { status: 'revoked' } },
+    );
 
     this.notifyRevocation(credential.subjectDid, credential.schemaTypeUri, reason).catch(() => {});
 
@@ -98,19 +92,13 @@ export class StatusService {
     schemaTypeUri: string,
     reason?: string,
   ): Promise<void> {
-    const walletDid = await this.prisma.walletDid.findFirst({
-      where: { did: subjectDid },
-    });
+    const walletDid = await this.db.walletDid.findOne({ did: subjectDid }).lean();
     if (!walletDid) return;
 
-    const holder = await this.prisma.user.findUnique({
-      where: { id: walletDid.holderId },
-    });
+    const holder = await this.db.user.findById(walletDid.holderId).lean();
     if (!holder) return;
 
-    const schema = await this.prisma.credentialSchema.findUnique({
-      where: { typeUri: schemaTypeUri },
-    });
+    const schema = await this.db.credentialSchema.findOne({ typeUri: schemaTypeUri }).lean();
 
     await this.mailService.sendCredentialRevoked(
       holder.email,
@@ -121,35 +109,29 @@ export class StatusService {
   }
 
   async suspendCredential(credentialId: string, reason?: string) {
-    const credential = await this.prisma.issuedCredential.findUnique({
-      where: { id: credentialId },
-    });
+    const credential = await this.db.issuedCredential.findById(credentialId).lean();
 
     if (!credential) {
       throw new NotFoundException(`Credential not found: ${credentialId}`);
     }
 
-    await this.prisma.issuedCredential.update({
-      where: { id: credentialId },
-      data: { status: 'suspended' },
-    });
+    await this.db.issuedCredential.updateOne(
+      { _id: credentialId },
+      { $set: { status: 'suspended' } },
+    );
 
     return { suspended: true, updatedAt: new Date() };
   }
 
   async reinstateCredential(credentialId: string) {
-    const credential = await this.prisma.issuedCredential.findUnique({
-      where: { id: credentialId },
-    });
+    const credential = await this.db.issuedCredential.findById(credentialId).lean();
 
     if (!credential) {
       throw new NotFoundException(`Credential not found: ${credentialId}`);
     }
 
     if (credential.statusListId && credential.statusListIndex !== null) {
-      const statusList = await this.prisma.statusList.findUnique({
-        where: { id: credential.statusListId },
-      });
+      const statusList = await this.db.statusList.findById(credential.statusListId).lean();
 
       if (statusList) {
         const updatedList = this.bitstringService.setBit(
@@ -158,23 +140,23 @@ export class StatusService {
           false,
         );
 
-        await this.prisma.statusList.update({
-          where: { id: statusList.id },
-          data: { encodedList: updatedList },
-        });
+        await this.db.statusList.updateOne(
+          { _id: statusList._id },
+          { $set: { encodedList: updatedList } },
+        );
       }
     }
 
-    await this.prisma.issuedCredential.update({
-      where: { id: credentialId },
-      data: { status: 'active' },
-    });
+    await this.db.issuedCredential.updateOne(
+      { _id: credentialId },
+      { $set: { status: 'active' } },
+    );
 
     return { reinstated: true, updatedAt: new Date() };
   }
 
   async getStatusList(id: string) {
-    const statusList = await this.prisma.statusList.findUnique({ where: { id } });
+    const statusList = await this.db.statusList.findById(id).lean();
     if (!statusList) {
       throw new NotFoundException(`Status list not found: ${id}`);
     }
@@ -197,7 +179,7 @@ export class StatusService {
     const parts = statusListUri.split('/');
     const listId = parts[parts.length - 1];
 
-    const statusList = await this.prisma.statusList.findUnique({ where: { id: listId } });
+    const statusList = await this.db.statusList.findById(listId).lean();
     if (!statusList) {
       return false;
     }

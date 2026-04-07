@@ -1,9 +1,15 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
+import { DatabaseService } from '../../database/database.service';
+
+function withId<T extends { _id: any }>(doc: T): T & { id: string } {
+  const plain = doc as any;
+  plain.id = plain._id.toString();
+  return plain;
+}
 
 @Injectable()
 export class ConsentService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly db: DatabaseService) {}
 
   async recordConsent(
     holderId: string,
@@ -13,22 +19,22 @@ export class ConsentService {
     disclosedClaims: Record<string, string[]>,
     purpose?: string,
   ) {
-    return this.prisma.consentRecord.create({
-      data: {
-        holderId,
-        verifierDid,
-        verifierName,
-        credentialIds,
-        disclosedClaims,
-        purpose,
-      },
+    const created = await this.db.consentRecord.create({
+      holderId,
+      verifierDid,
+      verifierName,
+      credentialIds,
+      disclosedClaims,
+      purpose,
     });
+    return withId(created.toObject());
   }
 
   async getConsentHistory(holderId: string) {
-    return this.prisma.consentRecord.findMany({
-      where: { holderId },
-      orderBy: { consentGivenAt: 'desc' },
-    });
+    const records = await this.db.consentRecord
+      .find({ holderId })
+      .sort({ consentGivenAt: -1 })
+      .lean();
+    return records.map((r) => withId(r));
   }
 }

@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
 
 export interface PolicyEvaluationResult {
   valid: boolean;
@@ -9,8 +8,6 @@ export interface PolicyEvaluationResult {
 
 @Injectable()
 export class PolicyEngineService {
-  constructor(private readonly prisma: PrismaService) {}
-
   async evaluatePolicy(
     policyName: string,
     context: {

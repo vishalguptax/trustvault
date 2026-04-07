@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { AppModule } from '../../src/app.module';
-import { PrismaService } from '../../src/prisma/prisma.service';
+import { DatabaseService } from '../../src/database/database.service';
 
 export async function createTestApp(): Promise<INestApplication> {
   const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -23,7 +23,7 @@ export async function createTestApp(): Promise<INestApplication> {
 }
 
 export async function seedTestData(app: INestApplication) {
-  const prisma = app.get(PrismaService);
+  const db = app.get(DatabaseService);
 
   const schemas = [
     {
@@ -67,28 +67,28 @@ export async function seedTestData(app: INestApplication) {
   ];
 
   for (const schema of schemas) {
-    await prisma.credentialSchema.upsert({
-      where: { typeUri: schema.typeUri },
-      update: schema,
-      create: schema,
-    });
+    await db.credentialSchema.findOneAndUpdate(
+      { typeUri: schema.typeUri },
+      { $set: schema },
+      { upsert: true, new: true },
+    );
   }
 }
 
 export async function cleanupTestData(app: INestApplication) {
-  const prisma = app.get(PrismaService);
+  const db = app.get(DatabaseService);
 
-  await prisma.auditLog.deleteMany();
-  await prisma.consentRecord.deleteMany();
-  await prisma.verificationRequest.deleteMany();
-  await prisma.verifierPolicy.deleteMany();
-  await prisma.walletCredential.deleteMany();
-  await prisma.walletDid.deleteMany();
-  await prisma.issuedCredential.deleteMany();
-  await prisma.credentialOffer.deleteMany();
-  await prisma.statusList.deleteMany();
-  await prisma.trustedIssuer.deleteMany();
-  await prisma.trustPolicy.deleteMany();
-  await prisma.credentialSchema.deleteMany();
-  await prisma.did.deleteMany();
+  await db.auditLog.deleteMany({});
+  await db.consentRecord.deleteMany({});
+  await db.verificationRequest.deleteMany({});
+  await db.verifierPolicy.deleteMany({});
+  await db.walletCredential.deleteMany({});
+  await db.walletDid.deleteMany({});
+  await db.issuedCredential.deleteMany({});
+  await db.credentialOffer.deleteMany({});
+  await db.statusList.deleteMany({});
+  await db.trustedIssuer.deleteMany({});
+  await db.trustPolicy.deleteMany({});
+  await db.credentialSchema.deleteMany({});
+  await db.did.deleteMany({});
 }

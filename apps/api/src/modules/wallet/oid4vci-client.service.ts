@@ -1,7 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import type { JWK } from 'jose';
 import * as jose from 'jose';
-import { PrismaService } from '../../prisma/prisma.service';
 import { DidService } from '../did/did.service';
 import { KeyManagerService } from '../crypto/key-manager.service';
 import { SIGNING_ALGORITHM } from '../../common/constants';
@@ -21,7 +20,6 @@ interface CredentialOfferPayload {
 @Injectable()
 export class Oid4vciClientService {
   constructor(
-    private readonly prisma: PrismaService,
     private readonly didService: DidService,
     private readonly keyManager: KeyManagerService,
   ) {}

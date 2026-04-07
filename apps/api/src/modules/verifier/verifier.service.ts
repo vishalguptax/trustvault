@@ -1,14 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomBytes } from 'crypto';
-import { PrismaService } from '../../prisma/prisma.service';
+import { DatabaseService } from '../../database/database.service';
 import { ValidationPipelineService } from './validation-pipeline.service';
 import { VerificationEventsService } from './verification-events.service';
 
 @Injectable()
 export class VerifierService {
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly db: DatabaseService,
     private readonly validationPipeline: ValidationPipelineService,
     private readonly configService: ConfigService,
     private readonly verificationEvents: VerificationEventsService,
@@ -41,23 +41,22 @@ export class VerifierService {
       })),
     };
 
-    const request = await this.prisma.verificationRequest.create({
-      data: {
-        verifierDid,
-        verifierName: verifierName ?? null,
-        purpose: purpose ?? null,
-        presentationDefinition,
-        nonce,
-        state,
-        requiredCredentialTypes: credentialTypes,
-        policies: policies || ['require-trusted-issuer', 'require-active-status', 'require-non-expired'],
-        status: 'pending',
-        expiresAt: new Date(Date.now() + 10 * 60 * 1000),
-      },
+    const request = await this.db.verificationRequest.create({
+      verifierDid,
+      verifierName: verifierName ?? null,
+      purpose: purpose ?? null,
+      presentationDefinition,
+      nonce,
+      state,
+      requiredCredentialTypes: credentialTypes,
+      policies: policies || ['require-trusted-issuer', 'require-active-status', 'require-non-expired'],
+      status: 'pending',
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000),
     });
 
+    const requestId = request._id.toString();
     const apiBaseUrl = this.configService.get<string>('apiBaseUrl');
-    const requestUri = `${apiBaseUrl}/verifier/presentations/${request.id}`;
+    const requestUri = `${apiBaseUrl}/verifier/presentations/${requestId}`;
 
     const uriParams = new URLSearchParams();
     uriParams.set('request_uri', requestUri);
@@ -74,10 +73,10 @@ export class VerifierService {
     const authorizationRequestUri = `openid4vp://?${uriParams.toString()}`;
 
     const webAppUrl = this.configService.get<string>('webAppUrl') ?? 'http://localhost:3000';
-    const shareUrl = `${webAppUrl}/verify/${request.id}`;
+    const shareUrl = `${webAppUrl}/verify/${requestId}`;
 
     return {
-      requestId: request.id,
+      requestId,
       authorizationRequestUri,
       shareUrl,
       nonce,
@@ -87,16 +86,15 @@ export class VerifierService {
 
   /** Public-facing request details for the shareable verification page */
   async getRequestDetails(id: string) {
-    const request = await this.prisma.verificationRequest.findUnique({
-      where: { id },
-    });
+    const request = await this.db.verificationRequest.findById(id).lean();
 
     if (!request) {
       throw new NotFoundException(`Verification request not found: ${id}`);
     }
 
+    const requestId = request._id.toString();
     const apiBaseUrl = this.configService.get<string>('apiBaseUrl');
-    const requestUri = `${apiBaseUrl}/verifier/presentations/${request.id}`;
+    const requestUri = `${apiBaseUrl}/verifier/presentations/${requestId}`;
 
     // Rebuild the openid4vp:// URI for the share page
     const uriParams = new URLSearchParams();
@@ -109,7 +107,7 @@ export class VerifierService {
     const walletUri = `openid4vp://?${uriParams.toString()}`;
 
     return {
-      id: request.id,
+      id: requestId,
       credentialTypes: request.requiredCredentialTypes,
       verifierName: request.verifierName ?? 'Verifier',
       purpose: request.purpose ?? 'Credential verification',
@@ -120,9 +118,7 @@ export class VerifierService {
   }
 
   async handlePresentationResponse(vpToken: string, state: string) {
-    const request = await this.prisma.verificationRequest.findUnique({
-      where: { state },
-    });
+    const request = await this.db.verificationRequest.findOne({ state }).lean();
 
     if (!request) {
       throw new NotFoundException(`Verification request not found for state: ${state}`);
@@ -136,27 +132,27 @@ export class VerifierService {
 
     const completedAt = new Date();
     const status = result.verified ? 'verified' : 'rejected';
+    const requestId = request._id.toString();
 
-    await this.prisma.verificationRequest.update({
-      where: { id: request.id },
-      data: {
+    await this.db.verificationRequest.findByIdAndUpdate(request._id, {
+      $set: {
         status,
         result: JSON.parse(JSON.stringify(result)),
         completedAt,
       },
-    });
+    }, { new: true }).lean();
 
     // Emit SSE event so the verifier's browser updates in real-time
     this.verificationEvents.emit({
-      requestId: request.id,
-      verificationId: request.id,
+      requestId,
+      verificationId: requestId,
       status: status as 'verified' | 'rejected',
       result: result.checks ?? {},
       completedAt: completedAt.toISOString(),
     });
 
     return {
-      verificationId: request.id,
+      verificationId: requestId,
       status,
       result,
     };
@@ -164,13 +160,10 @@ export class VerifierService {
 
   async listPresentations(verifierDid?: string) {
     const where = verifierDid ? { verifierDid } : {};
-    const requests = await this.prisma.verificationRequest.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-    });
+    const requests = await this.db.verificationRequest.find(where).sort({ createdAt: -1 }).lean();
 
     return requests.map((r) => ({
-      id: r.id,
+      id: r._id.toString(),
       credentialTypes: r.requiredCredentialTypes,
       result: r.status === 'verified' ? 'verified' : r.status === 'rejected' ? 'rejected' : 'pending',
       verifierDid: r.verifierDid,
@@ -180,13 +173,13 @@ export class VerifierService {
   }
 
   async getPresentation(id: string) {
-    const request = await this.prisma.verificationRequest.findUnique({
-      where: { id },
-    });
+    const request = await this.db.verificationRequest.findById(id).lean();
 
     if (!request) {
       throw new NotFoundException(`Verification request not found: ${id}`);
     }
+
+    const requestId = request._id.toString();
 
     // Map stored ValidationResult to the shape the frontend expects
     const rawResult = request.result as Record<string, unknown> | null;
@@ -218,7 +211,7 @@ export class VerifierService {
     const isVerified = rawResult?.verified === true;
 
     return {
-      id: request.id,
+      id: requestId,
       result: isVerified ? 'verified' : request.status === 'pending' ? 'pending' : 'rejected',
       checks,
       credentials,
@@ -230,23 +223,30 @@ export class VerifierService {
   }
 
   async createPolicy(name: string, description: string | undefined, rules: Record<string, unknown>) {
-    return this.prisma.verifierPolicy.create({
-      data: { name, description, rules: JSON.parse(JSON.stringify(rules)), active: true },
+    const policy = await this.db.verifierPolicy.create({
+      name,
+      description,
+      rules: JSON.parse(JSON.stringify(rules)),
+      active: true,
     });
+    const doc = policy.toObject();
+    return { ...doc, id: doc._id.toString() };
   }
 
   async listPolicies() {
-    return this.prisma.verifierPolicy.findMany({ where: { active: true } });
+    const policies = await this.db.verifierPolicy.find({ active: true }).lean();
+    return policies.map((p) => ({ ...p, id: p._id.toString() }));
   }
 
   async updatePolicy(id: string, enabled: boolean) {
-    const policy = await this.prisma.verifierPolicy.findUnique({ where: { id } });
+    const policy = await this.db.verifierPolicy.findById(id).lean();
     if (!policy) {
       throw new NotFoundException(`Policy not found: ${id}`);
     }
-    return this.prisma.verifierPolicy.update({
-      where: { id },
-      data: { active: enabled },
-    });
+    const updated = await this.db.verifierPolicy.findByIdAndUpdate(id, { $set: { active: enabled } }, { new: true }).lean();
+    if (!updated) {
+      throw new NotFoundException(`Policy not found: ${id}`);
+    }
+    return { ...updated, id: updated._id.toString() };
   }
 }

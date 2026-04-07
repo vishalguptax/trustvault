@@ -9,8 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { randomBytes, createHash } from 'crypto';
 import type { JWK } from 'jose';
 import * as jose from 'jose';
-import type { CredentialSchema } from '@prisma/client';
-import { PrismaService } from '../../prisma/prisma.service';
+import { DatabaseService } from '../../database/database.service';
 import { DidService } from '../did/did.service';
 import { SdJwtService } from '../crypto/sd-jwt.service';
 import { SIGNING_ALGORITHM } from '../../common/constants';
@@ -31,10 +30,19 @@ export interface SchemaDto {
   claims: ClaimDefinitionDto[];
 }
 
+interface CredentialSchemaLean {
+  _id: unknown;
+  typeUri: string;
+  name: string;
+  description: string | null;
+  schema: Record<string, unknown>;
+  sdClaims: string[];
+}
+
 @Injectable()
 export class IssuerService {
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly db: DatabaseService,
     private readonly didService: DidService,
     private readonly sdJwtService: SdJwtService,
     private readonly configService: ConfigService,
@@ -45,10 +53,7 @@ export class IssuerService {
     if (configured) {
       return configured;
     }
-    const existing = await this.prisma.did.findFirst({
-      where: { method: 'key', active: true },
-      orderBy: { createdAt: 'asc' },
-    });
+    const existing = await this.db.did.findOne({ method: 'key', active: true }).sort({ createdAt: 1 }).lean();
     if (existing) {
       return existing.did;
     }
@@ -60,7 +65,7 @@ export class IssuerService {
     const issuerDid = await this.getOrCreateIssuerDid();
     const baseUrl = this.configService.get<string>('issuer.baseUrl');
 
-    const schemas = await this.prisma.credentialSchema.findMany({ where: { active: true } });
+    const schemas = await this.db.credentialSchema.find({ active: true }).lean();
 
     const credentialConfigurations: Record<string, unknown> = {};
     for (const schema of schemas) {
@@ -105,7 +110,7 @@ export class IssuerService {
     userId: string,
     schemaTypeUri: string,
   ): Promise<void> {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const user = await this.db.user.findById(userId).lean();
     if (!user) {
       throw new ForbiddenException('User not found');
     }
@@ -115,9 +120,7 @@ export class IssuerService {
     if (!user.trustedIssuerId) {
       throw new ForbiddenException('You are not linked to a trusted issuer. Contact an administrator.');
     }
-    const issuer = await this.prisma.trustedIssuer.findUnique({
-      where: { id: user.trustedIssuerId },
-    });
+    const issuer = await this.db.trustedIssuer.findById(user.trustedIssuerId).lean();
     if (!issuer || issuer.status !== 'active') {
       throw new ForbiddenException('Your issuer account is not active in the trust registry.');
     }
@@ -143,9 +146,7 @@ export class IssuerService {
       await this.verifyIssuerAuthorization(userId, schemaTypeUri);
     }
 
-    const schema = await this.prisma.credentialSchema.findUnique({
-      where: { typeUri: schemaTypeUri },
-    });
+    const schema = await this.db.credentialSchema.findOne({ typeUri: schemaTypeUri }).lean();
     if (!schema) {
       throw new NotFoundException(`Credential schema not found: ${schemaTypeUri}`);
     }
@@ -154,16 +155,14 @@ export class IssuerService {
     const preAuthorizedCode = randomBytes(32).toString('base64url');
     const baseUrl = this.configService.get<string>('issuer.baseUrl');
 
-    const offer = await this.prisma.credentialOffer.create({
-      data: {
-        issuerDid,
-        schemaTypeUri,
-        preAuthorizedCode,
-        pinRequired,
-        claims: JSON.parse(JSON.stringify(claims)),
-        status: 'pending',
-        expiresAt: new Date(Date.now() + 10 * 60 * 1000),
-      },
+    const offer = await this.db.credentialOffer.create({
+      issuerDid,
+      schemaTypeUri,
+      preAuthorizedCode,
+      pinRequired,
+      claims: JSON.parse(JSON.stringify(claims)),
+      status: 'pending',
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000),
     });
 
     const credentialOfferPayload = {
@@ -181,7 +180,7 @@ export class IssuerService {
     const credentialOfferUri = `openid-credential-offer://?credential_offer=${encodeURIComponent(JSON.stringify(credentialOfferPayload))}`;
 
     return {
-      offerId: offer.id,
+      offerId: offer._id.toString(),
       credentialOfferUri,
       preAuthorizedCode,
     };
@@ -247,9 +246,7 @@ export class IssuerService {
     c_nonce: string;
     c_nonce_expires_in: number;
   }> {
-    const offer = await this.prisma.credentialOffer.findUnique({
-      where: { preAuthorizedCode },
-    });
+    const offer = await this.db.credentialOffer.findOne({ preAuthorizedCode }).lean();
 
     if (!offer) {
       throw new BadRequestException('Invalid pre-authorized code');
@@ -260,10 +257,7 @@ export class IssuerService {
     }
 
     if (new Date() > offer.expiresAt) {
-      await this.prisma.credentialOffer.update({
-        where: { id: offer.id },
-        data: { status: 'expired' },
-      });
+      await this.db.credentialOffer.findByIdAndUpdate(offer._id, { $set: { status: 'expired' } }, { new: true }).lean();
       throw new BadRequestException('Offer has expired');
     }
 
@@ -274,14 +268,13 @@ export class IssuerService {
     const accessToken = randomBytes(32).toString('base64url');
     const cNonce = randomBytes(16).toString('base64url');
 
-    await this.prisma.credentialOffer.update({
-      where: { id: offer.id },
-      data: {
+    await this.db.credentialOffer.findByIdAndUpdate(offer._id, {
+      $set: {
         accessToken,
         cNonce,
         status: 'token_issued',
       },
-    });
+    }, { new: true }).lean();
 
     return {
       access_token: accessToken,
@@ -302,9 +295,7 @@ export class IssuerService {
     c_nonce: string;
     c_nonce_expires_in: number;
   }> {
-    const offer = await this.prisma.credentialOffer.findFirst({
-      where: { accessToken },
-    });
+    const offer = await this.db.credentialOffer.findOne({ accessToken }).lean();
 
     if (!offer) {
       throw new UnauthorizedException('Invalid access token');
@@ -314,9 +305,7 @@ export class IssuerService {
       throw new BadRequestException(`Invalid offer status: ${offer.status}`);
     }
 
-    const schema = await this.prisma.credentialSchema.findUnique({
-      where: { typeUri: offer.schemaTypeUri },
-    });
+    const schema = await this.db.credentialSchema.findOne({ typeUri: offer.schemaTypeUri }).lean();
     if (!schema) {
       throw new NotFoundException(`Schema not found: ${offer.schemaTypeUri}`);
     }
@@ -360,21 +349,18 @@ export class IssuerService {
     const credentialHash = createHash('sha256').update(sdJwtVc).digest('hex');
     const newCNonce = randomBytes(16).toString('base64url');
 
-    await this.prisma.issuedCredential.create({
-      data: {
-        issuerDid: offer.issuerDid,
-        subjectDid,
-        schemaTypeUri: offer.schemaTypeUri,
-        credentialHash,
-        status: 'active',
-        expiresAt,
-      },
+    await this.db.issuedCredential.create({
+      issuerDid: offer.issuerDid,
+      subjectDid,
+      schemaTypeUri: offer.schemaTypeUri,
+      credentialHash,
+      status: 'active',
+      expiresAt,
     });
 
-    await this.prisma.credentialOffer.update({
-      where: { id: offer.id },
-      data: { status: 'credential_issued', cNonce: newCNonce },
-    });
+    await this.db.credentialOffer.findByIdAndUpdate(offer._id, {
+      $set: { status: 'credential_issued', cNonce: newCNonce },
+    }, { new: true }).lean();
 
     return {
       credential: sdJwtVc,
@@ -383,7 +369,7 @@ export class IssuerService {
     };
   }
 
-  toSchemaDto(schema: CredentialSchema): SchemaDto {
+  toSchemaDto(schema: CredentialSchemaLean): SchemaDto {
     const schemaJson = schema.schema as Record<
       string,
       { type?: string; label?: string; required?: boolean }
@@ -398,7 +384,7 @@ export class IssuerService {
       }),
     );
     return {
-      id: schema.id,
+      id: (schema._id as { toString(): string }).toString(),
       type: schema.typeUri,
       name: schema.name,
       description: schema.description || '',
@@ -407,14 +393,12 @@ export class IssuerService {
   }
 
   async listSchemas(): Promise<SchemaDto[]> {
-    const schemas = await this.prisma.credentialSchema.findMany({
-      where: { active: true },
-    });
+    const schemas = await this.db.credentialSchema.find({ active: true }).lean();
     return schemas.map((s) => this.toSchemaDto(s));
   }
 
   async getSchema(id: string): Promise<SchemaDto> {
-    const schema = await this.prisma.credentialSchema.findUnique({ where: { id } });
+    const schema = await this.db.credentialSchema.findById(id).lean();
     if (!schema) {
       throw new NotFoundException(`Schema not found: ${id}`);
     }
@@ -422,20 +406,14 @@ export class IssuerService {
   }
 
   async getOfferPreview(preAuthorizedCode: string) {
-    const offer = await this.prisma.credentialOffer.findUnique({
-      where: { preAuthorizedCode },
-    });
+    const offer = await this.db.credentialOffer.findOne({ preAuthorizedCode }).lean();
     if (!offer) {
       throw new NotFoundException('Credential offer not found');
     }
 
-    const schema = await this.prisma.credentialSchema.findUnique({
-      where: { typeUri: offer.schemaTypeUri },
-    });
+    const schema = await this.db.credentialSchema.findOne({ typeUri: offer.schemaTypeUri }).lean();
 
-    const trustedIssuer = await this.prisma.trustedIssuer.findFirst({
-      where: { did: offer.issuerDid },
-    });
+    const trustedIssuer = await this.db.trustedIssuer.findOne({ did: offer.issuerDid }).lean();
 
     const claims = offer.claims as Record<string, unknown>;
     const claimKeys = Object.keys(claims).filter(
@@ -456,9 +434,7 @@ export class IssuerService {
   }
 
   async listOffers() {
-    const offers = await this.prisma.credentialOffer.findMany({
-      orderBy: { createdAt: 'desc' },
-    });
+    const offers = await this.db.credentialOffer.find({}).sort({ createdAt: -1 }).lean();
 
     const baseUrl = this.configService.get<string>('issuer.baseUrl');
 
@@ -480,7 +456,7 @@ export class IssuerService {
       const credentialOfferUri = `openid-credential-offer://?credential_offer=${encodeURIComponent(JSON.stringify(credentialOfferPayload))}`;
 
       return {
-        id: offer.id,
+        id: offer._id.toString(),
         schemaTypeUri: offer.schemaTypeUri,
         status: isExpired ? 'expired' : offer.status,
         claims,
@@ -494,12 +470,9 @@ export class IssuerService {
 
   async listIssuedCredentials(issuerDid?: string) {
     const where = issuerDid ? { issuerDid } : {};
-    const credentials = await this.prisma.issuedCredential.findMany({
-      where,
-      orderBy: { issuedAt: 'desc' },
-    });
+    const credentials = await this.db.issuedCredential.find(where).sort({ issuedAt: -1 }).lean();
     return credentials.map((c) => ({
-      id: c.id,
+      id: c._id.toString(),
       type: c.schemaTypeUri,
       subjectDid: c.subjectDid,
       issuerDid: c.issuerDid,

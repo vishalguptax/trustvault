@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import type { JWK } from 'jose';
-import { PrismaService } from '../../prisma/prisma.service';
+import { DatabaseService } from '../../database/database.service';
 import { DidKeyProvider } from './providers/did-key.provider';
 import type { DidDocument, KeyPair } from '../../common/types';
 
@@ -14,7 +14,7 @@ export interface CreateDidResult {
 @Injectable()
 export class DidService {
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly db: DatabaseService,
     private readonly didKeyProvider: DidKeyProvider,
   ) {}
 
@@ -26,29 +26,27 @@ export class DidService {
     const keyPair = await this.didKeyProvider.generateKeyPair();
     const { did, document } = await this.didKeyProvider.createDid(keyPair);
 
-    await this.prisma.did.create({
-      data: {
-        did,
-        method,
-        document: JSON.parse(JSON.stringify(document)),
-        keys: [
-          {
-            kid: keyPair.kid,
-            type: keyPair.algorithm,
-            publicKeyJwk: JSON.parse(JSON.stringify(keyPair.publicKey)),
-            privateKeyJwk: JSON.parse(JSON.stringify(keyPair.privateKey)),
-            purposes: ['authentication', 'assertionMethod'],
-          },
-        ],
-        active: true,
-      },
+    await this.db.did.create({
+      did,
+      method,
+      document: JSON.parse(JSON.stringify(document)),
+      keys: [
+        {
+          kid: keyPair.kid,
+          type: keyPair.algorithm,
+          publicKeyJwk: JSON.parse(JSON.stringify(keyPair.publicKey)),
+          privateKeyJwk: JSON.parse(JSON.stringify(keyPair.privateKey)),
+          purposes: ['authentication', 'assertionMethod'],
+        },
+      ],
+      active: true,
     });
 
     return { did, method, document, keyPair };
   }
 
   async resolveDid(did: string): Promise<DidDocument> {
-    const record = await this.prisma.did.findUnique({ where: { did } });
+    const record = await this.db.did.findOne({ did }).lean();
     if (!record) {
       throw new NotFoundException(`DID not found: ${did}`);
     }
@@ -56,12 +54,12 @@ export class DidService {
   }
 
   async getKeyPair(did: string): Promise<KeyPair> {
-    const record = await this.prisma.did.findUnique({ where: { did } });
+    const record = await this.db.did.findOne({ did }).lean();
     if (!record) {
       throw new NotFoundException(`DID not found: ${did}`);
     }
 
-    const key = record.keys[0];
+    const key = (record.keys as any[])[0];
     if (!key) {
       throw new NotFoundException(`No keys found for DID: ${did}`);
     }
@@ -84,9 +82,12 @@ export class DidService {
   }
 
   async listDids(): Promise<{ did: string; method: string; active: boolean; createdAt: Date }[]> {
-    const records = await this.prisma.did.findMany({
-      select: { did: true, method: true, active: true, createdAt: true },
-    });
-    return records;
+    const records = await this.db.did.find({}).select('did method active createdAt').lean();
+    return records.map((r) => ({
+      did: r.did,
+      method: r.method,
+      active: r.active,
+      createdAt: (r as any).createdAt,
+    }));
   }
 }

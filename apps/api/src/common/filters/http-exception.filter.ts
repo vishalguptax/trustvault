@@ -45,41 +45,31 @@ export class AllExceptionsFilter implements ExceptionFilter {
       const errMsg = exception.message;
       const errName = exception.constructor?.name || 'Error';
 
-      // Prisma: malformed MongoDB ObjectID
-      if (errMsg.includes('Malformed ObjectID') || errMsg.includes('Inconsistent column data')) {
+      // Mongoose: malformed ObjectID (CastError)
+      if (errName === 'CastError' || errMsg.includes('Cast to ObjectId failed')) {
         status = HttpStatus.BAD_REQUEST;
         error = 'BadRequest';
         message = 'Invalid ID format';
 
-      // Prisma: known request errors (unique, not found, etc.)
-      } else if (errName === 'PrismaClientKnownRequestError') {
-        const prismaError = exception as Error & { code?: string; meta?: Record<string, unknown> };
-        switch (prismaError.code) {
-          case 'P2002':
-            status = HttpStatus.CONFLICT;
-            error = 'Conflict';
-            message = `Unique constraint violation on: ${(prismaError.meta?.target as string[])?.join(', ') || 'unknown field'}`;
-            break;
-          case 'P2025':
-            status = HttpStatus.NOT_FOUND;
-            error = 'NotFound';
-            message = 'Record not found';
-            break;
-          default:
-            message = `Database error: ${prismaError.code}`;
-        }
+      // Mongoose: duplicate key (unique constraint violation)
+      } else if (errName === 'MongoServerError' && (exception as Error & { code?: number }).code === 11000) {
+        status = HttpStatus.CONFLICT;
+        error = 'Conflict';
+        const mongoError = exception as Error & { keyPattern?: Record<string, unknown> };
+        const fields = mongoError.keyPattern ? Object.keys(mongoError.keyPattern).join(', ') : 'unknown field';
+        message = `Unique constraint violation on: ${fields}`;
 
-      // Prisma: validation errors
-      } else if (errName === 'PrismaClientValidationError') {
+      // Mongoose: validation errors
+      } else if (errName === 'ValidationError') {
         status = HttpStatus.BAD_REQUEST;
         error = 'BadRequest';
         message = 'Invalid request data';
 
       // Record not found patterns
-      } else if (errMsg.includes('Record to update not found') || errMsg.includes('Record to delete does not exist')) {
+      } else if (errMsg.includes('not found') || errMsg.includes('does not exist')) {
         status = HttpStatus.NOT_FOUND;
         error = 'NotFound';
-        message = 'Record not found';
+        message = errMsg;
 
       // Unknown error — hide details in production
       } else {

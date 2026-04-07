@@ -1,12 +1,12 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Public } from '../auth/decorators/public.decorator';
-import { PrismaService } from '../../prisma/prisma.service';
+import { DatabaseService } from '../../database/database.service';
 
 @ApiTags('Health')
 @Controller('health')
 export class HealthController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly db: DatabaseService) {}
 
   @Public()
   @Get()
@@ -18,8 +18,7 @@ export class HealthController {
     let database = false;
 
     try {
-      await this.prisma.$runCommandRaw({ ping: 1 });
-      database = true;
+      database = await this.db.ping();
     } catch {
       database = false;
     }

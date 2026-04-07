@@ -1,4 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import mongoose from 'mongoose';
+import { config as loadEnv } from 'dotenv';
 import * as bcrypt from 'bcrypt';
 import { randomBytes, createHash } from 'crypto';
 import { SDJwtVcInstance } from '@sd-jwt/sd-jwt-vc';
@@ -6,7 +7,21 @@ import type { Signer, Hasher } from '@sd-jwt/types';
 import * as jose from 'jose';
 import type { JWK } from 'jose';
 
-const prisma = new PrismaClient();
+import {
+  UserModel,
+  DidModel,
+  CredentialSchemaModel,
+  IssuedCredentialModel,
+  TrustedIssuerModel,
+  TrustPolicyModel,
+  WalletCredentialModel,
+  WalletDidModel,
+  VerificationRequestModel,
+  VerifierPolicyModel,
+  AuditLogModel,
+} from '../../apps/api/src/database/schemas/index';
+
+loadEnv({ path: '../../apps/api/.env' });
 
 // ============================================
 // SD-JWT-VC Helpers (mirrors SdJwtService)
@@ -538,59 +553,60 @@ function buildAuditLogs() {
 async function seed() {
   console.log('=== TrustiLock Seed ===\n');
 
+  await mongoose.connect(process.env.DATABASE_URL!);
+  console.log('Connected to MongoDB via Mongoose.\n');
+
   // --- Schemas ---
   console.log('Seeding credential schemas...');
   for (const schema of schemas) {
-    await prisma.credentialSchema.upsert({
-      where: { typeUri: schema.typeUri },
-      update: schema,
-      create: schema,
-    });
+    await CredentialSchemaModel.findOneAndUpdate(
+      { typeUri: schema.typeUri },
+      schema,
+      { upsert: true, new: true },
+    );
     console.log(`  + ${schema.typeUri}`);
   }
 
   // --- Verifier Policies ---
   console.log('\nSeeding verifier policies...');
   for (const policy of verifierPolicies) {
-    await prisma.verifierPolicy.upsert({
-      where: { name: policy.name },
-      update: policy,
-      create: policy,
-    });
+    await VerifierPolicyModel.findOneAndUpdate(
+      { name: policy.name },
+      policy,
+      { upsert: true, new: true },
+    );
     console.log(`  + ${policy.name}`);
   }
 
   // --- Trust Policies ---
   console.log('\nSeeding trust policies...');
   for (const policy of trustPolicies) {
-    await prisma.trustPolicy.upsert({
-      where: { name: policy.name },
-      update: policy,
-      create: policy,
-    });
+    await TrustPolicyModel.findOneAndUpdate(
+      { name: policy.name },
+      policy,
+      { upsert: true, new: true },
+    );
     console.log(`  + ${policy.name}`);
   }
 
   // --- Users ---
   console.log('\nSeeding users...');
   for (const user of users) {
-    const existing = await prisma.user.findUnique({ where: { email: user.email } });
+    const existing = await UserModel.findOne({ email: user.email });
     if (existing) {
       console.log(`  ~ ${user.email} (${user.role}) — already exists`);
       continue;
     }
 
     const passwordHash = await bcrypt.hash(user.password, BCRYPT_ROUNDS);
-    await prisma.user.create({
-      data: {
-        email: user.email,
-        passwordHash,
-        name: user.name,
-        role: user.role,
-        refreshTokens: [],
-        apiKeys: [],
-        active: true,
-      },
+    await UserModel.create({
+      email: user.email,
+      passwordHash,
+      name: user.name,
+      role: user.role,
+      refreshTokens: [],
+      apiKeys: [],
+      active: true,
     });
     console.log(`  + ${user.email} (${user.role})`);
   }
@@ -598,11 +614,11 @@ async function seed() {
   // --- Trusted Issuers ---
   console.log('\nSeeding trusted issuers...');
   for (const issuer of trustedIssuers) {
-    await prisma.trustedIssuer.upsert({
-      where: { did: issuer.did },
-      update: issuer,
-      create: issuer,
-    });
+    await TrustedIssuerModel.findOneAndUpdate(
+      { did: issuer.did },
+      issuer,
+      { upsert: true, new: true },
+    );
     console.log(`  + ${issuer.name} (${issuer.status})`);
   }
 
@@ -610,35 +626,35 @@ async function seed() {
   console.log('\nSeeding issued credentials...');
   const issuedCreds = buildIssuedCredentials();
   for (const cred of issuedCreds) {
-    const existing = await prisma.issuedCredential.findUnique({ where: { credentialHash: cred.credentialHash } });
+    const existing = await IssuedCredentialModel.findOne({ credentialHash: cred.credentialHash });
     if (existing) {
       console.log(`  ~ ${cred.schemaTypeUri} for ${cred.subjectDid} — already exists`);
       continue;
     }
-    await prisma.issuedCredential.create({ data: cred });
+    await IssuedCredentialModel.create(cred);
     console.log(`  + ${cred.schemaTypeUri} → ${cred.subjectDid} (${cred.status})`);
   }
 
   // --- Verification Requests ---
   console.log('\nSeeding verification requests...');
-  const existingRequests = await prisma.verificationRequest.count();
+  const existingRequests = await VerificationRequestModel.countDocuments();
   if (existingRequests > 0) {
     console.log(`  ~ ${existingRequests} requests already exist — skipping`);
   } else {
     const requests = buildVerificationRequests();
     for (const req of requests) {
-      await prisma.verificationRequest.create({ data: req });
+      await VerificationRequestModel.create(req);
       console.log(`  + ${req.requiredCredentialTypes.join(', ')} (${req.status})`);
     }
   }
 
   // --- Wallet Credentials (real SD-JWT-VCs for holder dashboard) ---
   console.log('\nSeeding wallet credentials...');
-  const holderUser = await prisma.user.findUnique({ where: { email: 'holder@trustilock.dev' } });
-  const holder2User = await prisma.user.findUnique({ where: { email: 'holder2@trustilock.dev' } });
+  const holderUser = await UserModel.findOne({ email: 'holder@trustilock.dev' });
+  const holder2User = await UserModel.findOne({ email: 'holder2@trustilock.dev' });
 
   if (holderUser) {
-    const existingWalletCreds = await prisma.walletCredential.count({ where: { holderId: holderUser.id } });
+    const existingWalletCreds = await WalletCredentialModel.countDocuments({ holderId: holderUser._id.toString() });
     if (existingWalletCreds > 0) {
       console.log(`  ~ holder@trustilock.dev already has ${existingWalletCreds} credentials — skipping`);
     } else {
@@ -652,17 +668,15 @@ async function seed() {
       const holderKeys = await generateKeyPair();
 
       // Store holder DID + keys so presentations work
-      const holderDid = `did:key:zSeedHolder${holderUser.id.slice(-8)}`;
-      const existingDid = await prisma.walletDid.findFirst({ where: { holderId: holderUser.id } });
+      const holderDid = `did:key:zSeedHolder${holderUser._id.toString().slice(-8)}`;
+      const existingDid = await WalletDidModel.findOne({ holderId: holderUser._id.toString() });
       if (!existingDid) {
-        await prisma.walletDid.create({
-          data: {
-            holderId: holderUser.id,
-            did: holderDid,
-            method: 'key',
-            keyData: JSON.parse(JSON.stringify(holderKeys)),
-            isPrimary: true,
-          },
+        await WalletDidModel.create({
+          holderId: holderUser._id.toString(),
+          did: holderDid,
+          method: 'key',
+          keyData: JSON.parse(JSON.stringify(holderKeys)),
+          isPrimary: true,
         });
         console.log(`  + WalletDid for holder@trustilock.dev`);
       }
@@ -673,22 +687,20 @@ async function seed() {
         { did: 'did:key:zSeedIssuerApex', keys: apexKeys },
         { did: 'did:key:zSeedIssuerGovID', keys: govKeys },
       ]) {
-        const existingIssuerDid = await prisma.did.findUnique({ where: { did } });
+        const existingIssuerDid = await DidModel.findOne({ did });
         if (!existingIssuerDid) {
-          await prisma.did.create({
-            data: {
-              did,
-              method: 'key',
-              document: { id: did, verificationMethod: [] },
-              keys: [{
-                kid: `${did}#key-1`,
-                type: 'ES256',
-                publicKeyJwk: keys.publicKey as unknown as Record<string, string>,
-                privateKeyJwk: keys.privateKey as unknown as Record<string, string>,
-                purposes: ['assertionMethod', 'authentication'],
-              }],
-              active: true,
-            },
+          await DidModel.create({
+            did,
+            method: 'key',
+            document: { id: did, verificationMethod: [] },
+            keys: [{
+              kid: `${did}#key-1`,
+              type: 'ES256',
+              publicKeyJwk: keys.publicKey as unknown as Record<string, string>,
+              privateKeyJwk: keys.privateKey as unknown as Record<string, string>,
+              purposes: ['assertionMethod', 'authentication'],
+            }],
+            active: true,
           });
         }
       }
@@ -766,18 +778,16 @@ async function seed() {
           def.sdClaims,
         );
 
-        await prisma.walletCredential.create({
-          data: {
-            holderId: holderUser.id,
-            rawCredential,
-            format: 'sd-jwt-vc',
-            credentialType: def.credentialType,
-            issuerDid: def.issuerDid,
-            claims: JSON.parse(JSON.stringify(payload)),
-            sdClaims: def.sdClaims,
-            issuedAt: def.issuedAt,
-            expiresAt: def.expiresAt,
-          },
+        await WalletCredentialModel.create({
+          holderId: holderUser._id.toString(),
+          rawCredential,
+          format: 'sd-jwt-vc',
+          credentialType: def.credentialType,
+          issuerDid: def.issuerDid,
+          claims: JSON.parse(JSON.stringify(payload)),
+          sdClaims: def.sdClaims,
+          issuedAt: def.issuedAt,
+          expiresAt: def.expiresAt,
         });
         console.log(`  + ${def.credentialType} → holder@trustilock.dev (real SD-JWT-VC)`);
       }
@@ -785,7 +795,7 @@ async function seed() {
   }
 
   if (holder2User) {
-    const existingWalletCreds = await prisma.walletCredential.count({ where: { holderId: holder2User.id } });
+    const existingWalletCreds = await WalletCredentialModel.countDocuments({ holderId: holder2User._id.toString() });
     if (existingWalletCreds > 0) {
       console.log(`  ~ holder2@trustilock.dev already has ${existingWalletCreds} credentials — skipping`);
     } else {
@@ -794,18 +804,16 @@ async function seed() {
 
       const holder2Keys = await generateKeyPair();
       const ntuKeys2 = await generateKeyPair();
-      const holder2Did = `did:key:zSeedHolder2${holder2User.id.slice(-8)}`;
+      const holder2Did = `did:key:zSeedHolder2${holder2User._id.toString().slice(-8)}`;
 
-      const existingDid = await prisma.walletDid.findFirst({ where: { holderId: holder2User.id } });
+      const existingDid = await WalletDidModel.findOne({ holderId: holder2User._id.toString() });
       if (!existingDid) {
-        await prisma.walletDid.create({
-          data: {
-            holderId: holder2User.id,
-            did: holder2Did,
-            method: 'key',
-            keyData: JSON.parse(JSON.stringify(holder2Keys)),
-            isPrimary: true,
-          },
+        await WalletDidModel.create({
+          holderId: holder2User._id.toString(),
+          did: holder2Did,
+          method: 'key',
+          keyData: JSON.parse(JSON.stringify(holder2Keys)),
+          isPrimary: true,
         });
       }
 
@@ -832,18 +840,16 @@ async function seed() {
         ['fieldOfStudy', 'graduationDate', 'gpa', 'studentId'],
       );
 
-      await prisma.walletCredential.create({
-        data: {
-          holderId: holder2User.id,
-          rawCredential,
-          format: 'sd-jwt-vc',
-          credentialType: 'VerifiableEducationCredential',
-          issuerDid: 'did:key:zSeedIssuerNTU',
-          claims: JSON.parse(JSON.stringify(payload)),
-          sdClaims: ['fieldOfStudy', 'graduationDate', 'gpa', 'studentId'],
-          issuedAt: new Date(now - 15 * DAY),
-          expiresAt: new Date(now + 350 * DAY),
-        },
+      await WalletCredentialModel.create({
+        holderId: holder2User._id.toString(),
+        rawCredential,
+        format: 'sd-jwt-vc',
+        credentialType: 'VerifiableEducationCredential',
+        issuerDid: 'did:key:zSeedIssuerNTU',
+        claims: JSON.parse(JSON.stringify(payload)),
+        sdClaims: ['fieldOfStudy', 'graduationDate', 'gpa', 'studentId'],
+        issuedAt: new Date(now - 15 * DAY),
+        expiresAt: new Date(now + 350 * DAY),
       });
       console.log(`  + VerifiableEducationCredential → holder2@trustilock.dev (real SD-JWT-VC)`);
     }
@@ -851,13 +857,13 @@ async function seed() {
 
   // --- Audit Logs ---
   console.log('\nSeeding audit logs...');
-  const existingLogs = await prisma.auditLog.count();
+  const existingLogs = await AuditLogModel.countDocuments();
   if (existingLogs > 0) {
     console.log(`  ~ ${existingLogs} logs already exist — skipping`);
   } else {
     const logs = buildAuditLogs();
     for (const log of logs) {
-      await prisma.auditLog.create({ data: log });
+      await AuditLogModel.create(log);
       console.log(`  + ${log.action}`);
     }
   }
@@ -877,15 +883,15 @@ async function seed() {
   console.log('└─────────────────────────────────┴────────────────┴──────────┘');
 
   const counts = {
-    users: await prisma.user.count(),
-    schemas: await prisma.credentialSchema.count(),
-    trustedIssuers: await prisma.trustedIssuer.count(),
-    issuedCredentials: await prisma.issuedCredential.count(),
-    verificationRequests: await prisma.verificationRequest.count(),
-    verifierPolicies: await prisma.verifierPolicy.count(),
-    trustPolicies: await prisma.trustPolicy.count(),
-    walletCredentials: await prisma.walletCredential.count(),
-    auditLogs: await prisma.auditLog.count(),
+    users: await UserModel.countDocuments(),
+    schemas: await CredentialSchemaModel.countDocuments(),
+    trustedIssuers: await TrustedIssuerModel.countDocuments(),
+    issuedCredentials: await IssuedCredentialModel.countDocuments(),
+    verificationRequests: await VerificationRequestModel.countDocuments(),
+    verifierPolicies: await VerifierPolicyModel.countDocuments(),
+    trustPolicies: await TrustPolicyModel.countDocuments(),
+    walletCredentials: await WalletCredentialModel.countDocuments(),
+    auditLogs: await AuditLogModel.countDocuments(),
   };
   console.log('\nDatabase totals:');
   for (const [key, count] of Object.entries(counts)) {
@@ -899,5 +905,5 @@ seed()
     process.exit(1);
   })
   .finally(async () => {
-    await prisma.$disconnect();
+    await mongoose.disconnect();
   });

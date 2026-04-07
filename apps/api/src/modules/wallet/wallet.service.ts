@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef } from '@nestjs/common';
 import type { JWK } from 'jose';
-import { PrismaService } from '../../prisma/prisma.service';
+import { DatabaseService } from '../../database/database.service';
 import { DidService } from '../did/did.service';
 import { SdJwtService } from '../crypto/sd-jwt.service';
 import { Oid4vciClientService } from './oid4vci-client.service';
@@ -11,7 +11,7 @@ import { MailService } from '../mail/mail.service';
 @Injectable()
 export class WalletService {
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly db: DatabaseService,
     private readonly didService: DidService,
     private readonly sdJwtService: SdJwtService,
     private readonly oid4vciClient: Oid4vciClientService,
@@ -24,35 +24,30 @@ export class WalletService {
   async createHolderDid(holderId: string, method: string = 'key') {
     const result = await this.didService.createDid(method);
 
-    const walletDid = await this.prisma.walletDid.create({
-      data: {
-        holderId,
-        did: result.did,
-        method,
-        keyData: JSON.parse(JSON.stringify(result.keyPair)),
-        isPrimary: true,
-      },
+    const walletDid = await this.db.walletDid.create({
+      holderId,
+      did: result.did,
+      method,
+      keyData: JSON.parse(JSON.stringify(result.keyPair)),
+      isPrimary: true,
     });
 
     return { did: walletDid.did, method: walletDid.method, createdAt: walletDid.createdAt };
   }
 
   async getOrCreateHolderDid(holderId: string): Promise<{ did: string; keyPair: { publicKey: JWK; privateKey: JWK } }> {
-    let walletDid = await this.prisma.walletDid.findFirst({
-      where: { holderId, isPrimary: true },
-    });
+    let walletDid = await this.db.walletDid.findOne({ holderId, isPrimary: true }).lean();
 
     if (!walletDid) {
       const result = await this.didService.createDid('key');
-      walletDid = await this.prisma.walletDid.create({
-        data: {
-          holderId,
-          did: result.did,
-          method: 'key',
-          keyData: JSON.parse(JSON.stringify(result.keyPair)),
-          isPrimary: true,
-        },
+      const created = await this.db.walletDid.create({
+        holderId,
+        did: result.did,
+        method: 'key',
+        keyData: JSON.parse(JSON.stringify(result.keyPair)),
+        isPrimary: true,
       });
+      walletDid = created.toObject();
     }
 
     const keyData = walletDid.keyData as unknown as { publicKey: JWK; privateKey: JWK };
@@ -114,31 +109,25 @@ export class WalletService {
     const issuedAt = payload.iat ? new Date((payload.iat as number) * 1000) : new Date();
     const expiresAt = payload.exp ? new Date((payload.exp as number) * 1000) : undefined;
 
-    const walletCred = await this.prisma.walletCredential.create({
-      data: {
-        holderId,
-        rawCredential: credentialResponse.credential,
-        format: 'sd-jwt-vc',
-        credentialType,
-        issuerDid: payload.iss as string,
-        claims: JSON.parse(JSON.stringify(claims)),
-        sdClaims: sdClaimNames,
-        issuedAt,
-        expiresAt,
-      },
+    const walletCred = await this.db.walletCredential.create({
+      holderId,
+      rawCredential: credentialResponse.credential,
+      format: 'sd-jwt-vc',
+      credentialType,
+      issuerDid: payload.iss as string,
+      claims: JSON.parse(JSON.stringify(claims)),
+      sdClaims: sdClaimNames,
+      issuedAt,
+      expiresAt,
     });
 
-    const schema = await this.prisma.credentialSchema.findUnique({
-      where: { typeUri: credentialType },
-    });
-    const trustedIssuer = await this.prisma.trustedIssuer.findFirst({
-      where: { did: payload.iss as string },
-    });
+    const schema = await this.db.credentialSchema.findOne({ typeUri: credentialType }).lean();
+    const trustedIssuer = await this.db.trustedIssuer.findOne({ did: payload.iss as string }).lean();
 
     const typeName = schema?.name || credentialType;
     const issuerName = trustedIssuer?.name || (payload.iss as string);
 
-    const holderUser = await this.prisma.user.findUnique({ where: { id: holderId } });
+    const holderUser = await this.db.user.findById(holderId).lean();
     if (holderUser) {
       this.mailService
         .sendCredentialIssued(holderUser.email, holderUser.name, typeName, issuerName)
@@ -146,7 +135,7 @@ export class WalletService {
     }
 
     return {
-      credentialId: walletCred.id,
+      credentialId: walletCred._id.toString(),
       type: credentialType,
       typeName,
       issuerDid: payload.iss as string,
@@ -162,24 +151,20 @@ export class WalletService {
   }
 
   async listCredentials(holderId: string) {
-    const credentials = await this.prisma.walletCredential.findMany({
-      where: { holderId },
-      orderBy: { createdAt: 'desc' },
-    });
+    const credentials = await this.db.walletCredential.find({ holderId }).sort({ createdAt: -1 }).lean();
 
-    const schemas = await this.prisma.credentialSchema.findMany({ where: { active: true } });
+    const schemas = await this.db.credentialSchema.find({ active: true }).lean();
     const schemaMap = new Map(schemas.map((s) => [s.typeUri, s.name]));
 
     const issuerDids = [...new Set(credentials.map((c) => c.issuerDid))];
-    const trustedIssuers = await this.prisma.trustedIssuer.findMany({
-      where: { did: { in: issuerDids } },
-    });
+    const trustedIssuers = await this.db.trustedIssuer.find({ did: { $in: issuerDids } }).lean();
     const issuerMap = new Map(trustedIssuers.map((i) => [i.did, i.name]));
 
     const enriched = credentials.map((c) => {
       const storedClaims = c.claims as Record<string, unknown> || {};
       return {
         ...c,
+        id: c._id.toString(),
         subjectDid: (storedClaims.sub as string) || '',
         typeName: schemaMap.get(c.credentialType) || c.credentialType,
         issuerName: issuerMap.get(c.issuerDid) || null,
@@ -190,18 +175,18 @@ export class WalletService {
   }
 
   async getCredential(id: string) {
-    const credential = await this.prisma.walletCredential.findUnique({ where: { id } });
+    const credential = await this.db.walletCredential.findById(id).lean();
     if (!credential) {
       throw new NotFoundException(`Credential not found: ${id}`);
     }
-    return credential;
+    return { ...credential, id: credential._id.toString() };
   }
 
   async getCredentialClaims(id: string) {
     const credential = await this.getCredential(id);
     const decoded = this.sdJwtService.decode(credential.rawCredential);
     const payloadClaims = decoded.payload as Record<string, unknown>;
-    
+
     const claims: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(payloadClaims)) {
       if (!key.startsWith('_') && !['iss', 'sub', 'iat', 'exp', 'vct', 'cnf', 'status'].includes(key)) {
@@ -235,7 +220,7 @@ export class WalletService {
 
   async deleteCredential(id: string) {
     const credential = await this.getCredential(id);
-    await this.prisma.walletCredential.delete({ where: { id: credential.id } });
+    await this.db.walletCredential.deleteOne({ _id: credential._id });
     return { deleted: true };
   }
 
@@ -256,9 +241,7 @@ export class WalletService {
       throw new BadRequestException('Consent is required to create a presentation');
     }
 
-    const verificationRequest = await this.prisma.verificationRequest.findUnique({
-      where: { id: verificationRequestId },
-    });
+    const verificationRequest = await this.db.verificationRequest.findById(verificationRequestId).lean();
     if (!verificationRequest) {
       throw new NotFoundException(`Verification request not found: ${verificationRequestId}`);
     }

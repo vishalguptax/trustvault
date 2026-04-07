@@ -2,29 +2,58 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { WalletService } from '../../src/modules/wallet/wallet.service';
 
+/** Returns a vi.fn() whose return value has chainable .lean(), .sort(), .select(), .exec(). */
+function mockQuery(resolvedValue: unknown) {
+  const chain = {
+    lean: vi.fn().mockResolvedValue(resolvedValue),
+    sort: vi.fn().mockReturnThis(),
+    select: vi.fn().mockReturnThis(),
+    exec: vi.fn().mockResolvedValue(resolvedValue),
+  };
+  return vi.fn().mockReturnValue(chain);
+}
+
+/** Returns a vi.fn() that resolves to a Mongoose document with .toObject(). */
+function mockCreate(resolvedValue: unknown) {
+  return vi.fn().mockResolvedValue({
+    ...(resolvedValue as Record<string, unknown>),
+    toObject: () => resolvedValue,
+  });
+}
+
+/** Returns a vi.fn() that resolves to { modifiedCount: 1 }. */
+function mockUpdate() {
+  return vi.fn().mockResolvedValue({ modifiedCount: 1 });
+}
+
 describe('WalletService', () => {
   let service: WalletService;
 
-  const mockPrisma = {
+  const mockDb = {
     walletDid: {
-      findFirst: vi.fn(),
-      create: vi.fn(),
+      findOne: mockQuery(null),
+      create: mockCreate(null),
     },
     walletCredential: {
-      findMany: vi.fn(),
-      findUnique: vi.fn(),
-      create: vi.fn(),
-      delete: vi.fn(),
+      find: mockQuery([]),
+      findById: mockQuery(null),
+      create: mockCreate(null),
+      deleteOne: vi.fn().mockResolvedValue({ deletedCount: 1 }),
     },
     verificationRequest: {
-      findUnique: vi.fn(),
-      update: vi.fn(),
+      findById: mockQuery(null),
+      updateOne: mockUpdate(),
     },
     credentialSchema: {
-      findMany: vi.fn().mockResolvedValue([]),
+      find: mockQuery([]),
+      findOne: mockQuery(null),
     },
     trustedIssuer: {
-      findMany: vi.fn().mockResolvedValue([]),
+      find: mockQuery([]),
+      findOne: mockQuery(null),
+    },
+    user: {
+      findById: mockQuery(null),
     },
   };
 
@@ -59,8 +88,24 @@ describe('WalletService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+
+    // Reset mock implementations to defaults
+    mockDb.walletDid.findOne = mockQuery(null);
+    mockDb.walletDid.create = mockCreate(null);
+    mockDb.walletCredential.find = mockQuery([]);
+    mockDb.walletCredential.findById = mockQuery(null);
+    mockDb.walletCredential.create = mockCreate(null);
+    mockDb.walletCredential.deleteOne = vi.fn().mockResolvedValue({ deletedCount: 1 });
+    mockDb.verificationRequest.findById = mockQuery(null);
+    mockDb.verificationRequest.updateOne = mockUpdate();
+    mockDb.credentialSchema.find = mockQuery([]);
+    mockDb.credentialSchema.findOne = mockQuery(null);
+    mockDb.trustedIssuer.find = mockQuery([]);
+    mockDb.trustedIssuer.findOne = mockQuery(null);
+    mockDb.user.findById = mockQuery(null);
+
     service = new WalletService(
-      mockPrisma as any,
+      mockDb as any,
       mockDidService as any,
       mockSdJwtService as any,
       mockOid4vciClient as any,
@@ -74,7 +119,7 @@ describe('WalletService', () => {
     it('should create a new DID and store it', async () => {
       const keyPair = { publicKey: { kty: 'EC' }, privateKey: { kty: 'EC' } };
       mockDidService.createDid.mockResolvedValue({ did: 'did:key:z123', keyPair });
-      mockPrisma.walletDid.create.mockResolvedValue({
+      mockDb.walletDid.create = mockCreate({
         did: 'did:key:z123',
         method: 'key',
         createdAt: new Date('2025-01-01'),
@@ -94,7 +139,7 @@ describe('WalletService', () => {
         did: 'did:key:existing',
         keyData: { publicKey: { kty: 'EC' }, privateKey: { kty: 'EC' } },
       };
-      mockPrisma.walletDid.findFirst.mockResolvedValue(walletDid);
+      mockDb.walletDid.findOne = mockQuery(walletDid);
 
       const result = await service.getOrCreateHolderDid('holder-1');
 
@@ -103,10 +148,10 @@ describe('WalletService', () => {
     });
 
     it('should create a new DID if none exists', async () => {
-      mockPrisma.walletDid.findFirst.mockResolvedValue(null);
+      mockDb.walletDid.findOne = mockQuery(null);
       const keyPair = { publicKey: { kty: 'EC' }, privateKey: { kty: 'EC' } };
       mockDidService.createDid.mockResolvedValue({ did: 'did:key:new', keyPair });
-      mockPrisma.walletDid.create.mockResolvedValue({
+      mockDb.walletDid.create = mockCreate({
         did: 'did:key:new',
         keyData: keyPair,
       });
@@ -121,14 +166,14 @@ describe('WalletService', () => {
   describe('listCredentials', () => {
     it('should return enriched credentials and total count', async () => {
       const creds = [
-        { id: 'c1', credentialType: 'UniversityDegree', issuerDid: 'did:key:issuer1' },
-        { id: 'c2', credentialType: 'DriverLicense', issuerDid: 'did:key:issuer2' },
+        { _id: 'c1', credentialType: 'UniversityDegree', issuerDid: 'did:key:issuer1', claims: { iss: 'did:key:issuer1' }, sdClaims: [] },
+        { _id: 'c2', credentialType: 'DriverLicense', issuerDid: 'did:key:issuer2', claims: { iss: 'did:key:issuer2' }, sdClaims: [] },
       ];
-      mockPrisma.walletCredential.findMany.mockResolvedValue(creds);
-      mockPrisma.credentialSchema.findMany.mockResolvedValue([
-        { typeUri: 'UniversityDegree', name: 'University Degree' },
+      mockDb.walletCredential.find = mockQuery(creds);
+      mockDb.credentialSchema.find = mockQuery([
+        { typeUri: 'UniversityDegree', name: 'University Degree', active: true },
       ]);
-      mockPrisma.trustedIssuer.findMany.mockResolvedValue([
+      mockDb.trustedIssuer.find = mockQuery([
         { did: 'did:key:issuer1', name: 'Test University' },
       ]);
 
@@ -142,7 +187,7 @@ describe('WalletService', () => {
     });
 
     it('should return empty list when holder has no credentials', async () => {
-      mockPrisma.walletCredential.findMany.mockResolvedValue([]);
+      mockDb.walletCredential.find = mockQuery([]);
 
       const result = await service.listCredentials('holder-1');
 
@@ -153,15 +198,16 @@ describe('WalletService', () => {
 
   describe('getCredential', () => {
     it('should return credential when found', async () => {
-      const cred = { id: 'c1', credentialType: 'UniversityDegree' };
-      mockPrisma.walletCredential.findUnique.mockResolvedValue(cred);
+      const cred = { _id: 'c1', credentialType: 'UniversityDegree' };
+      mockDb.walletCredential.findById = mockQuery(cred);
 
       const result = await service.getCredential('c1');
-      expect(result).toEqual(cred);
+      expect(result.id).toBe('c1');
+      expect(result.credentialType).toBe('UniversityDegree');
     });
 
     it('should throw NotFoundException when credential does not exist', async () => {
-      mockPrisma.walletCredential.findUnique.mockResolvedValue(null);
+      mockDb.walletCredential.findById = mockQuery(null);
 
       await expect(service.getCredential('nonexistent')).rejects.toThrow(NotFoundException);
     });
@@ -169,8 +215,9 @@ describe('WalletService', () => {
 
   describe('getCredentialClaims', () => {
     it('should separate fixed and selective (selectable) claims', async () => {
-      mockPrisma.walletCredential.findUnique.mockResolvedValue({
-        id: 'c1',
+      mockDb.walletCredential.findById = mockQuery({
+        _id: 'c1',
+        rawCredential: 'header.payload~disclosure1~',
         claims: {
           iss: 'did:key:issuer',
           sub: 'did:key:holder',
@@ -183,6 +230,20 @@ describe('WalletService', () => {
         },
         sdClaims: ['name', 'gpa'],
       });
+      mockSdJwtService.decode.mockReturnValue({
+        payload: {
+          iss: 'did:key:issuer',
+          sub: 'did:key:holder',
+          iat: 1700000000,
+          exp: 1800000000,
+          vct: 'UniversityDegree',
+          degree: 'CS',
+        },
+        disclosures: [
+          Buffer.from(JSON.stringify(['salt1', 'name', 'Alice'])).toString('base64url'),
+          Buffer.from(JSON.stringify(['salt2', 'gpa', 3.8])).toString('base64url'),
+        ],
+      });
 
       const result = await service.getCredentialClaims('c1');
 
@@ -194,8 +255,9 @@ describe('WalletService', () => {
     });
 
     it('should exclude JWT reserved claims from output', async () => {
-      mockPrisma.walletCredential.findUnique.mockResolvedValue({
-        id: 'c1',
+      mockDb.walletCredential.findById = mockQuery({
+        _id: 'c1',
+        rawCredential: 'header.payload~',
         claims: {
           iss: 'did:key:issuer',
           sub: 'did:key:holder',
@@ -207,6 +269,19 @@ describe('WalletService', () => {
           customField: 'value',
         },
         sdClaims: [],
+      });
+      mockSdJwtService.decode.mockReturnValue({
+        payload: {
+          iss: 'did:key:issuer',
+          sub: 'did:key:holder',
+          iat: 1700000000,
+          vct: 'Test',
+          cnf: { jwk: {} },
+          status: {},
+          _sd: [],
+          customField: 'value',
+        },
+        disclosures: [],
       });
 
       const result = await service.getCredentialClaims('c1');
@@ -224,17 +299,17 @@ describe('WalletService', () => {
 
   describe('deleteCredential', () => {
     it('should delete a credential that exists', async () => {
-      mockPrisma.walletCredential.findUnique.mockResolvedValue({ id: 'c1' });
-      mockPrisma.walletCredential.delete.mockResolvedValue({ id: 'c1' });
+      mockDb.walletCredential.findById = mockQuery({ _id: 'c1' });
+      mockDb.walletCredential.deleteOne = vi.fn().mockResolvedValue({ deletedCount: 1 });
 
       const result = await service.deleteCredential('c1');
 
       expect(result.deleted).toBe(true);
-      expect(mockPrisma.walletCredential.delete).toHaveBeenCalledWith({ where: { id: 'c1' } });
+      expect(mockDb.walletCredential.deleteOne).toHaveBeenCalledWith({ _id: 'c1' });
     });
 
     it('should throw NotFoundException for non-existent credential', async () => {
-      mockPrisma.walletCredential.findUnique.mockResolvedValue(null);
+      mockDb.walletCredential.findById = mockQuery(null);
 
       await expect(service.deleteCredential('nonexistent')).rejects.toThrow(NotFoundException);
     });
@@ -248,7 +323,7 @@ describe('WalletService', () => {
     });
 
     it('should throw NotFoundException for non-existent verification request', async () => {
-      mockPrisma.verificationRequest.findUnique.mockResolvedValue(null);
+      mockDb.verificationRequest.findById = mockQuery(null);
 
       await expect(
         service.createPresentation('nonexistent', 'holder-1', ['c1'], {}, true),
@@ -257,26 +332,26 @@ describe('WalletService', () => {
 
     it('should create a presentation and submit to verifier', async () => {
       const verificationRequest = {
-        id: 'vr-1',
+        _id: 'vr-1',
         nonce: 'nonce-123',
         state: 'state-abc',
         verifierDid: 'did:key:verifier',
       };
       const walletCred = {
-        id: 'c1',
+        _id: 'c1',
         rawCredential: 'header.payload~disclosure1~',
       };
       const holderDid = {
         did: 'did:key:holder',
-        keyPair: { publicKey: { kty: 'EC' }, privateKey: { kty: 'EC' } },
+        keyData: { publicKey: { kty: 'EC' }, privateKey: { kty: 'EC' } },
       };
 
-      mockPrisma.verificationRequest.findUnique.mockResolvedValue(verificationRequest);
-      mockPrisma.walletDid.findFirst.mockResolvedValue({
+      mockDb.verificationRequest.findById = mockQuery(verificationRequest);
+      mockDb.walletDid.findOne = mockQuery({
         did: holderDid.did,
-        keyData: holderDid.keyPair,
+        keyData: holderDid.keyData,
       });
-      mockPrisma.walletCredential.findUnique.mockResolvedValue(walletCred);
+      mockDb.walletCredential.findById = mockQuery(walletCred);
       mockSdJwtService.present.mockResolvedValue('presented-sd-jwt');
       mockConsentService.recordConsent.mockResolvedValue(undefined);
       mockVerifierService.handlePresentationResponse.mockResolvedValue({
@@ -304,20 +379,37 @@ describe('WalletService', () => {
 
     it('should JSON-stringify vpToken when multiple credentials are presented', async () => {
       const verificationRequest = {
-        id: 'vr-1',
+        _id: 'vr-1',
         nonce: 'nonce-123',
         state: 'state-abc',
         verifierDid: 'did:key:verifier',
       };
 
-      mockPrisma.verificationRequest.findUnique.mockResolvedValue(verificationRequest);
-      mockPrisma.walletDid.findFirst.mockResolvedValue({
+      mockDb.verificationRequest.findById = mockQuery(verificationRequest);
+      mockDb.walletDid.findOne = mockQuery({
         did: 'did:key:holder',
         keyData: { publicKey: {}, privateKey: {} },
       });
-      mockPrisma.walletCredential.findUnique
-        .mockResolvedValueOnce({ id: 'c1', rawCredential: 'cred1' })
-        .mockResolvedValueOnce({ id: 'c2', rawCredential: 'cred2' });
+
+      // For multiple credentials, we need findById to return different values on successive calls.
+      // Since mockQuery creates a new fn each time, we set it once to return c1,
+      // but the service calls getCredential for each. We need sequential resolution.
+      const findByIdChain1 = {
+        lean: vi.fn().mockResolvedValueOnce({ _id: 'c1', rawCredential: 'cred1', sdClaims: [] }),
+        sort: vi.fn().mockReturnThis(),
+        select: vi.fn().mockReturnThis(),
+        exec: vi.fn(),
+      };
+      const findByIdChain2 = {
+        lean: vi.fn().mockResolvedValueOnce({ _id: 'c2', rawCredential: 'cred2', sdClaims: [] }),
+        sort: vi.fn().mockReturnThis(),
+        select: vi.fn().mockReturnThis(),
+        exec: vi.fn(),
+      };
+      mockDb.walletCredential.findById = vi.fn()
+        .mockReturnValueOnce(findByIdChain1)
+        .mockReturnValueOnce(findByIdChain2);
+
       mockSdJwtService.present
         .mockResolvedValueOnce('presented-1')
         .mockResolvedValueOnce('presented-2');
