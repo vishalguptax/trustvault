@@ -18,7 +18,7 @@ Write-Host ""
 # -------------------------------------------
 # Step 1: Check prerequisites
 # -------------------------------------------
-Write-Host "[1/6] Checking prerequisites..." -ForegroundColor Yellow
+Write-Host "[1/4] Checking prerequisites..." -ForegroundColor Yellow
 
 try {
     $nodeVersion = (node -v) -replace 'v',''
@@ -43,7 +43,7 @@ try {
 
 # Check MongoDB is running
 Write-Host ""
-Write-Host "[2/6] Checking MongoDB..." -ForegroundColor Yellow
+Write-Host "[2/4] Checking MongoDB..." -ForegroundColor Yellow
 try {
     $mongosh = mongosh --eval "db.runCommand({ping:1})" --quiet mongodb://localhost:27017 2>$null
     Write-Host "  MongoDB is running on port 27017" -ForegroundColor Green
@@ -58,7 +58,7 @@ try {
 # Step 3: Install dependencies
 # -------------------------------------------
 Write-Host ""
-Write-Host "[3/6] Installing dependencies..." -ForegroundColor Yellow
+Write-Host "[3/4] Installing dependencies..." -ForegroundColor Yellow
 pnpm install
 if ($LASTEXITCODE -ne 0) {
     Write-Host "  pnpm install failed." -ForegroundColor Red
@@ -69,7 +69,7 @@ if ($LASTEXITCODE -ne 0) {
 # Step 4: Create .env if missing
 # -------------------------------------------
 Write-Host ""
-Write-Host "[4/6] Setting up environment..." -ForegroundColor Yellow
+Write-Host "[4/4] Setting up environment..." -ForegroundColor Yellow
 
 if (-not (Test-Path "apps\api\.env")) {
     Copy-Item "apps\api\.env.local" "apps\api\.env"
@@ -77,37 +77,6 @@ if (-not (Test-Path "apps\api\.env")) {
 } else {
     Write-Host "  apps\api\.env already exists - skipping" -ForegroundColor Yellow
 }
-
-# -------------------------------------------
-# Step 5: Generate Prisma client + push schema
-# -------------------------------------------
-Write-Host ""
-Write-Host "[5/6] Setting up database..." -ForegroundColor Yellow
-Push-Location apps\api
-pnpm prisma generate
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "  Prisma generate failed." -ForegroundColor Red
-    Pop-Location
-    exit 1
-}
-pnpm prisma db push
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "  Prisma db push failed." -ForegroundColor Red
-    Pop-Location
-    exit 1
-}
-Pop-Location
-Write-Host "  Schema pushed to MongoDB" -ForegroundColor Green
-
-# -------------------------------------------
-# Step 6: Seed database
-# -------------------------------------------
-Write-Host ""
-Write-Host "[6/6] Seeding database..." -ForegroundColor Yellow
-Push-Location infrastructure\seed
-npx tsx seed-data.ts
-Pop-Location
-Write-Host "  Database seeded" -ForegroundColor Green
 
 # -------------------------------------------
 # Done
@@ -121,6 +90,7 @@ Write-Host "  Start all apps:     pnpm dev"
 Write-Host "  Start API only:     pnpm dev:api"
 Write-Host "  Start web only:     pnpm dev:web"
 Write-Host "  Start mobile only:  pnpm dev:mobile"
+Write-Host "  Seed database:      pnpm db:seed"
 Write-Host ""
 Write-Host "  API:     http://localhost:8000"
 Write-Host "  Web:     http://localhost:3000"

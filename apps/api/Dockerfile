@@ -16,7 +16,7 @@ COPY apps/api/ apps/api/
 COPY packages/shared/ packages/shared/
 COPY tsconfig.base.json ./
 
-# Build (prisma generate + nest build)
+# Build
 RUN cd apps/api && pnpm run build
 
 # --- Production ---
@@ -26,7 +26,6 @@ WORKDIR /app/apps/api
 COPY --from=builder /app/node_modules /app/node_modules
 COPY --from=builder /app/apps/api/node_modules ./node_modules
 COPY --from=builder /app/apps/api/dist ./dist
-COPY --from=builder /app/apps/api/prisma ./prisma
 COPY --from=builder /app/apps/api/package.json ./
 
 EXPOSE 8000
