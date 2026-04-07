@@ -30,7 +30,7 @@ All documentation lives in [`docs/`](docs/README.md):
 
 | Layer | Technology |
 |-------|-----------|
-| Backend | NestJS 11, Prisma 6, MongoDB Atlas |
+| Backend | NestJS 11, Mongoose, MongoDB Atlas |
 | Web | Next.js 15, React 19, Tailwind CSS 4, shadcn/ui, Zustand |
 | Mobile | Expo 55, React Native 0.83, Expo Router, Expo Secure Store |
 | Credentials | SD-JWT-VC, OID4VCI, OID4VP, Bitstring Status List |
@@ -48,7 +48,7 @@ All documentation lives in [`docs/`](docs/README.md):
 ## Quick Start
 
 ```bash
-# 1. Clone and install (Prisma client auto-generates via postinstall)
+# 1. Clone and install
 git clone <repo-url> && cd trustilock
 pnpm install
 
@@ -56,14 +56,11 @@ pnpm install
 cp apps/api/.env.example apps/api/.env        # Set DATABASE_URL, JWT_SECRET
 cp apps/mobile/.env.example apps/mobile/.env  # Set LAN IP
 
-# 3. Push schema to database
-pnpm --filter @trustilock/api prisma:push
-
-# 4. Start everything
+# 3. Start everything (Mongoose connects automatically — no schema push needed)
 pnpm dev
 ```
 
-Or use the one-command setup (installs + generates Prisma):
+Or use the one-command setup:
 
 ```bash
 pnpm setup
@@ -159,10 +156,8 @@ apps/api/
 │   ├── modules/        Domain modules (auth, did, crypto, issuer, verifier, etc.)
 │   ├── config/         Centralized configuration
 │   ├── common/         Shared filters, interceptors, decorators
-│   ├── prisma/         Prisma service
+│   ├── database/       Mongoose schemas and database service
 │   └── main.ts         Bootstrap
-├── prisma/
-│   └── schema.prisma   Database schema
 └── test/               Unit and E2E tests
 
 apps/web/

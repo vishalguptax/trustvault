@@ -126,7 +126,7 @@ All free and open source. **Total library cost: $0.**
     │  └─────────────────────────────────────────────┘   │
     │                       │                            │
     │              ┌────────┴────────┐                   │
-    │              │  Prisma + MongoDB │                  │
+    │              │ Mongoose + MongoDB │                  │
     │              └─────────────────┘                   │
     └──────────────────────────────────────────────────┘
 
@@ -157,8 +157,8 @@ All free and open source. **Total library cost: $0.**
 | **VC Framework** | Veramo 6.x | Free | DID + VC + key management agent |
 | **OID4VC** | Sphereon OID4VCI/OID4VP | Free | Battle-tested in EU LSP pilots |
 | **SD-JWT** | sd-jwt-js (OWF) + panva/jose | Free | Reference implementations |
-| **Database** | **MongoDB Atlas (cloud, free tier via Prisma)** | Free (512MB) | JSON-native — perfect for VCs, DIDs, presentations |
-| **ORM** | **Prisma (MongoDB provider)** | Free | Type-safe queries, schema management |
+| **Database** | **MongoDB Atlas (cloud, free tier via Mongoose)** | Free (512MB) | JSON-native — perfect for VCs, DIDs, presentations |
+| **ODM** | **Mongoose** | Free | Schema validation, query building, middleware |
 | **Key Management** | Software keys (Veramo built-in) | Free | In-memory / file-based (prototype only) |
 | **Containers** | Docker + Docker Compose | Free | Local development & demo |
 | **Testing** | Vitest + Supertest | Free | Unit + API integration testing |
@@ -166,13 +166,13 @@ All free and open source. **Total library cost: $0.**
 | **CI/CD** | GitHub Actions (free tier) | Free | 2000 min/month |
 | **Monorepo** | Turborepo | Free | Fast builds, shared packages |
 
-**Why MongoDB + Prisma:**
+**Why MongoDB + Mongoose:**
 - VCs, DID documents, presentation definitions, trust policies — **all JSON documents**
 - MongoDB stores them natively without schema gymnastics
-- Prisma provides type-safe access + schema validation
+- Mongoose provides schema validation, middleware, and query building
 - MongoDB Atlas free tier (M0) = 512MB = more than enough for prototype
 - No local MongoDB setup needed — cloud-hosted, always available
-- No migrations needed — flexible schema for rapid prototyping
+- No migrations or code generation needed — schemas are defined in code
 
 ---
 
@@ -228,7 +228,7 @@ Foundation  Issuer  Wallet+Status  Verifier+Trust  E2E Flows  Demo Ready
 | # | Deliverable | Details |
 |---|---|---|
 | 1 | Monorepo scaffold | Turborepo + NestJS app + shared packages |
-| 2 | Prisma + MongoDB Atlas | Schema definition, `prisma generate`, `prisma db push` |
+| 2 | Mongoose + MongoDB Atlas | Mongoose schemas in `src/database/schemas/`, connection setup |
 | 3 | DID Module | did:key creation & resolution, ES256 key pair generation |
 | 4 | Crypto Module | SD-JWT creation & verification, JWT signing, key serialization |
 | 5 | Docker Compose | NestJS app with hot reload (MongoDB is Atlas cloud) |
@@ -423,7 +423,7 @@ GET  /trust/verify?issuerDid=x&credentialType=y
 |---|---|---|---|
 | Sphereon libs have breaking changes | Medium | High | Pin exact versions; fallback to manual OID4VC implementation |
 | SD-JWT-VC signing complexity | Medium | Medium | Start with JWT-VC, upgrade to SD-JWT once M1 crypto is solid |
-| MongoDB + Prisma edge cases | Low | Medium | Prisma MongoDB support is stable; use native driver as fallback |
+| MongoDB + Mongoose edge cases | Low | Medium | Mongoose MongoDB support is mature; use native driver as fallback |
 | OID4VCI/VP protocol complexity | Medium | High | Implement simplified flows first, add spec compliance iteratively |
 | Integration across modules | Medium | Medium | M1 foundation must be solid; test each module before wiring |
 

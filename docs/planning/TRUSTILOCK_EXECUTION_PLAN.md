@@ -1,6 +1,6 @@
 # TrustiLock — Full Execution Plan
 
-## Milestone-Based Prototype | Prisma + MongoDB | Zero Budget
+## Milestone-Based Prototype | Mongoose + MongoDB | Zero Budget
 
 > **Scope:** Backend APIs, data models, protocol flows, testing, Docker deployment.
 > **Out of Scope:** UI/UX design and frontend implementation (handled separately).
@@ -138,8 +138,8 @@ trustilock/
 │       │   ├── app.module.ts
 │       │   └── main.ts
 │       │
-│       ├── prisma/
-│       │   └── schema.prisma          # MongoDB Prisma schema
+│       ├── src/database/
+│       │   └── schemas/               # Mongoose schemas
 │       │
 │       ├── test/
 │       │   ├── unit/                  # Unit tests
@@ -193,7 +193,7 @@ trustilock/
     "@nestjs/common": "^10.0.0",
     "@nestjs/platform-express": "^10.0.0",
     "@nestjs/swagger": "^7.0.0",
-    "@prisma/client": "^5.0.0",
+    "mongoose": "^8.0.0",
 
     "@veramo/core": "^6.0.0",
     "@veramo/did-manager": "^6.0.0",
@@ -224,7 +224,7 @@ trustilock/
     "pako": "^2.1.0"
   },
   "devDependencies": {
-    "prisma": "^5.0.0",
+    "@types/mongoose": "^5.0.0",
     "vitest": "^1.0.0",
     "supertest": "^6.0.0",
     "typescript": "^5.4.0",
@@ -236,21 +236,15 @@ trustilock/
 
 ---
 
-## 2. Data Models (Prisma + MongoDB)
+## 2. Data Models (Mongoose + MongoDB)
 
-### 2.1 Prisma Schema
+### 2.1 Mongoose Schemas
 
-```prisma
-// apps/api/prisma/schema.prisma
+Mongoose schemas are defined in `apps/api/src/database/schemas/`. Each model is a TypeScript class decorated with `@Schema()` and registered via `MongooseModule.forFeature()`.
 
-generator client {
-  provider = "prisma-client-js"
-}
-
-datasource db {
-  provider = "mongodb"
-  url      = env("DATABASE_URL")
-}
+```typescript
+// Connection configured in DatabaseModule
+// DATABASE_URL from environment points to MongoDB Atlas
 
 // ============================================
 // DID Management
@@ -964,7 +958,6 @@ RUN corepack enable && pnpm install --frozen-lockfile
 
 # Copy source & build
 COPY . .
-RUN npx prisma generate --schema=apps/api/prisma/schema.prisma
 RUN npx turbo build --filter=api
 
 # Production
@@ -972,7 +965,6 @@ FROM node:20-alpine
 WORKDIR /app
 COPY --from=base /app/node_modules ./node_modules
 COPY --from=base /app/apps/api/dist ./dist
-COPY --from=base /app/apps/api/prisma ./prisma
 EXPOSE 3000
 CMD ["node", "dist/main.js"]
 ```
@@ -1017,7 +1009,7 @@ M1 ──► M2 ──► M3 ──► M4 ──► M5 ──► M6
 | # | Task | Details |
 |---|---|---|
 | 1 | Monorepo scaffold | Turborepo, NestJS app, tsconfig, eslint, prettier |
-| 2 | Prisma + MongoDB Atlas | Schema definition, `prisma generate`, `prisma db push` |
+| 2 | Mongoose + MongoDB Atlas | Mongoose schemas in `src/database/schemas/`, connection setup |
 | 3 | DID module | did:key provider (create, resolve), ES256 key pair generation |
 | 4 | Crypto module | SD-JWT creation (sign, disclosures, hash), verification |
 | 5 | Dev server | `pnpm dev` with hot reload (MongoDB is Atlas cloud) |
@@ -1033,7 +1025,7 @@ M1 ──► M2 ──► M3 ──► M4 ──► M5 ──► M6
 
 **Commit & Push:**
 ```bash
-git add -A && git commit -m "feat(m1): foundation — monorepo, prisma, did, crypto modules" && git push origin main
+git add -A && git commit -m "feat(m1): foundation — monorepo, mongoose, did, crypto modules" && git push origin main
 ```
 
 ---
@@ -1275,4 +1267,4 @@ The prototype is **done** when:
 
 ---
 
-*Document Version: 3.0 | Updated: 2026-03-30 | Scope: Milestone-Based Prototype | Stack: NestJS + Prisma + MongoDB*
+*Document Version: 3.0 | Updated: 2026-03-30 | Scope: Milestone-Based Prototype | Stack: NestJS + Mongoose + MongoDB*

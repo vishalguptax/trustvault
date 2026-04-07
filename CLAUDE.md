@@ -6,11 +6,11 @@ This file provides guidance to Claude Code when working with code in this reposi
 
 TrustiLock is a Verifiable Credential ecosystem prototype — issuer, wallet, verifier, trust registry. Zero budget, milestone-based execution.
 
-- **Backend:** Modular NestJS monolith with Prisma + MongoDB Atlas
+- **Backend:** Modular NestJS monolith with Mongoose + MongoDB Atlas
 - **Mobile Wallet:** React Native + Expo (phone app — QR scanning, credential storage)
 - **Web Portals:** Next.js + shadcn/ui (Issuer, Verifier, Trust Admin dashboards)
 
-**Key docs:** `docs/planning/TRUSTILOCK_ROADMAP.md`, `docs/planning/TRUSTILOCK_EXECUTION_PLAN.md`, `docs/planning/TRUSTILOCK_FRONTEND_PLAN.md`, `docs/setup/TRUSTILOCK_ONBOARDING.md`
+**Key docs:** `docs/planning/TRUSTILOCK_ROADMAP.md`, `docs/planning/TRUSTILOCK_EXECUTION_PLAN.md`, `docs/planning/TRUSTILOCK_FRONTEND_PLAN.md`
 
 ## Common Commands
 
@@ -21,11 +21,7 @@ pnpm install
 # Start development (requires DATABASE_URL set in .env pointing to MongoDB Atlas)
 pnpm dev
 
-# Generate Prisma client
-npx prisma generate --schema=apps/api/prisma/schema.prisma
-
-# Push schema to MongoDB
-npx prisma db push --schema=apps/api/prisma/schema.prisma
+# No schema generation step needed — Mongoose schemas are defined in code
 
 # Run tests
 pnpm test              # Unit tests
@@ -61,7 +57,7 @@ docker compose -f infrastructure/docker-compose.yml up --build
 
 - **Language:** TypeScript (Node.js 20 LTS)
 - **Framework:** NestJS 10+
-- **Database:** MongoDB Atlas (cloud, free tier) via Prisma
+- **Database:** MongoDB Atlas (cloud, free tier) via Mongoose
 - **VC Libraries:** Veramo 6.x, Sphereon OID4VCI/OID4VP, panva/jose, sd-jwt-js
 - **DID Methods:** did:key (prototype), did:web (production)
 - **Credential Format:** SD-JWT-VC (primary), JWT-VC (fallback)
@@ -98,7 +94,7 @@ These rules override defaults. Apply to every response, every file, every change
 
 - **Follow existing patterns.** Find the closest reference implementation in the codebase and match it.
 - **NestJS conventions.** Use modules, services, controllers, DTOs. No logic in controllers — delegate to services.
-- **Prisma for all DB access.** No raw MongoDB queries. Use Prisma client exclusively.
+- **Mongoose for all DB access.** No raw MongoDB driver queries. Use Mongoose models exclusively.
 - **Validate all inputs.** Use class-validator decorators on every DTO. No unvalidated request data.
 - **Type everything.** No `any`. No implicit types. Use strict TypeScript.
 - **Consistent naming.** Files: kebab-case. Classes: PascalCase. Functions/variables: camelCase. Database collections: snake_case.
@@ -153,7 +149,7 @@ These rules override defaults. Apply to every response, every file, every change
 
 ### Backend (see `docs/planning/TRUSTILOCK_EXECUTION_PLAN.md`)
 ```
-M1: Foundation     → Monorepo, Prisma+MongoDB, DID module, Crypto module
+M1: Foundation     → Monorepo, Mongoose+MongoDB, DID module, Crypto module
 M2: Issuer         → OID4VCI endpoints, SD-JWT-VC issuance
 M3: Wallet+Status  → Credential storage, OID4VCI client, Bitstring Status List
 M4: Verifier+Trust → OID4VP endpoints, validation pipeline, trust registry

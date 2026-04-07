@@ -351,8 +351,7 @@ pnpm install
 cp apps/api/.env.example apps/api/.env
 # Edit apps/api/.env — set DATABASE_URL to your MongoDB Atlas connection string
 
-# 3. Push schema to database
-cd apps/api && npx prisma db push --schema=prisma/schema.prisma && cd ../..
+# 3. No schema push needed — Mongoose schemas are defined in code and sync automatically
 
 # 4. Seed default data (schemas, policies, users)
 cd apps/api && pnpm exec tsx ../../infrastructure/seed/seed-data.ts && cd ../..

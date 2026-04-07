@@ -32,7 +32,7 @@ trustilock/
 |---|---|---|---|
 | Runtime | Node.js | 20 LTS | Server runtime |
 | Framework | NestJS | 11.x | API framework (modules, DI, guards, pipes) |
-| ORM | Prisma Client | 6.19.2 | MongoDB access, schema management |
+| ODM | Mongoose | 8.x | MongoDB access, schema validation, query building |
 | Database | MongoDB Atlas | 7.x (cloud) | Document store (free tier) |
 | Credential signing | jose | 5.x | JWK, JWS, JWT, ES256 operations |
 | SD-JWT | @sd-jwt/sd-jwt-vc | 0.7.x | SD-JWT-VC issue, verify, present |
@@ -73,11 +73,11 @@ trustilock/
                           +-------------------+
                                    |
                           +--------+----------+
-                          |   Prisma Client   |
+                          |     Mongoose      |
                           +-------------------+
 ```
 
-Request flow: Client --> CorrelationIdMiddleware --> LoggingMiddleware --> ThrottlerGuard --> JwtAuthGuard --> RolesGuard --> ValidationPipe --> Controller --> Service --> PrismaService --> MongoDB.
+Request flow: Client --> CorrelationIdMiddleware --> LoggingMiddleware --> ThrottlerGuard --> JwtAuthGuard --> RolesGuard --> ValidationPipe --> Controller --> Service --> DatabaseService --> MongoDB.
 
 Response flow: Service result --> ResponseInterceptor (wraps in `{ success, statusCode, data, timestamp }`) --> Client. Errors caught by AllExceptionsFilter.
 
@@ -91,7 +91,7 @@ The `bootstrap()` function executes the following sequence:
 
 1. **Environment loading** -- `dotenv.config()` runs before any NestJS import (line 1-2).
 2. **Application creation** -- `NestFactory.create(AppModule)` with logger levels `['error', 'warn', 'log', 'debug']`.
-3. **Database connection** -- Retrieves `PrismaService` via `app.get(PrismaService)`, calls `prisma.connect()`. If `prisma.isConnected()` returns `false`, the process exits with code 1.
+3. **Database connection** -- Mongoose connects automatically via `MongooseModule.forRoot()` using the `DATABASE_URL` environment variable. If the connection fails, the process exits with code 1.
 4. **Security headers** -- `helmet()` with `crossOriginResourcePolicy: 'cross-origin'` and `crossOriginOpenerPolicy: false`.
 5. **Compression** -- `compression({ threshold: 1024 })` -- responses under 1 KB are not compressed.
 6. **Global filters** -- `AllExceptionsFilter` (catches all thrown exceptions).
@@ -111,7 +111,7 @@ The `bootstrap()` function executes the following sequence:
   imports: [
     ConfigModule.forRoot({ isGlobal: true, load: [configuration] }),
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 60 }]),
-    PrismaModule, DidModule, CryptoModule, IssuerModule,
+    DatabaseModule, DidModule, CryptoModule, IssuerModule,
     WalletModule, StatusModule, TrustModule, VerifierModule, AuthModule,
   ],
   providers: [
@@ -163,23 +163,22 @@ The `configuration()` factory returns a typed object consumed via `ConfigService
 
 ## 3. Database Layer
 
-### 3.1 PrismaService
+### 3.1 DatabaseService
 
-**File:** `apps/api/src/prisma/prisma.service.ts`
+**File:** `apps/api/src/database/database.service.ts`
 
-`PrismaService` extends `PrismaClient` and implements `OnModuleDestroy`.
+`DatabaseService` wraps the Mongoose connection and implements `OnModuleDestroy`.
 
 | Method | Behavior |
 |---|---|
-| `connect()` | Calls `this.$connect()`, sets `connected = true` on success, logs error on failure |
-| `onModuleDestroy()` | Calls `this.$disconnect()` |
-| `isConnected(): boolean` | Returns the `connected` flag |
+| `onModuleDestroy()` | Closes the Mongoose connection |
+| `isConnected(): boolean` | Returns whether the Mongoose connection is ready |
 
-### 3.2 Prisma Schema
+### 3.2 Mongoose Schemas
 
-**File:** `apps/api/prisma/schema.prisma`
+**Directory:** `apps/api/src/database/schemas/`
 
-Datasource: `mongodb`. Generator: `prisma-client-js`.
+Datasource: MongoDB Atlas. Schemas defined as TypeScript classes with `@Schema()` decorator.
 
 #### Models
 
@@ -266,7 +265,7 @@ Token hashing: `createHash('sha256').update(token).digest('hex')`.
 `AuthService.validateApiKey(key)`:
 
 - Hashes incoming key with SHA-256.
-- Queries `prisma.user.findMany()` filtering `apiKeys.some.hash` match and `active: true`.
+- Queries `UserModel.find()` filtering `apiKeys` array for matching hash and `active: true`.
 
 ### 4.5 JwtAuthGuard
 
@@ -742,9 +741,9 @@ Catches all exceptions (`@Catch()` with no arguments). Error classification:
 | Exception Type | Detection | HTTP Status | Error Code |
 |---|---|---|---|
 | `HttpException` | `instanceof HttpException` | From exception | From exception response |
-| Prisma P2002 | `constructor.name === 'PrismaClientKnownRequestError'` + `code === 'P2002'` | 409 Conflict | Unique constraint violation |
-| Prisma P2025 | Same + `code === 'P2025'` | 404 Not Found | Record not found |
-| Prisma validation | `constructor.name === 'PrismaClientValidationError'` | 400 Bad Request | Invalid request data |
+| Mongoose duplicate key | `error.code === 11000` (MongoServerError) | 409 Conflict | Unique constraint violation |
+| Mongoose not found | Document is `null` after query | 404 Not Found | Record not found |
+| Mongoose validation | `error.name === 'ValidationError'` | 400 Bad Request | Invalid request data |
 | Malformed ObjectID | `message.includes('Malformed ObjectID')` | 400 Bad Request | Invalid ID format |
 | Generic Error | `instanceof Error` | 500 (dev shows message, prod hides) | Internal server error |
 
@@ -800,7 +799,7 @@ pnpm test:e2e      # vitest run --config vitest.e2e.config.ts
 
 All unit tests mock external dependencies:
 
-- `PrismaService`: Each Prisma model method (`findUnique`, `create`, `findMany`, `update`, `delete`) is replaced with `vi.fn()`.
+- `Mongoose Models`: Each Mongoose model method (`findOne`, `create`, `find`, `findByIdAndUpdate`, `findByIdAndDelete`) is replaced with `vi.fn()`.
 - `JwtService`: `signAsync()` and `verifyAsync()` mocked with deterministic return values.
 - `ConfigService`: `get()` mocked to return test configuration values.
 - Module services: cross-module dependencies (e.g., `DidService` in `IssuerService`) are mocked at the service level.
@@ -835,7 +834,7 @@ No tests require a live MongoDB connection. All database interactions are mocked
 - **Helmet**: security headers including `X-Content-Type-Options`, `X-Frame-Options`, `Strict-Transport-Security` (with `crossOriginResourcePolicy: 'cross-origin'`).
 - **Rate limiting**: 60 requests per 60 seconds per IP (`ThrottlerModule`).
 - **Input validation**: `ValidationPipe` with `whitelist: true` strips unknown properties; `forbidNonWhitelisted: true` rejects them.
-- **Prisma**: parameterized queries by design (no raw query injection vector).
+- **Mongoose**: parameterized queries by design (no raw query injection vector).
 - **Error masking**: production mode hides internal error messages; development mode exposes them.
 - **No sensitive data in logs**: credential claim values and private keys are never logged. Only DIDs, credential IDs, and types appear in logs.
 - **CORS**: configurable origin, defaults to `*` for development.
