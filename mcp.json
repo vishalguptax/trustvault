@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "expo": {
+      "command": "npx",
+      "args": ["expo-plugins"],
+      "env": {}
+    },
+    "fullstack-dev-skills": {
+      "command": "npx",
+      "args": ["fullstack-dev-skills"],
+      "env": {}
+    }
+  }
+}

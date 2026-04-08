@@ -1,0 +1,15 @@
+export * from './user.schema';
+export * from './did.schema';
+export * from './credential-schema.schema';
+export * from './credential-offer.schema';
+export * from './issued-credential.schema';
+export * from './status-list.schema';
+export * from './trusted-issuer.schema';
+export * from './trust-policy.schema';
+export * from './wallet-credential.schema';
+export * from './wallet-did.schema';
+export * from './consent-record.schema';
+export * from './verification-request.schema';
+export * from './verifier-policy.schema';
+export * from './audit-log.schema';
+//# sourceMappingURL=index.d.ts.map

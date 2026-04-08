@@ -1,0 +1,42 @@
+import { OnModuleDestroy } from '@nestjs/common';
+import { Model } from 'mongoose';
+import { ConfigService } from '@nestjs/config';
+import { type UserDocument } from './schemas/user.schema';
+import { type DidDocument } from './schemas/did.schema';
+import { type CredentialSchemaDocument } from './schemas/credential-schema.schema';
+import { type CredentialOfferDocument } from './schemas/credential-offer.schema';
+import { type IssuedCredentialDocument } from './schemas/issued-credential.schema';
+import { type StatusListDocument } from './schemas/status-list.schema';
+import { type TrustedIssuerDocument } from './schemas/trusted-issuer.schema';
+import { type TrustPolicyDocument } from './schemas/trust-policy.schema';
+import { type WalletCredentialDocument } from './schemas/wallet-credential.schema';
+import { type WalletDidDocument } from './schemas/wallet-did.schema';
+import { type ConsentRecordDocument } from './schemas/consent-record.schema';
+import { type VerificationRequestDocument } from './schemas/verification-request.schema';
+import { type VerifierPolicyDocument } from './schemas/verifier-policy.schema';
+import { type AuditLogDocument } from './schemas/audit-log.schema';
+export declare class DatabaseService implements OnModuleDestroy {
+    private readonly configService;
+    private readonly logger;
+    private connection;
+    readonly user: Model<UserDocument>;
+    readonly did: Model<DidDocument>;
+    readonly credentialSchema: Model<CredentialSchemaDocument>;
+    readonly credentialOffer: Model<CredentialOfferDocument>;
+    readonly issuedCredential: Model<IssuedCredentialDocument>;
+    readonly statusList: Model<StatusListDocument>;
+    readonly trustedIssuer: Model<TrustedIssuerDocument>;
+    readonly trustPolicy: Model<TrustPolicyDocument>;
+    readonly walletCredential: Model<WalletCredentialDocument>;
+    readonly walletDid: Model<WalletDidDocument>;
+    readonly consentRecord: Model<ConsentRecordDocument>;
+    readonly verificationRequest: Model<VerificationRequestDocument>;
+    readonly verifierPolicy: Model<VerifierPolicyDocument>;
+    readonly auditLog: Model<AuditLogDocument>;
+    constructor(configService: ConfigService);
+    connect(): Promise<void>;
+    isConnected(): boolean;
+    ping(): Promise<boolean>;
+    onModuleDestroy(): Promise<void>;
+}
+//# sourceMappingURL=database.service.d.ts.map
