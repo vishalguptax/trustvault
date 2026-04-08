@@ -1,5 +1,0 @@
-(node:99432) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
-(Use `node --trace-deprecation ...` to show where the warning was created)
-The following packages should be updated for best compatibility with the installed expo version:
-  typescript@5.9.3 - expected version: ~5.3.3
-Your project may not work correctly until you install the expected versions of the packages.

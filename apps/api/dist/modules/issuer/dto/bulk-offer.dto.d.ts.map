@@ -1,1 +1,0 @@
-{"version":3,"file":"bulk-offer.dto.d.ts","sourceRoot":"","sources":["../../../../src/modules/issuer/dto/bulk-offer.dto.ts"],"names":[],"mappings":"AAIA,cAAM,aAAa;IAGjB,MAAM,EAAG,MAAM,CAAC,MAAM,EAAE,OAAO,CAAC,CAAC;CAClC;AAED,qBAAa,mBAAmB;IAG9B,aAAa,EAAG,MAAM,CAAC;IAMvB,MAAM,EAAG,aAAa,EAAE,CAAC;CAC1B"}
